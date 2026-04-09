@@ -1,0 +1,27 @@
+---
+import SectionTitle from './SectionTitle.astro';
+import PostCard from './PostCard.astro';
+import EmptyState from './EmptyState.astro';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  posts: CollectionEntry<'blog'>[];
+}
+
+const { posts } = Astro.props;
+---
+
+<section class="section" id="latest-posts">
+  <div class="container">
+    <SectionTitle title="最新文章" description="持续更新技术写作、项目记录与思考总结。" />
+    {posts.length > 0 ? (
+      <div class="post-list">
+        {posts.map((post) => (
+          <PostCard post={post} />
+        ))}
+      </div>
+    ) : (
+      <EmptyState title="还没有文章" description="当前还没有可展示的已发布文章，后续会逐步补充内容。" />
+    )}
+  </div>
+</section>

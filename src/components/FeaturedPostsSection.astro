@@ -1,0 +1,27 @@
+---
+import SectionTitle from './SectionTitle.astro';
+import PostCard from './PostCard.astro';
+import EmptyState from './EmptyState.astro';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  posts: CollectionEntry<'blog'>[];
+}
+
+const { posts } = Astro.props;
+---
+
+<section class="section">
+  <div class="container">
+    <SectionTitle title="推荐文章" description="优先阅读这些文章，可以快速了解这个博客的内容方向。" />
+    {posts.length > 0 ? (
+      <div class="post-list">
+        {posts.map((post) => (
+          <PostCard post={post} />
+        ))}
+      </div>
+    ) : (
+      <EmptyState title="暂时还没有推荐文章" description="后续会从已发布内容中挑选值得优先阅读的文章。" />
+    )}
+  </div>
+</section>

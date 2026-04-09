@@ -1,0 +1,21 @@
+---
+import type { Project } from '../data/projects';
+
+interface Props {
+  project: Project;
+}
+
+const { project } = Astro.props;
+---
+
+<article class="card">
+  <h3>
+    <a href={`/projects/${project.slug}/`}>{project.title}</a>
+  </h3>
+  <p class="muted">{project.description}</p>
+  <div class="tech-list">
+    {project.techStack.map((item) => (
+      <span class="tech-item">{item}</span>
+    ))}
+  </div>
+</article>

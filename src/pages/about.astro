@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../data/site';
+---
+
+<BaseLayout title="关于我 | Why 的个人博客" description="关于我、我的技术方向和这个博客的定位。">
+  <section class="section">
+    <div class="container">
+      <div class="content-card">
+        <p class="eyebrow">关于我</p>
+        <h1>{siteConfig.hero.title}</h1>
+        <p class="page-intro">{siteConfig.about.summary}</p>
+        <div class="article-content">
+          {siteConfig.about.paragraphs.map((paragraph) => (
+            <p>{paragraph}</p>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

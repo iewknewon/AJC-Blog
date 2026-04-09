@@ -1,0 +1,17 @@
+---
+import { siteConfig } from '../data/site';
+---
+
+<section class="section">
+  <div class="container">
+    <div class="hero">
+      <div class="eyebrow">{siteConfig.hero.eyebrow}</div>
+      <h1>{siteConfig.hero.title}</h1>
+      <p>{siteConfig.hero.subtitle}</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href={siteConfig.hero.ctaPrimary.href}>{siteConfig.hero.ctaPrimary.label}</a>
+        <a class="button" href={siteConfig.hero.ctaSecondary.href}>{siteConfig.hero.ctaSecondary.label}</a>
+      </div>
+    </div>
+  </div>
+</section>

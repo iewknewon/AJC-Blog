@@ -1,0 +1,27 @@
+---
+import SectionTitle from './SectionTitle.astro';
+import ProjectCard from './ProjectCard.astro';
+import EmptyState from './EmptyState.astro';
+import type { Project } from '../data/projects';
+
+interface Props {
+  projects: Project[];
+}
+
+const { projects } = Astro.props;
+---
+
+<section class="section">
+  <div class="container">
+    <SectionTitle title="精选项目" description="展示最近值得一看的个人项目和实践。" />
+    {projects.length > 0 ? (
+      <div class="grid three">
+        {projects.map((project) => (
+          <ProjectCard project={project} />
+        ))}
+      </div>
+    ) : (
+      <EmptyState title="暂时还没有精选项目" description="后续会在这里展示我最有代表性的项目实践。" />
+    )}
+  </div>
+</section>

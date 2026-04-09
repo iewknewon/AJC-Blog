@@ -1,0 +1,17 @@
+<button class="theme-toggle" type="button" aria-label="切换主题">
+  切换主题
+</button>
+
+<script is:inline>
+  const button = document.querySelector('.theme-toggle');
+
+  const applyTheme = (theme) => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('theme', theme);
+  };
+
+  button?.addEventListener('click', () => {
+    const currentTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  });
+</script>

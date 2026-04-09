@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { projects } from '../../data/projects';
+
+export async function getStaticPaths() {
+  return projects.map((project) => ({
+    params: { slug: project.slug },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+---
+
+<BaseLayout title={`${project.title} | 项目详情`} description={project.description}>
+  <section class="section">
+    <div class="container">
+      <div class="content-card">
+        <p class="eyebrow">项目详情</p>
+        <h1>{project.title}</h1>
+        <p class="page-intro">{project.description}</p>
+        <div class="tech-list">
+          {project.techStack.map((item) => (
+            <span class="tech-item">{item}</span>
+          ))}
+        </div>
+        <div style="margin-top: 2rem;">
+          <h2 class="section-title">项目亮点</h2>
+          <ul>
+            {project.highlights.map((item) => (
+              <li>{item}</li>
+            ))}
+          </ul>
+        </div>
+        <div class="hero-actions" style="margin-top: 2rem;">
+          {project.demoUrl && (
+            <a class="button button-primary" href={project.demoUrl} target="_blank" rel="noreferrer">查看演示</a>
+          )}
+          {project.repoUrl && (
+            <a class="button" href={project.repoUrl} target="_blank" rel="noreferrer">查看仓库</a>
+          )}
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

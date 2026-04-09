@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HeroSection from '../components/HeroSection.astro';
+import TechStackSection from '../components/TechStackSection.astro';
+import FeaturedProjectsSection from '../components/FeaturedProjectsSection.astro';
+import FeaturedPostsSection from '../components/FeaturedPostsSection.astro';
+import LatestPostsSection from '../components/LatestPostsSection.astro';
+import ContactSection from '../components/ContactSection.astro';
+import { siteConfig } from '../data/site';
+import { projects } from '../data/projects';
+import { getFeaturedPosts, getLatestPosts } from '../utils/posts';
+
+const featuredPosts = await getFeaturedPosts();
+const latestPosts = await getLatestPosts(5);
+const featuredProjects = projects.filter((project) => project.featured);
+---
+
+<BaseLayout title={siteConfig.title} description={siteConfig.description}>
+  <HeroSection />
+  <TechStackSection />
+  <FeaturedProjectsSection projects={featuredProjects} />
+  <FeaturedPostsSection posts={featuredPosts} />
+  <LatestPostsSection posts={latestPosts} />
+  <ContactSection />
+</BaseLayout>

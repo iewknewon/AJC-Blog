@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../data/site';
+---
+
+<BaseLayout title="联系我 | Why 的个人博客" description="通过邮箱和 GitHub 与我取得联系。">
+  <section class="section">
+    <div class="container">
+      <div class="content-card">
+        <p class="eyebrow">联系方式</p>
+        <h1>联系我</h1>
+        <p class="page-intro">如果你想交流项目、写作或技术内容，欢迎通过下面的方式联系我。</p>
+        <div class="grid two" style="margin-top: 2rem;">
+          <div class="contact-card">
+            <h3>邮箱</h3>
+            <p><a href={`mailto:${siteConfig.contact.email}`}>{siteConfig.contact.email}</a></p>
+          </div>
+          <div class="contact-card">
+            <h3>GitHub</h3>
+            <p><a href={siteConfig.contact.github} target="_blank" rel="noreferrer">{siteConfig.contact.github}</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

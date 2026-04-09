@@ -1,0 +1,50 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import TableOfContents from '../../components/TableOfContents.astro';
+import PostNavigation from '../../components/PostNavigation.astro';
+import { formatDate, getReadingTime } from '../../utils/format';
+import { getAdjacentPosts, getPublishedPosts } from '../../utils/posts';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content, headings, remarkPluginFrontmatter } = await post.render();
+const posts = await getPublishedPosts();
+const adjacentPosts = getAdjacentPosts(posts, post.slug);
+const readingTime = getReadingTime(remarkPluginFrontmatter.excerpt ?? post.body);
+---
+
+<BaseLayout title={`${post.data.title} | Why 的个人博客`} description={post.data.description}>
+  <div class="container article-layout">
+    <article class="article-shell">
+      <p class="eyebrow">技术文章</p>
+      <h1>{post.data.title}</h1>
+      <p class="page-intro">{post.data.description}</p>
+      <div class="tags" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+        <span class="tag">{formatDate(post.data.pubDate)}</span>
+        <span class="tag">{readingTime}</span>
+        {post.data.tags.map((tag) => (
+          <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>{tag}</a>
+        ))}
+      </div>
+      <div class="article-content">
+        <Content />
+      </div>
+      <div class="content-card" style="margin-top: 2rem;">
+        <h3>评论功能</h3>
+        <p class="muted">第一版暂不开放评论，后续如果有需要会在这里补充互动能力。</p>
+      </div>
+      <div style="margin-top: 1rem;">
+        <a class="button" href="/archive">返回文章列表</a>
+      </div>
+      <PostNavigation previous={adjacentPosts.previous} next={adjacentPosts.next} />
+    </article>
+    <TableOfContents headings={headings} />
+  </div>
+</BaseLayout>

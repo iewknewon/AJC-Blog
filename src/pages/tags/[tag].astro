@@ -1,0 +1,37 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import { getAllTags, getPostsByTag } from '../../utils/posts';
+
+export async function getStaticPaths() {
+  const tags = await getAllTags();
+  return tags.map((tag) => ({
+    params: { tag: tag.name },
+    props: { tag: tag.name },
+  }));
+}
+
+const { tag } = Astro.props;
+const posts = await getPostsByTag(tag);
+---
+
+<BaseLayout title={`${tag} | 标签`} description={`查看标签 ${tag} 下的全部文章。`}>
+  <section class="section">
+    <div class="container">
+      <h1 class="page-title">标签：{tag}</h1>
+      <p class="page-intro">这里收录了所有与“{tag}”相关的文章。</p>
+      {posts.length > 0 ? (
+        <div class="post-list" style="margin-top: 2rem;">
+          {posts.map((post) => (
+            <PostCard post={post} />
+          ))}
+        </div>
+      ) : (
+        <div style="margin-top: 2rem;">
+          <EmptyState title="这个标签下还没有文章" description="你可以先返回标签总览，看看其他主题。" />
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>
