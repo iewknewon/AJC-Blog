@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import EmptyState from '../../components/EmptyState.astro';
+import { siteConfig } from '../../data/site';
 import { getAllTags, getPostsByTag } from '../../utils/posts';
 
 export async function getStaticPaths() {
@@ -16,7 +17,7 @@ const { tag } = Astro.props;
 const posts = await getPostsByTag(tag);
 ---
 
-<BaseLayout title={`${tag} | 标签`} description={`查看标签 ${tag} 下的全部文章。`}>
+<BaseLayout title={`${tag} | 标签 | ${siteConfig.title}`} description={`查看标签 ${tag} 下的全部文章。`} pathname={`/tags/${encodeURIComponent(tag)}/`}>
   <section class="section">
     <div class="container">
       <h1 class="page-title">标签：{tag}</h1>

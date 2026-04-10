@@ -8,7 +8,7 @@ import { getAllTags } from '../../utils/posts';
 const tags = await getAllTags();
 ---
 
-<BaseLayout title={`标签 | ${siteConfig.title}`} description="浏览博客中的所有标签。">
+<BaseLayout title={`标签 | ${siteConfig.title}`} description="浏览博客中的所有标签。" pathname="/tags">
   <section class="section">
     <div class="container">
       <SectionTitle title="全部标签" description="通过标签快速找到你感兴趣的内容主题。" />

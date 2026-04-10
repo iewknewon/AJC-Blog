@@ -9,11 +9,15 @@ const currentPath = Astro.url.pathname;
   <div class="container header-inner">
     <a class="brand" href="/">{siteConfig.title}</a>
     <nav class="nav">
-      {navigation.map((item) => (
-        <a class:list={["nav-link", currentPath === item.href && 'is-active']} href={item.href}>
-          {item.label}
-        </a>
-      ))}
+      {navigation.map((item) => {
+        const isActive = item.href === '/' ? currentPath === '/' : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+
+        return (
+          <a class:list={["nav-link", isActive && 'is-active']} href={item.href}>
+            {item.label}
+          </a>
+        );
+      })}
     </nav>
     <ThemeToggle />
   </div>

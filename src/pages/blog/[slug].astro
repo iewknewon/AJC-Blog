@@ -21,7 +21,7 @@ const adjacentPosts = getAdjacentPosts(posts, post.slug);
 const readingTime = getReadingTime(remarkPluginFrontmatter.excerpt ?? post.body);
 ---
 
-<BaseLayout title={`${post.data.title} | ${siteConfig.title}`} description={post.data.description}>
+<BaseLayout title={`${post.data.title} | ${siteConfig.title}`} description={post.data.description} pathname={`/blog/${post.slug}/`}>
   <div class="container article-layout">
     <article class="article-shell">
       <p class="eyebrow">技术文章</p>

@@ -3,13 +3,23 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 import { siteConfig } from '../data/site';
+import { getCanonicalUrl } from '../utils/posts';
 
 interface Props {
   title?: string;
   description?: string;
+  pathname?: string;
+  image?: string;
 }
 
-const { title = siteConfig.title, description = siteConfig.description } = Astro.props;
+const {
+  title = siteConfig.title,
+  description = siteConfig.description,
+  pathname = Astro.url.pathname,
+  image = '/favicon.svg',
+} = Astro.props;
+const canonical = getCanonicalUrl(pathname, siteConfig.siteUrl);
+const imageUrl = new URL(image, siteConfig.siteUrl).toString();
 ---
 
 <!doctype html>
@@ -19,7 +29,31 @@ const { title = siteConfig.title, description = siteConfig.description } = Astro
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="keywords" content={siteConfig.keywords.join(', ')} />
+    <meta name="author" content={siteConfig.author} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={siteConfig.title} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: siteConfig.title,
+      description: siteConfig.description,
+      url: siteConfig.siteUrl,
+      author: {
+        '@type': 'Person',
+        name: siteConfig.author,
+      },
+    })} />
     <script is:inline>
       const storedTheme = localStorage.getItem('theme');
       const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

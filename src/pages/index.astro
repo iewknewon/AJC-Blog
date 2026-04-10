@@ -15,7 +15,7 @@ const latestPosts = await getLatestPosts(5);
 const featuredProjects = projects.filter((project) => project.featured);
 ---
 
-<BaseLayout title={siteConfig.title} description={siteConfig.description}>
+<BaseLayout title={siteConfig.title} description={siteConfig.description} pathname="/">
   <HeroSection />
   <TechStackSection />
   <FeaturedProjectsSection projects={featuredProjects} />

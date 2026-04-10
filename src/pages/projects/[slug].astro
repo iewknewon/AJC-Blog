@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { projects } from '../../data/projects';
+import { siteConfig } from '../../data/site';
 
 export async function getStaticPaths() {
   return projects.map((project) => ({
@@ -12,7 +13,7 @@ export async function getStaticPaths() {
 const { project } = Astro.props;
 ---
 
-<BaseLayout title={`${project.title} | 项目详情`} description={project.description}>
+<BaseLayout title={`${project.title} | 项目详情 | ${siteConfig.title}`} description={project.description} pathname={`/projects/${project.slug}/`}>
   <section class="section">
     <div class="container">
       <div class="content-card">

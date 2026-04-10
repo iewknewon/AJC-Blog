@@ -1,0 +1,123 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../data/site';
+import { formatDate } from '../utils/format';
+import { getPublishedPosts } from '../utils/posts';
+
+const posts = await getPublishedPosts();
+const searchIndex = posts.map((post) => ({
+  slug: post.slug,
+  title: post.data.title,
+  description: post.data.description,
+  tags: post.data.tags,
+  date: formatDate(post.data.pubDate),
+  content: post.body,
+}));
+---
+
+<BaseLayout title={`搜索 | ${siteConfig.title}`} description="按标题、摘要、标签和正文搜索文章。" pathname="/search">
+  <section class="section">
+    <div class="container">
+      <h1 class="page-title">搜索文章</h1>
+      <p class="page-intro">支持按标题、摘要、标签和正文关键词快速查找内容。</p>
+      <form class="search-form" action="/search" method="get">
+        <input id="search-input" class="search-input" type="search" name="q" placeholder="例如：Astro、Cloudflare、部署" />
+        <button class="button button-primary" type="submit">搜索</button>
+      </form>
+      <p id="search-summary" class="muted" style="margin-top: 1rem;">输入关键词开始搜索。</p>
+      <div id="search-results" class="post-list" style="margin-top: 1.5rem;"></div>
+      <noscript>
+        <div style="margin-top: 1.5rem;">
+          <div class="empty-state">搜索功能需要启用浏览器 JavaScript。</div>
+        </div>
+      </noscript>
+    </div>
+  </section>
+
+  <script id="search-index" type="application/json" set:html={JSON.stringify(searchIndex)}></script>
+  <script is:inline>
+    const input = document.querySelector('#search-input');
+    const summary = document.querySelector('#search-summary');
+    const results = document.querySelector('#search-results');
+    const searchData = JSON.parse(document.querySelector('#search-index')?.textContent ?? '[]');
+
+    const createTag = (tag) => {
+      const element = document.createElement('a');
+      element.className = 'tag';
+      element.href = `/tags/${encodeURIComponent(tag)}/`;
+      element.textContent = tag;
+      return element;
+    };
+
+    const createCard = (post) => {
+      const article = document.createElement('article');
+      article.className = 'card';
+
+      const meta = document.createElement('p');
+      meta.className = 'meta';
+      meta.textContent = post.date;
+
+      const heading = document.createElement('h3');
+      const link = document.createElement('a');
+      link.href = `/blog/${post.slug}/`;
+      link.textContent = post.title;
+      heading.append(link);
+
+      const description = document.createElement('p');
+      description.className = 'muted';
+      description.textContent = post.description;
+
+      const tags = document.createElement('div');
+      tags.className = 'tags';
+      post.tags.forEach((tag) => tags.append(createTag(tag)));
+
+      article.append(meta, heading, description, tags);
+      return article;
+    };
+
+    const renderEmpty = (title, description) => {
+      results.innerHTML = '';
+      const wrapper = document.createElement('div');
+      wrapper.className = 'empty-state';
+
+      const heading = document.createElement('h3');
+      heading.textContent = title;
+      const text = document.createElement('p');
+      text.className = 'muted';
+      text.textContent = description;
+
+      wrapper.append(heading, text);
+      results.append(wrapper);
+    };
+
+    const render = (keyword) => {
+      const normalizedKeyword = keyword.trim().toLowerCase();
+      input.value = keyword;
+
+      if (!normalizedKeyword) {
+        summary.textContent = '输入关键词开始搜索。';
+        renderEmpty('输入关键词开始搜索', '推荐先试试 Astro、Cloudflare、Markdown、部署 这些词。');
+        return;
+      }
+
+      const matched = searchData.filter((post) => {
+        const searchableText = [post.title, post.description, ...post.tags, post.content].join(' ').toLowerCase();
+        return searchableText.includes(normalizedKeyword);
+      });
+
+      results.innerHTML = '';
+
+      if (matched.length === 0) {
+        summary.textContent = `没有找到与“${keyword}”相关的文章`;
+        renderEmpty('没有找到匹配文章', '你可以尝试更短的关键词，或者先去归档页浏览全部文章。');
+        return;
+      }
+
+      summary.textContent = `共找到 ${matched.length} 篇与“${keyword}”相关的文章`;
+      matched.forEach((post) => results.append(createCard(post)));
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    render(params.get('q') ?? '');
+  </script>
+</BaseLayout>

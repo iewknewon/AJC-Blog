@@ -6,6 +6,8 @@ export const navigation = [
   { label: '首页', href: '/' },
   { label: '归档', href: '/archive' },
   { label: '标签', href: '/tags' },
+  { label: '项目', href: '/projects' },
+  { label: '搜索', href: '/search' },
   { label: '关于', href: '/about' },
   { label: '联系', href: '/contact' },
 ];
@@ -13,6 +15,7 @@ export const navigation = [
 export const siteConfig = {
   title: 'AJC 博客',
   description: 'AJC 的技术博客与个人主页，聚合文章、项目与持续更新的实践记录。',
+  keywords: ['AJC 博客', '技术博客', 'Astro', 'Cloudflare Pages', 'Markdown', '项目展示'],
   siteUrl,
   author: 'AJC',
   hero: {
