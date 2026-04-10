@@ -7,6 +7,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "test": "node --test src/utils/projects.test.js",
     "astro": "astro"
   },
   "dependencies": {
