@@ -1,8 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../data/site';
 ---
 
-<BaseLayout title="页面未找到 | Why 的个人博客" description="你访问的页面不存在。">
+<BaseLayout title={`页面未找到 | ${siteConfig.title}`} description="你访问的页面不存在。">
   <section class="section">
     <div class="container">
       <div class="content-card">

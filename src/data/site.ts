@@ -1,6 +1,6 @@
-const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://example.com';
-const contactEmail = import.meta.env.PUBLIC_CONTACT_EMAIL ?? 'hello@example.com';
-const githubUrl = import.meta.env.PUBLIC_GITHUB_URL ?? 'https://github.com/example';
+const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://gisgis.eu.cc';
+const contactEmail = import.meta.env.PUBLIC_CONTACT_EMAIL ?? 'hello@gisgis.eu.cc';
+const githubUrl = import.meta.env.PUBLIC_GITHUB_URL ?? 'https://github.com/iewknewon';
 
 export const navigation = [
   { label: '首页', href: '/' },
@@ -11,31 +11,31 @@ export const navigation = [
 ];
 
 export const siteConfig = {
-  title: 'Why 的个人博客',
-  description: '一个部署在 Cloudflare Pages 上的技术博客与个人主页。',
+  title: 'AJC 博客',
+  description: 'AJC 的技术博客与个人主页，聚合文章、项目与持续更新的实践记录。',
   siteUrl,
-  author: 'Why',
+  author: 'AJC',
   hero: {
-    eyebrow: '个人博客 · 技术写作 · 项目展示',
-    title: '你好，我是 Why。',
+    eyebrow: 'AJC · 技术博客 · 项目实践',
+    title: '你好，这里是 AJC。',
     subtitle:
-      '这里记录我的技术学习、项目实践和思考总结，也展示我正在做的事情与长期积累。',
+      '这里记录 AJC 的技术学习、项目实践、部署经验和长期积累，也作为个人内容与作品的统一入口。',
     ctaPrimary: {
       label: '查看最新文章',
       href: '#latest-posts',
     },
     ctaSecondary: {
-      label: '了解我',
+      label: '了解 AJC',
       href: '/about',
     },
   },
   about: {
     summary:
-      '我专注于前端工程化、Web 体验和个人项目实践，希望通过博客持续沉淀知识并建立清晰的个人品牌表达。',
+      'AJC 专注于个人项目实践、Web 开发体验和可长期维护的内容站点，希望把学习、输出与作品展示沉淀到同一个稳定入口里。',
     paragraphs: [
-      '这个网站的第一版重点是把内容表达做好：文章清晰、页面轻快、结构稳定。',
-      '我更关注长期维护性，因此选择 Astro + Markdown + Cloudflare Pages 的组合，让写作和部署都更轻量。',
-      '后续如果需要，我会在这个基础上继续增加更丰富的交互能力，但不会破坏当前简洁的内容结构。',
+      '这个网站的第一版重点是把内容表达做好：文章清晰、页面轻快、结构稳定，并且能稳定部署在 Cloudflare 上。',
+      '当前站点采用 Astro、Markdown 和 Cloudflare Pages 组合，尽量降低维护成本，同时保留足够好的写作和展示体验。',
+      '后续会继续围绕文章内容、项目沉淀和站点体验逐步迭代，让它成为 AJC 长期使用的个人博客与主页。',
     ],
   },
   techStack: ['Astro', 'TypeScript', 'Markdown', 'Cloudflare Pages', 'CSS'],
@@ -43,6 +43,6 @@ export const siteConfig = {
     email: contactEmail,
     github: githubUrl,
   },
-  footer: '© 2026 Why. 使用 Astro 与 Cloudflare Pages 构建。',
+  footer: '© 2026 AJC. 使用 Astro 与 Cloudflare Pages 构建。',
 };
 

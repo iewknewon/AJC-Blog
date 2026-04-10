@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
 import PostNavigation from '../../components/PostNavigation.astro';
+import { siteConfig } from '../../data/site';
 import { formatDate, getReadingTime } from '../../utils/format';
 import { getAdjacentPosts, getPublishedPosts } from '../../utils/posts';
 
@@ -20,7 +21,7 @@ const adjacentPosts = getAdjacentPosts(posts, post.slug);
 const readingTime = getReadingTime(remarkPluginFrontmatter.excerpt ?? post.body);
 ---
 
-<BaseLayout title={`${post.data.title} | Why 的个人博客`} description={post.data.description}>
+<BaseLayout title={`${post.data.title} | ${siteConfig.title}`} description={post.data.description}>
   <div class="container article-layout">
     <article class="article-shell">
       <p class="eyebrow">技术文章</p>

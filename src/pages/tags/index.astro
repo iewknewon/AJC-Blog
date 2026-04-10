@@ -2,12 +2,13 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import SectionTitle from '../../components/SectionTitle.astro';
 import EmptyState from '../../components/EmptyState.astro';
+import { siteConfig } from '../../data/site';
 import { getAllTags } from '../../utils/posts';
 
 const tags = await getAllTags();
 ---
 
-<BaseLayout title="标签 | Why 的个人博客" description="浏览博客中的所有标签。">
+<BaseLayout title={`标签 | ${siteConfig.title}`} description="浏览博客中的所有标签。">
   <section class="section">
     <div class="container">
       <SectionTitle title="全部标签" description="通过标签快速找到你感兴趣的内容主题。" />

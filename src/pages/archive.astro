@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
+import { siteConfig } from '../data/site';
 import { getPublishedPosts } from '../utils/posts';
 
 const posts = await getPublishedPosts();
 ---
 
-<BaseLayout title="文章归档 | Why 的个人博客" description="按时间顺序浏览全部文章。">
+<BaseLayout title={`文章归档 | ${siteConfig.title}`} description="按时间顺序浏览全部文章。">
   <section class="section">
     <div class="container">
       <h1 class="page-title">文章归档</h1>

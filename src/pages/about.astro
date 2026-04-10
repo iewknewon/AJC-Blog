@@ -3,7 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../data/site';
 ---
 
-<BaseLayout title="关于我 | Why 的个人博客" description="关于我、我的技术方向和这个博客的定位。">
+<BaseLayout title={`关于 | ${siteConfig.title}`} description="关于 AJC、技术方向和这个博客的定位。">
   <section class="section">
     <div class="container">
       <div class="content-card">
