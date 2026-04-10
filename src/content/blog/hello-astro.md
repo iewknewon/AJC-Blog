@@ -1,6 +1,6 @@
 ---
 title: Astro 建站的第一篇文章
-description: 用一篇示例文章验证 Markdown、代码高亮、目录和标签功能。
+description: 记录 AJC 博客为什么选择 Astro 作为第一版静态站点方案。
 pubDate: 2026-04-01
 tags:
   - Astro
@@ -31,4 +31,4 @@ console.log(message);
 
 ## 结语
 
-这是一篇用于验证页面功能的示例文章。
+这篇文章既是建站起点，也对应这个博客后续关于内容组织与静态部署的整体方向。

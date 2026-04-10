@@ -18,4 +18,13 @@ const { project } = Astro.props;
       <span class="tech-item">{item}</span>
     ))}
   </div>
+  <div class="hero-actions" style="margin-top: 1rem;">
+    <a class="button button-primary" href={`/projects/${project.slug}/`}>查看详情</a>
+    {project.demoUrl && (
+      <a class="button" href={project.demoUrl} target="_blank" rel="noreferrer">在线演示</a>
+    )}
+    {project.repoUrl && (
+      <a class="button" href={project.repoUrl} target="_blank" rel="noreferrer">仓库</a>
+    )}
+  </div>
 </article>

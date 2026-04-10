@@ -13,7 +13,10 @@ const { posts } = Astro.props;
 
 <section class="section">
   <div class="container">
-    <SectionTitle title="推荐文章" description="优先阅读这些文章，可以快速了解这个博客的内容方向。" />
+    <div class="archive-toolbar">
+      <SectionTitle title="推荐文章" description="优先阅读这些文章，可以快速了解这个博客的内容方向。" />
+      <a class="button" href="/archive">查看全部文章</a>
+    </div>
     {posts.length > 0 ? (
       <div class="post-list">
         {posts.map((post) => (
@@ -21,7 +24,7 @@ const { posts } = Astro.props;
         ))}
       </div>
     ) : (
-      <EmptyState title="暂时还没有推荐文章" description="后续会从已发布内容中挑选值得优先阅读的文章。" />
+      <EmptyState title="当前没有推荐文章" description="等文章积累到一定数量后，这里会保留最值得先读的内容。" />
     )}
   </div>
 </section>

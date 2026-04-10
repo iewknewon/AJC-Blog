@@ -13,7 +13,10 @@ const { projects } = Astro.props;
 
 <section class="section">
   <div class="container">
-    <SectionTitle title="精选项目" description="展示最近值得一看的个人项目和实践。" />
+    <div class="archive-toolbar">
+      <SectionTitle title="精选项目" description="展示最近值得一看的个人项目和实践。" />
+      <a class="button" href="/projects">查看全部项目</a>
+    </div>
     {projects.length > 0 ? (
       <div class="grid three">
         {projects.map((project) => (
@@ -21,7 +24,7 @@ const { projects } = Astro.props;
         ))}
       </div>
     ) : (
-      <EmptyState title="暂时还没有精选项目" description="后续会在这里展示我最有代表性的项目实践。" />
+      <EmptyState title="当前没有精选项目" description="项目页准备好后会在这里展示代表性作品。" />
     )}
   </div>
 </section>

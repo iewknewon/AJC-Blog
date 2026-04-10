@@ -1,6 +1,6 @@
 ---
 title: 如何把个人博客部署到 Cloudflare Pages
-description: 用第二篇文章验证归档、标签聚合和上一篇下一篇导航。
+description: 梳理 AJC 博客部署到 Cloudflare Pages 的核心思路与上线流程。
 pubDate: 2026-04-05
 tags:
   - Cloudflare
@@ -30,4 +30,4 @@ Cloudflare Pages 对静态站点非常友好，接入成本低，速度也很稳
 
 ## 结语
 
-这一篇文章主要用于验证多文章场景下的页面行为。
+把部署链路整理清楚之后，后续无论是继续发文还是补充页面能力，都会更容易稳定上线。

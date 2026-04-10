@@ -13,7 +13,13 @@ const { posts } = Astro.props;
 
 <section class="section" id="latest-posts">
   <div class="container">
-    <SectionTitle title="最新文章" description="持续更新技术写作、项目记录与思考总结。" />
+    <div class="archive-toolbar">
+      <SectionTitle title="最新文章" description="持续更新技术写作、项目记录与思考总结。" />
+      <div class="hero-actions">
+        <a class="button" href="/archive">归档</a>
+        <a class="button" href="/search">搜索</a>
+      </div>
+    </div>
     {posts.length > 0 ? (
       <div class="post-list">
         {posts.map((post) => (
@@ -21,7 +27,7 @@ const { posts } = Astro.props;
         ))}
       </div>
     ) : (
-      <EmptyState title="还没有文章" description="当前还没有可展示的已发布文章，后续会逐步补充内容。" />
+      <EmptyState title="当前还没有文章" description="发布文章后，这里会自动展示最新更新内容。" />
     )}
   </div>
 </section>

@@ -1,9 +1,14 @@
 ---
-import { siteConfig } from '../data/site';
+import { navigation, siteConfig } from '../data/site';
 ---
 
 <footer class="site-footer">
   <div class="container footer-inner">
     <p>{siteConfig.footer}</p>
+    <nav class="nav">
+      {navigation.map((item) => (
+        <a class="nav-link" href={item.href}>{item.label}</a>
+      ))}
+    </nav>
   </div>
 </footer>
