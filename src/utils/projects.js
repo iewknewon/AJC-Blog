@@ -3,5 +3,9 @@ export function getRelatedPostsForProject(posts, relatedPostSlugs = []) {
 
   return posts
     .filter((post) => relatedSlugSet.has(post.slug))
-    .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+    .sort((a, b) => {
+      const aDate = a.publishedAt ?? a.updatedAt;
+      const bDate = b.publishedAt ?? b.updatedAt;
+      return bDate.getTime() - aDate.getTime();
+    });
 }

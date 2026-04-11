@@ -2,16 +2,18 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../data/site';
 import { formatDate } from '../utils/format';
-import { getPublishedPosts } from '../utils/posts';
+import { getPublishedPosts, renderPost } from '../utils/posts';
 
-const posts = await getPublishedPosts();
-const searchIndex = posts.map((post) => ({
+const db = Astro.locals.runtime.env.DB;
+const posts = await getPublishedPosts(db);
+const renderedPosts = await Promise.all(posts.map((post) => renderPost(post)));
+const searchIndex = renderedPosts.map((post) => ({
   slug: post.slug,
-  title: post.data.title,
-  description: post.data.description,
-  tags: post.data.tags,
-  date: formatDate(post.data.pubDate),
-  content: post.body,
+  title: post.title,
+  description: post.description,
+  tags: post.tags,
+  date: formatDate(post.publishedAt ?? post.updatedAt),
+  content: post.plainText,
 }));
 ---
 

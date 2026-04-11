@@ -1,0 +1,29 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminPostList from '../../../components/admin/AdminPostList.astro';
+import { isAdminAuthenticated } from '../../../lib/auth/guards';
+import { getAdminPosts } from '../../../lib/posts/repository';
+
+const secret = Astro.locals.runtime.env.SESSION_SECRET;
+const authenticated = await isAdminAuthenticated(Astro.cookies, secret);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const db = Astro.locals.runtime.env.DB;
+const posts = await getAdminPosts(db);
+---
+
+<AdminLayout title="文章管理" description="查看全部文章，继续编辑草稿或更新已发布内容。">
+  <section class="section" style="padding-top: 0;">
+    <div class="archive-toolbar" style="margin-bottom: 1rem;">
+      <div>
+        <h2 class="section-title">全部文章</h2>
+        <p class="section-description">支持创建、编辑和快速查看已发布文章。</p>
+      </div>
+      <a class="button button-primary" href="/admin/posts/new">新建文章</a>
+    </div>
+    <AdminPostList posts={posts} />
+  </section>
+</AdminLayout>

@@ -1,0 +1,14 @@
+name = "ajc-blog"
+compatibility_date = "2026-04-10"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ajc-blog"
+database_id = "2ed63656-54bd-415a-abf7-227ff813daf9"
+migrations_dir = "db/migrations"
+# 部署前请替换为你在 Cloudflare D1 控制台中的真实 database_id

@@ -1,0 +1,34 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminPostForm from '../../../components/admin/AdminPostForm.astro';
+import { isAdminAuthenticated } from '../../../lib/auth/guards';
+import { getPostById } from '../../../lib/posts/repository';
+
+const secret = Astro.locals.runtime.env.SESSION_SECRET;
+const authenticated = await isAdminAuthenticated(Astro.cookies, secret);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect('/admin/posts');
+}
+
+const db = Astro.locals.runtime.env.DB;
+const post = await getPostById(db, id);
+
+if (!post) {
+  return Astro.redirect('/admin/posts');
+}
+
+const error = Astro.url.searchParams.get('error');
+---
+
+<AdminLayout title="编辑文章" description="更新正文、标签和发布状态，修改后立即生效。">
+  <section class="section" style="padding-top: 0;">
+    <AdminPostForm action={`/api/admin/posts/${post.id}`} submitLabel="保存更新" post={post} error={error ? '表单校验失败，请检查后重试。' : undefined} />
+  </section>
+</AdminLayout>

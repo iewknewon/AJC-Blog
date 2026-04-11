@@ -5,15 +5,18 @@ import { getRelatedPostsForProject } from './projects.js';
 const posts = [
   {
     slug: 'cloudflare-deploy',
-    data: { pubDate: new Date('2026-04-05') },
+    publishedAt: new Date('2026-04-05T00:00:00.000Z'),
+    updatedAt: new Date('2026-04-05T00:00:00.000Z'),
   },
   {
     slug: 'hello-astro',
-    data: { pubDate: new Date('2026-04-01') },
+    publishedAt: new Date('2026-04-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-04-01T00:00:00.000Z'),
   },
   {
     slug: 'cloudflare-pages-env',
-    data: { pubDate: new Date('2026-04-08') },
+    publishedAt: new Date('2026-04-08T00:00:00.000Z'),
+    updatedAt: new Date('2026-04-08T00:00:00.000Z'),
   },
 ];
 

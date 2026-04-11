@@ -10,8 +10,9 @@ import { siteConfig } from '../data/site';
 import { projects } from '../data/projects';
 import { getFeaturedPosts, getLatestPosts } from '../utils/posts';
 
-const featuredPosts = await getFeaturedPosts();
-const latestPosts = await getLatestPosts(5);
+const db = Astro.locals.runtime.env.DB;
+const featuredPosts = await getFeaturedPosts(db);
+const latestPosts = await getLatestPosts(db, 5);
 const featuredProjects = projects.filter((project) => project.featured);
 ---
 

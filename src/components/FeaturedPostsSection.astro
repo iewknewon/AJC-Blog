@@ -2,10 +2,10 @@
 import SectionTitle from './SectionTitle.astro';
 import PostCard from './PostCard.astro';
 import EmptyState from './EmptyState.astro';
-import type { CollectionEntry } from 'astro:content';
+import type { BlogPost } from '../lib/posts/types';
 
 interface Props {
-  posts: CollectionEntry<'blog'>[];
+  posts: BlogPost[];
 }
 
 const { posts } = Astro.props;

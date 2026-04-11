@@ -1,0 +1,20 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminPostForm from '../../../components/admin/AdminPostForm.astro';
+import { isAdminAuthenticated } from '../../../lib/auth/guards';
+
+const secret = Astro.locals.runtime.env.SESSION_SECRET;
+const authenticated = await isAdminAuthenticated(Astro.cookies, secret);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const error = Astro.url.searchParams.get('error');
+---
+
+<AdminLayout title="新建文章" description="写 Markdown、保存草稿，或直接发布到前台。">
+  <section class="section" style="padding-top: 0;">
+    <AdminPostForm action="/api/admin/posts" submitLabel="保存文章" error={error ? '表单校验失败，请检查后重试。' : undefined} />
+  </section>
+</AdminLayout>

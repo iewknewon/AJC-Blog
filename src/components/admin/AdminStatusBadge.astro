@@ -1,0 +1,12 @@
+---
+import type { PostStatus } from '../../lib/posts/types';
+
+interface Props {
+  status: PostStatus;
+}
+
+const { status } = Astro.props;
+const label = status === 'published' ? '已发布' : '草稿';
+---
+
+<span class:list={['admin-status-badge', `is-${status}`]}>{label}</span>

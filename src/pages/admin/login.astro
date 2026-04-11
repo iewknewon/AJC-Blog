@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { isAdminAuthenticated } from '../../lib/auth/guards';
+
+const secret = Astro.locals.runtime.env.SESSION_SECRET;
+const authenticated = await isAdminAuthenticated(Astro.cookies, secret);
+
+if (authenticated) {
+  return Astro.redirect('/admin/posts');
+}
+
+const error = Astro.url.searchParams.get('error');
+---
+
+<BaseLayout title="后台登录 | AJC 博客" description="登录 AJC 博客后台">
+  <section class="section">
+    <div class="container" style="max-width: 560px;">
+      <div class="card" style="padding: 2rem;">
+        <p class="eyebrow">AJC Admin</p>
+        <h1 style="margin-top: 0;">登录后台</h1>
+        <p class="page-intro">输入管理员密码后即可创建、编辑和发布文章。</p>
+        <form class="admin-form" action="/api/admin/login" method="post" style="margin-top: 1.5rem;">
+          {error ? <div class="admin-alert">密码错误，请重试。</div> : null}
+          <label class="admin-field">
+            <span>管理员密码</span>
+            <input class="search-input admin-input-rect" type="password" name="password" autocomplete="current-password" required />
+          </label>
+          <div class="hero-actions">
+            <button class="button button-primary" type="submit">登录</button>
+            <a class="button" href="/">返回首页</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

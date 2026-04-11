@@ -4,39 +4,42 @@ import TableOfContents from '../../components/TableOfContents.astro';
 import PostNavigation from '../../components/PostNavigation.astro';
 import { siteConfig } from '../../data/site';
 import { formatDate, getReadingTime } from '../../utils/format';
-import { getAdjacentPosts, getPublishedPosts } from '../../utils/posts';
+import { getAdjacentPosts, getPublishedPostBySlug, getPublishedPosts, renderPost } from '../../utils/posts';
 
-export async function getStaticPaths() {
-  const posts = await getPublishedPosts();
-  return posts.map((post) => ({
-    params: { slug: post.slug },
-    props: { post },
-  }));
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/archive');
 }
 
-const { post } = Astro.props;
-const { Content, headings, remarkPluginFrontmatter } = await post.render();
-const posts = await getPublishedPosts();
+const db = Astro.locals.runtime.env.DB;
+const post = await getPublishedPostBySlug(db, slug);
+
+if (!post) {
+  return Astro.redirect('/404');
+}
+
+const renderedPost = await renderPost(post);
+const posts = await getPublishedPosts(db);
 const adjacentPosts = getAdjacentPosts(posts, post.slug);
-const readingTime = getReadingTime(remarkPluginFrontmatter.excerpt ?? post.body);
+const readingTime = getReadingTime(renderedPost.plainText);
+const publishDate = post.publishedAt ?? post.updatedAt;
 ---
 
-<BaseLayout title={`${post.data.title} | ${siteConfig.title}`} description={post.data.description} pathname={`/blog/${post.slug}/`}>
+<BaseLayout title={`${post.title} | ${siteConfig.title}`} description={post.description} pathname={`/blog/${post.slug}/`}>
   <div class="container article-layout">
     <article class="article-shell">
       <p class="eyebrow">技术文章</p>
-      <h1>{post.data.title}</h1>
-      <p class="page-intro">{post.data.description}</p>
+      <h1>{post.title}</h1>
+      <p class="page-intro">{post.description}</p>
       <div class="tags" style="margin-top: 1rem; margin-bottom: 1.5rem;">
-        <span class="tag">{formatDate(post.data.pubDate)}</span>
+        <span class="tag">{formatDate(publishDate)}</span>
         <span class="tag">{readingTime}</span>
-        {post.data.tags.map((tag) => (
+        {post.tags.map((tag) => (
           <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>{tag}</a>
         ))}
       </div>
-      <div class="article-content">
-        <Content />
-      </div>
+      <div class="article-content" set:html={renderedPost.html}></div>
       <div class="content-card" style="margin-top: 2rem;">
         <h3>继续阅读</h3>
         <p class="muted">如果这篇内容对你有帮助，可以继续浏览归档、标签页或项目页，查看更多相关实践。</p>
@@ -51,6 +54,6 @@ const readingTime = getReadingTime(remarkPluginFrontmatter.excerpt ?? post.body)
       </div>
       <PostNavigation previous={adjacentPosts.previous} next={adjacentPosts.next} />
     </article>
-    <TableOfContents headings={headings} />
+    <TableOfContents headings={renderedPost.headings} />
   </div>
 </BaseLayout>

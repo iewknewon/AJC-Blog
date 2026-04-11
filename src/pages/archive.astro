@@ -4,7 +4,8 @@ import PostCard from '../components/PostCard.astro';
 import { siteConfig } from '../data/site';
 import { getPublishedPosts, paginatePosts } from '../utils/posts';
 
-const posts = await getPublishedPosts();
+const db = Astro.locals.runtime.env.DB;
+const posts = await getPublishedPosts(db);
 const pagination = paginatePosts(posts, 1);
 ---
 

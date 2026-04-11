@@ -2,9 +2,10 @@ import { siteConfig } from '../data/site';
 import { getAllTags, getPublishedPosts, paginatePosts } from '../utils/posts';
 import { projects } from '../data/projects';
 
-export async function GET() {
-  const posts = await getPublishedPosts();
-  const tags = await getAllTags();
+export async function GET(context) {
+  const db = context.locals.runtime.env.DB;
+  const posts = await getPublishedPosts(db);
+  const tags = await getAllTags(db);
   const pagination = paginatePosts(posts, 1);
 
   const urls = [

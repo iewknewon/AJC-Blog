@@ -1,0 +1,47 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { isAdminAuthenticated } from '../../lib/auth/guards';
+import { getAdminPosts } from '../../lib/posts/repository';
+
+const secret = Astro.locals.runtime.env.SESSION_SECRET;
+const authenticated = await isAdminAuthenticated(Astro.cookies, secret);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const db = Astro.locals.runtime.env.DB;
+const posts = await getAdminPosts(db);
+const draftCount = posts.filter((post) => post.status === 'draft').length;
+const publishedCount = posts.filter((post) => post.status === 'published').length;
+---
+
+<AdminLayout title="后台概览" description="集中管理文章草稿、发布状态和站点内容。">
+  <section class="grid three">
+    <article class="content-card">
+      <h3>文章总数</h3>
+      <p class="admin-stat-value">{posts.length}</p>
+    </article>
+    <article class="content-card">
+      <h3>草稿数</h3>
+      <p class="admin-stat-value">{draftCount}</p>
+    </article>
+    <article class="content-card">
+      <h3>已发布</h3>
+      <p class="admin-stat-value">{publishedCount}</p>
+    </article>
+  </section>
+
+  <section class="section" style="padding-bottom: 0;">
+    <div class="archive-toolbar">
+      <div>
+        <h2 class="section-title">开始管理内容</h2>
+        <p class="section-description">从这里进入文章列表，创建草稿或更新已发布内容。</p>
+      </div>
+      <div class="hero-actions">
+        <a class="button button-primary" href="/admin/posts/new">新建文章</a>
+        <a class="button" href="/admin/posts">管理文章</a>
+      </div>
+    </div>
+  </section>
+</AdminLayout>

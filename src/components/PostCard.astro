@@ -1,22 +1,23 @@
 ---
 import { formatDate } from '../utils/format';
-import type { CollectionEntry } from 'astro:content';
+import type { BlogPost } from '../lib/posts/types';
 
 interface Props {
-  post: CollectionEntry<'blog'>;
+  post: BlogPost;
 }
 
 const { post } = Astro.props;
+const displayDate = post.publishedAt ?? post.updatedAt;
 ---
 
 <article class="card">
-  <p class="meta">{formatDate(post.data.pubDate)}</p>
+  <p class="meta">{formatDate(displayDate)}</p>
   <h3>
-    <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
+    <a href={`/blog/${post.slug}/`}>{post.title}</a>
   </h3>
-  <p class="muted">{post.data.description}</p>
+  <p class="muted">{post.description}</p>
   <div class="tags">
-    {post.data.tags.map((tag) => (
+    {post.tags.map((tag) => (
       <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>{tag}</a>
     ))}
   </div>

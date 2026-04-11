@@ -7,14 +7,35 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "test": "node --test src/utils/projects.test.js",
-    "astro": "astro"
+    "test": "node --test src/utils/projects.test.js && node --import tsx --test src/utils/posts.test.ts src/lib/posts/repository.test.ts src/lib/posts/markdown.test.ts src/lib/posts/seed.test.ts src/lib/auth/session.test.ts src/lib/admin/validation.test.ts",
+    "astro": "astro",
+    "cf:typegen": "wrangler types",
+    "preview:cf": "wrangler dev ./dist/_worker.js",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "db:seed:local": "node --import tsx scripts/seed-posts.mjs",
+    "db:seed:remote": "node --import tsx scripts/seed-posts.mjs --remote"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/rss": "^4.0.12",
-    "astro": "^5.7.0"
+    "astro": "^5.7.0",
+    "rehype-autolink-headings": "^7.1.0",
+    "rehype-slug": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "rehype-stringify": "^10.0.1",
+    "sanitize-html": "^2.17.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0",
+    "github-slugger": "^2.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "@cloudflare/workers-types": "^4.20250410.0",
+    "gray-matter": "^4.0.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.81.1"
   }
 }

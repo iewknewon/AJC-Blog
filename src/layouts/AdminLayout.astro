@@ -1,0 +1,47 @@
+---
+import '../styles/global.css';
+import { siteConfig } from '../data/site';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'AJC 博客后台' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <div class="admin-shell">
+      <aside class="admin-sidebar">
+        <a class="admin-brand" href="/admin">{siteConfig.title} 后台</a>
+        <nav class="admin-nav">
+          <a class:list={["admin-nav-link", Astro.url.pathname === '/admin' && 'is-active']} href="/admin">概览</a>
+          <a class:list={["admin-nav-link", Astro.url.pathname.startsWith('/admin/posts') && 'is-active']} href="/admin/posts">文章管理</a>
+          <a class="admin-nav-link" href="/" target="_blank" rel="noreferrer">查看前台</a>
+        </nav>
+        <form action="/api/admin/logout" method="post" style="margin-top: auto;">
+          <button class="button" type="submit">退出登录</button>
+        </form>
+      </aside>
+      <main class="admin-main">
+        <header class="admin-page-header">
+          <div>
+            <p class="eyebrow">AJC Admin</p>
+            <h1 class="admin-page-title">{title}</h1>
+            <p class="page-intro">{description}</p>
+          </div>
+        </header>
+        <slot />
+      </main>
+    </div>
+  </body>
+</html>

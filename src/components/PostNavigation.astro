@@ -1,9 +1,9 @@
 ---
-import type { CollectionEntry } from 'astro:content';
+import type { BlogPost } from '../lib/posts/types';
 
 interface Props {
-  previous?: CollectionEntry<'blog'>;
-  next?: CollectionEntry<'blog'>;
+  previous?: BlogPost;
+  next?: BlogPost;
 }
 
 const { previous, next } = Astro.props;
@@ -13,7 +13,7 @@ const { previous, next } = Astro.props;
   {previous ? (
     <a class="content-card" href={`/blog/${previous.slug}/`}>
       <p class="meta">上一篇</p>
-      <h3>{previous.data.title}</h3>
+      <h3>{previous.title}</h3>
     </a>
   ) : (
     <div class="empty-state">
@@ -24,7 +24,7 @@ const { previous, next } = Astro.props;
   {next ? (
     <a class="content-card" href={`/blog/${next.slug}/`}>
       <p class="meta">下一篇</p>
-      <h3>{next.data.title}</h3>
+      <h3>{next.title}</h3>
     </a>
   ) : (
     <div class="empty-state">

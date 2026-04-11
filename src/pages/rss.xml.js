@@ -1,20 +1,22 @@
 import rss from '@astrojs/rss';
-import { getPublishedPosts } from '../utils/posts';
+import { getPublishedPosts, renderPost } from '../utils/posts';
 import { siteConfig } from '../data/site';
 
 export async function GET(context) {
-  const posts = await getPublishedPosts();
+  const db = context.locals.runtime.env.DB;
+  const posts = await getPublishedPosts(db);
+  const renderedPosts = await Promise.all(posts.map((post) => renderPost(post)));
 
   return rss({
     title: siteConfig.title,
     description: siteConfig.description,
     site: context.site ?? siteConfig.siteUrl,
-    items: posts.map((post) => ({
-      title: post.data.title,
-      description: post.data.description,
-      pubDate: post.data.pubDate,
+    items: renderedPosts.map((post) => ({
+      title: post.title,
+      description: post.description,
+      pubDate: post.publishedAt ?? post.updatedAt,
       link: `/blog/${post.slug}/`,
-      content: post.body,
+      content: post.html,
     })),
   });
 }

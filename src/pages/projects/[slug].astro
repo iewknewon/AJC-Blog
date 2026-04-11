@@ -6,15 +6,15 @@ import { siteConfig } from '../../data/site';
 import { getPublishedPosts } from '../../utils/posts';
 import { getRelatedPostsForProject } from '../../utils/projects.js';
 
-export async function getStaticPaths() {
-  return projects.map((project) => ({
-    params: { slug: project.slug },
-    props: { project },
-  }));
+const { slug } = Astro.params;
+const project = projects.find((item) => item.slug === slug);
+
+if (!project) {
+  return Astro.redirect('/404');
 }
 
-const { project } = Astro.props;
-const posts = await getPublishedPosts();
+const db = Astro.locals.runtime.env.DB;
+const posts = await getPublishedPosts(db);
 const relatedPosts = getRelatedPostsForProject(posts, project.relatedPostSlugs ?? []);
 ---
 
