@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node -e \"require('node:fs').writeFileSync('dist/.assetsignore', '_worker.js\\n_routes.json\\n')\"",
     "preview": "astro preview",
     "test": "node --test src/utils/projects.test.js && node --import tsx --test src/utils/posts.test.ts src/lib/posts/repository.test.ts src/lib/posts/markdown.test.ts src/lib/posts/seed.test.ts src/lib/auth/session.test.ts src/lib/admin/validation.test.ts",
     "astro": "astro",
