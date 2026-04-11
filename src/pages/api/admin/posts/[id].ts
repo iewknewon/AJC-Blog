@@ -5,7 +5,7 @@ import { getPostById, updatePost } from '../../../../lib/posts/repository';
 export async function POST(context) {
   const unauthorized = await requireAdminApiAuth({
     cookies: context.cookies,
-    secret: context.locals.runtime.env.SESSION_SECRET,
+    env: context.locals.runtime?.env,
   });
 
   if (unauthorized) {

@@ -3,8 +3,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import AdminPostForm from '../../../components/admin/AdminPostForm.astro';
 import { isAdminAuthenticated } from '../../../lib/auth/guards';
 
-const secret = Astro.locals.runtime.env.SESSION_SECRET;
-const authenticated = await isAdminAuthenticated(Astro.cookies, secret);
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
 
 if (!authenticated) {
   return Astro.redirect('/admin/login');

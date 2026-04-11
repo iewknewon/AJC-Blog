@@ -1,12 +1,17 @@
+import { getAdminAuthConfig, shouldUseSecureAdminCookie } from '../../../lib/auth/config';
 import { ADMIN_SESSION_COOKIE, createAdminSessionToken, getAdminSessionMaxAge } from '../../../lib/auth/session';
 
 export async function POST(context) {
   const formData = await context.request.formData();
   const password = String(formData.get('password') ?? '');
-  const expectedPassword = context.locals.runtime.env.ADMIN_PASSWORD;
-  const sessionSecret = context.locals.runtime.env.SESSION_SECRET;
+  const { adminPassword, sessionSecret, isConfigured } = getAdminAuthConfig(context.locals.runtime?.env);
 
-  if (!password || password !== expectedPassword) {
+  if (!isConfigured || !adminPassword || !sessionSecret) {
+    console.error('[admin-auth] Admin authentication is not fully configured.');
+    return context.redirect('/admin/login?error=config');
+  }
+
+  if (!password || password !== adminPassword) {
     return context.redirect('/admin/login?error=1');
   }
 
@@ -15,7 +20,7 @@ export async function POST(context) {
   context.cookies.set(ADMIN_SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: true,
+    secure: shouldUseSecureAdminCookie(context.request),
     path: '/',
     maxAge: getAdminSessionMaxAge(),
   });

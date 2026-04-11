@@ -1,3 +1,4 @@
+import { getAdminAuthConfig, type AdminAuthRuntimeEnv } from './config';
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from './session';
 
 type CookieValue = {
@@ -8,18 +9,22 @@ type CookieStore = {
   get(name: string): CookieValue | undefined;
 };
 
-export async function isAdminAuthenticated(cookies: CookieStore, secret: string) {
+export async function isAdminAuthenticated(cookies: CookieStore, env?: AdminAuthRuntimeEnv | null) {
   const sessionCookie = cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  const { sessionSecret } = getAdminAuthConfig(env);
 
-  if (!sessionCookie) {
+  if (!sessionCookie || !sessionSecret) {
     return false;
   }
 
-  return verifyAdminSessionToken(sessionCookie, secret);
+  return verifyAdminSessionToken(sessionCookie, sessionSecret);
 }
 
-export async function requireAdminApiAuth(request: { cookies: CookieStore; secret: string }) {
-  const authenticated = await isAdminAuthenticated(request.cookies, request.secret);
+export async function requireAdminApiAuth(request: {
+  cookies: CookieStore;
+  env?: AdminAuthRuntimeEnv | null;
+}) {
+  const authenticated = await isAdminAuthenticated(request.cookies, request.env);
 
   if (!authenticated) {
     return new Response(JSON.stringify({ message: '未登录或登录已失效' }), {
