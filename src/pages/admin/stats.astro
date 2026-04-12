@@ -1,0 +1,167 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import {
+  formatIpFingerprint,
+  formatLocationLabel,
+  getAnalyticsSummary,
+  getLocationBreakdown,
+  getRecentVisits,
+  getTopPages,
+  getTopPosts,
+} from '../../lib/analytics/repository';
+import { isAdminAuthenticated } from '../../lib/auth/guards';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const db = Astro.locals.runtime.env.DB;
+const [summary, topPages, topPosts, locations, recentVisits] = await Promise.all([
+  getAnalyticsSummary(db),
+  getTopPages(db),
+  getTopPosts(db),
+  getLocationBreakdown(db),
+  getRecentVisits(db),
+]);
+
+const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  hour12: false,
+});
+
+const hasData = summary.totalViews > 0;
+---
+
+<AdminLayout title="访问统计" description="查看公开页面访问次数、热门内容和访客地区来源。">
+  {hasData ? (
+    <>
+      <section class="grid four">
+        <article class="content-card">
+          <h3>总访问量</h3>
+          <p class="admin-stat-value">{summary.totalViews}</p>
+        </article>
+        <article class="content-card">
+          <h3>独立访客</h3>
+          <p class="admin-stat-value">{summary.uniqueVisitors}</p>
+        </article>
+        <article class="content-card">
+          <h3>文章访问</h3>
+          <p class="admin-stat-value">{summary.articleViews}</p>
+        </article>
+        <article class="content-card">
+          <h3>覆盖地区</h3>
+          <p class="admin-stat-value">{summary.trackedCountries}</p>
+        </article>
+      </section>
+
+      <section class="section" style="padding-bottom: 0;">
+        <div class="grid two">
+          <article class="content-card">
+            <h2 class="section-title">热门页面</h2>
+            <p class="section-description">按总访问量排序，帮助你判断哪些页面最受关注。</p>
+            {topPages.length ? (
+              <div class="admin-insight-list">
+                {topPages.map((page) => (
+                  <div class="admin-insight-row">
+                    <div>
+                      <p class="admin-insight-title">{page.path}</p>
+                      <p class="admin-insight-meta">独立访客 {page.uniqueVisitors}</p>
+                    </div>
+                    <strong>{page.views}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="empty-state">还没有页面访问记录。</div>
+            )}
+          </article>
+
+          <article class="content-card">
+            <h2 class="section-title">热门文章</h2>
+            <p class="section-description">这里只统计公开文章详情页的访问，不把后台页面混进去。</p>
+            {topPosts.length ? (
+              <div class="admin-insight-list">
+                {topPosts.map((post) => (
+                  <div class="admin-insight-row">
+                    <div>
+                      <p class="admin-insight-title">{post.title}</p>
+                      <p class="admin-insight-meta">
+                        <a href={`/blog/${post.slug}/`} target="_blank" rel="noreferrer">/blog/{post.slug}/</a>
+                      </p>
+                    </div>
+                    <strong>{post.views}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="empty-state">还没有文章访问记录。</div>
+            )}
+          </article>
+        </div>
+      </section>
+
+      <section class="section" style="padding-bottom: 0;">
+        <article class="content-card">
+          <h2 class="section-title">访客地区</h2>
+          <p class="section-description">地区信息来自 Cloudflare，IP 只保存匿名指纹，后台不会直接展示原始地址。</p>
+          {locations.length ? (
+            <div class="admin-insight-list">
+              {locations.map((location) => (
+                <div class="admin-insight-row">
+                  <div>
+                    <p class="admin-insight-title">{formatLocationLabel(location)}</p>
+                    <p class="admin-insight-meta">独立访客 {location.uniqueVisitors}</p>
+                  </div>
+                  <strong>{location.views}</strong>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div class="empty-state">还没有足够的地区数据。</div>
+          )}
+        </article>
+      </section>
+
+      <section class="section">
+        <article class="content-card">
+          <h2 class="section-title">最近访问</h2>
+          <p class="section-description">帮助你快速看出最近是谁从哪里进入了哪些页面。</p>
+          <div class="admin-table-wrapper">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>页面</th>
+                  <th>地区</th>
+                  <th>IP 指纹</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentVisits.map((visit) => (
+                  <tr>
+                    <td>{dateTimeFormatter.format(new Date(visit.visitedAt))}</td>
+                    <td>
+                      <div class="admin-table-title">{visit.postTitle ?? visit.path}</div>
+                      <div class="muted">{visit.path}</div>
+                    </td>
+                    <td>{formatLocationLabel(visit)}</td>
+                    <td>{formatIpFingerprint(visit.ipHash)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </>
+  ) : (
+    <section class="section" style="padding-top: 0;">
+      <div class="empty-state">
+        还没有访问记录。前台公开页面在用户打开后会自动开始统计，等有人访问几次后这里就会出现数据。
+      </div>
+    </section>
+  )}
+</AdminLayout>

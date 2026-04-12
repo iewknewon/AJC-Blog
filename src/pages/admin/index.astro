@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { isAdminAuthenticated } from '../../lib/auth/guards';
+import { getAnalyticsSummary } from '../../lib/analytics/repository';
 import { getAdminPosts } from '../../lib/posts/repository';
 
 const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
@@ -10,13 +11,17 @@ if (!authenticated) {
 }
 
 const db = Astro.locals.runtime.env.DB;
-const posts = await getAdminPosts(db);
+const [posts, analyticsSummary] = await Promise.all([
+  getAdminPosts(db),
+  getAnalyticsSummary(db),
+]);
+
 const draftCount = posts.filter((post) => post.status === 'draft').length;
 const publishedCount = posts.filter((post) => post.status === 'published').length;
 ---
 
-<AdminLayout title="后台概览" description="集中管理文章草稿、发布状态和站点内容。">
-  <section class="grid three">
+<AdminLayout title="后台概览" description="集中管理文章、AI 写作和站点访问情况。">
+  <section class="grid four">
     <article class="content-card">
       <h3>文章总数</h3>
       <p class="admin-stat-value">{posts.length}</p>
@@ -29,17 +34,22 @@ const publishedCount = posts.filter((post) => post.status === 'published').lengt
       <h3>已发布</h3>
       <p class="admin-stat-value">{publishedCount}</p>
     </article>
+    <article class="content-card">
+      <h3>累计访问</h3>
+      <p class="admin-stat-value">{analyticsSummary.totalViews}</p>
+    </article>
   </section>
 
   <section class="section" style="padding-bottom: 0;">
     <div class="archive-toolbar">
       <div>
         <h2 class="section-title">开始管理内容</h2>
-        <p class="section-description">从这里进入文章列表，创建草稿或更新已发布内容。</p>
+        <p class="section-description">从这里继续写作、整理文章，或者查看访客来自哪些地区。</p>
       </div>
       <div class="hero-actions">
         <a class="button button-primary" href="/admin/posts/new">新建文章</a>
         <a class="button" href="/admin/posts">管理文章</a>
+        <a class="button" href="/admin/stats">访问统计</a>
         <a class="button" href="/admin/ai">AI 写作</a>
       </div>
     </div>

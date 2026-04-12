@@ -60,6 +60,45 @@ const imageUrl = new URL(image, siteConfig.siteUrl).toString();
       const theme = storedTheme ?? (systemDark ? 'dark' : 'light');
       document.documentElement.dataset.theme = theme;
     </script>
+    <script is:inline>
+      const sendPageView = () => {
+        const path = window.location.pathname;
+
+        if (!path || path.startsWith('/admin') || path.startsWith('/api')) {
+          return;
+        }
+
+        const payload = JSON.stringify({ path });
+
+        if (navigator.sendBeacon && typeof Blob !== 'undefined') {
+          const beacon = new Blob([payload], { type: 'application/json' });
+          if (navigator.sendBeacon('/api/analytics/view', beacon)) {
+            return;
+          }
+        }
+
+        fetch('/api/analytics/view', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {
+          // Ignore analytics failures so reading flow stays uninterrupted.
+        });
+      };
+
+      if (document.visibilityState === 'prerender') {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            sendPageView();
+          }
+        }, { once: true });
+      } else {
+        sendPageView();
+      }
+    </script>
   </head>
   <body>
     <Header />
