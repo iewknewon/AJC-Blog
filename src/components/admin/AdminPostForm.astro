@@ -104,6 +104,11 @@ const status = (post?.status ?? 'draft') as PostStatus;
     const previewMeta = form?.querySelector('[data-cover-preview-meta]');
     const previewLinks = form?.querySelector('[data-cover-preview-links]');
     const previewStatus = form?.querySelector('[data-cover-preview-status]');
+    const AI_STORAGE_KEYS = {
+      baseUrl: 'ajc.ai.baseUrl',
+      apiKey: 'ajc.ai.apiKey',
+      model: 'ajc.ai.model',
+    };
 
     if (!form || !suggestButton || !coverInput || !('value' in coverInput)) {
       return;
@@ -132,6 +137,7 @@ const status = (post?.status ?? 'draft') as PostStatus;
       const metaParts = [
         suggestion.creator ? `作者：${suggestion.creator}` : '',
         suggestion.license ? `许可证：${suggestion.license}` : '',
+        suggestion.queryMode === 'ai' ? '匹配方式：整篇内容理解' : '匹配方式：关键词检索',
         suggestion.query ? `检索词：${suggestion.query}` : '',
       ].filter(Boolean);
       previewMeta.textContent = metaParts.join(' · ');
@@ -151,12 +157,29 @@ const status = (post?.status ?? 'draft') as PostStatus;
       setStatus('已自动填入封面地址。发布前建议再确认一下图片来源和许可证。');
     };
 
+    const readAiConfig = () => {
+      try {
+        return {
+          aiBaseUrl: localStorage.getItem(AI_STORAGE_KEYS.baseUrl) || '',
+          aiApiKey: localStorage.getItem(AI_STORAGE_KEYS.apiKey) || '',
+          aiModel: localStorage.getItem(AI_STORAGE_KEYS.model) || '',
+        };
+      } catch {
+        return {
+          aiBaseUrl: '',
+          aiApiKey: '',
+          aiModel: '',
+        };
+      }
+    };
+
     suggestButton.addEventListener('click', async () => {
       const payload = {
         title: String(form.elements?.namedItem('title')?.value ?? ''),
         description: String(form.elements?.namedItem('description')?.value ?? ''),
         tags: String(form.elements?.namedItem('tags')?.value ?? ''),
         content: String(form.elements?.namedItem('content')?.value ?? ''),
+        ...readAiConfig(),
       };
 
       if (!payload.title && !payload.description && !payload.tags && !payload.content) {
@@ -173,7 +196,9 @@ const status = (post?.status ?? 'draft') as PostStatus;
         suggestionCard.hidden = false;
       }
 
-      setStatus('正在联网匹配封面...');
+      setStatus(payload.aiBaseUrl && payload.aiApiKey && payload.aiModel
+        ? '正在根据整篇内容分析封面意图并联网匹配...'
+        : '正在联网匹配封面...');
 
       try {
         const response = await fetch('/api/admin/cover/suggest', {
@@ -191,6 +216,9 @@ const status = (post?.status ?? 'draft') as PostStatus;
 
         coverInput.value = data.suggestion.coverUrl || '';
         renderSuggestion(data.suggestion);
+        if (data.message) {
+          setStatus(data.message);
+        }
       } catch (error) {
         setStatus(error instanceof Error ? error.message : '封面匹配失败，请稍后重试。', true);
       } finally {

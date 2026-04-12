@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildWriterPrompt, parseGeneratedPostDraft, slugifyTitle } from './openai-compatible';
+import { buildWriterPrompt, generateCoverSearchQueries, parseGeneratedPostDraft, slugifyTitle } from './openai-compatible';
 
 test('slugifyTitle 会把标题转换为 kebab-case slug', () => {
   assert.equal(slugifyTitle('Hello Astro World'), 'hello-astro-world');
@@ -76,4 +76,39 @@ test('buildWriterPrompt 会拼接联网检索资料与自定义提示词', () =>
   assert.match(prompt, /Deploy your Astro site to Cloudflare Pages/);
   assert.match(prompt, /网页摘录：在 Cloudflare Pages 中连接 GitHub 仓库后/);
   assert.match(prompt, /请写得更像实战复盘/);
+});
+
+test('generateCoverSearchQueries 会解析模型返回的 JSON 检索词', async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    choices: [
+      {
+        message: {
+          content: '{"queries":["cloudflare dashboard workspace","developer laptop setup","server rack deployment"]}',
+        },
+      },
+    ],
+  }), {
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+  });
+
+  try {
+    const queries = await generateCoverSearchQueries('https://api.example.com/v1', 'test-key', 'test-model', {
+      title: 'Cloudflare 部署复盘',
+      description: '记录部署细节',
+      tags: ['Cloudflare', 'Astro'],
+      content: '这里是正文。',
+    });
+
+    assert.deepEqual(queries, [
+      'cloudflare dashboard workspace',
+      'developer laptop setup',
+      'server rack deployment',
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

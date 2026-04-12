@@ -51,6 +51,13 @@ export type GeneratePostRequest = {
   webResearch?: WebResearchContext | null;
 };
 
+export type CoverQueryRequest = {
+  title?: string;
+  description?: string;
+  tags?: string[];
+  content?: string;
+};
+
 export type GeneratedPostDraft = {
   title: string;
   slug: string;
@@ -307,6 +314,50 @@ function buildSystemPrompt(systemPrompt?: string) {
   return parts.join('\n');
 }
 
+function normalizeQueryList(input: unknown) {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+
+  return input
+    .map((item) => String(item ?? '').replace(/\s+/g, ' ').trim())
+    .filter((item) => item.length >= 3)
+    .filter((item) => {
+      const normalized = item.toLowerCase();
+
+      if (seen.has(normalized)) {
+        return false;
+      }
+
+      seen.add(normalized);
+      return true;
+    })
+    .slice(0, 6);
+}
+
+function buildCoverQueryPrompt(input: CoverQueryRequest) {
+  return [
+    '请根据下面这篇博客的整体内容，生成适合找封面图的英文检索词。',
+    '目标不是总结文章，而是帮助图片搜索引擎找到合适的封面场景。',
+    '请优先给出具象、可视化、适合做横版封面的短语。',
+    '规则：',
+    '- 每条检索词使用英文。',
+    '- 每条 2 到 6 个词。',
+    '- 尽量描述场景、物体、界面、工作台、部署环境，而不是抽象概念。',
+    '- 如果文章主题偏技术，可以给出 dashboard、workspace、server rack、coding setup 这类更容易搜到图的表达。',
+    '- 不要输出解释，只返回 JSON。',
+    '输出格式：',
+    '{"queries":["query one","query two"]}',
+    `标题：${input.title?.trim() || '无'}`,
+    `摘要：${input.description?.trim() || '无'}`,
+    `标签：${input.tags?.join(', ') || '无'}`,
+    '正文摘录：',
+    (input.content ?? '').slice(0, 4_000) || '无',
+  ].join('\n');
+}
+
 function extractDeltaContent(choice?: ChatCompletionChoice) {
   if (!choice) {
     return '';
@@ -388,6 +439,57 @@ export async function generateCompatiblePost(
   }
 
   return parseGeneratedPostDraft(rawText, input.topic);
+}
+
+export async function generateCoverSearchQueries(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  input: CoverQueryRequest,
+): Promise<string[]> {
+  const response = await fetch(buildProviderUrl(baseUrl, '/chat/completions'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey.trim()}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.3,
+      messages: [
+        {
+          role: 'system',
+          content: '你是一名擅长内容理解和视觉编辑的助手。你必须严格返回 JSON，不能输出 JSON 以外的解释。',
+        },
+        {
+          role: 'user',
+          content: buildCoverQueryPrompt(input),
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseProviderError(response));
+  }
+
+  const data = await response.json() as ChatCompletionResponse;
+  const rawText = extractTextContent(data.choices?.[0]?.message?.content);
+
+  if (!rawText) {
+    throw new Error('AI 没有返回可用的封面检索词。');
+  }
+
+  const parsed = JSON.parse(extractJsonBlock(rawText)) as {
+    queries?: unknown;
+  };
+  const queries = normalizeQueryList(parsed.queries);
+
+  if (!queries.length) {
+    throw new Error('AI 没有生成可用的封面检索词。');
+  }
+
+  return queries;
 }
 
 export async function* streamCompatiblePostText(

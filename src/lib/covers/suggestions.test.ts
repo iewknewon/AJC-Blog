@@ -68,7 +68,56 @@ test('suggestCoverFromContent 会从搜索结果中挑出最适合作为封面�
   assert.equal(fetchCalls.length, 1);
   assert.equal(suggestion?.coverUrl, 'https://example.com/thumb/dashboard.jpg');
   assert.equal(suggestion?.query, 'cloudflare dashboard devops pages');
+  assert.equal(suggestion?.queryMode, 'heuristic');
   assert.equal(suggestion?.creator, 'Jane Doe');
   assert.equal(suggestion?.license, 'CC0');
   assert.equal(suggestion?.sourceUrl, 'https://example.com/dashboard');
+});
+
+test('suggestCoverFromContent 会优先使用 AI 生成的检索词', async () => {
+  const fetchCalls: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = String(input);
+    fetchCalls.push(url);
+    const query = new URL(url).searchParams.get('q');
+
+    if (query === 'server rack deployment') {
+      return new Response(JSON.stringify({
+        results: [
+          {
+            title: 'Server rack deployment',
+            url: 'https://example.com/full/server.jpg',
+            thumbnail: 'https://example.com/thumb/server.jpg',
+            width: 1920,
+            height: 1080,
+            license: 'cc0',
+          },
+        ],
+      }), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      });
+    }
+
+    return new Response(JSON.stringify({ results: [] }), {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+    });
+  };
+
+  const suggestion = await suggestCoverFromContent({
+    title: '部署复盘',
+    description: '只有中文内容',
+    tags: '部署, 云服务',
+    content: '全文都是中文。',
+  }, {
+    fetchImpl,
+    preferredQueries: ['server rack deployment'],
+  });
+
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(suggestion?.query, 'server rack deployment');
+  assert.equal(suggestion?.queryMode, 'ai');
 });

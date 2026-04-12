@@ -36,6 +36,7 @@ export type CoverSuggestion = {
   sourceUrl?: string;
   width?: number;
   height?: number;
+  queryMode: 'ai' | 'heuristic';
 };
 
 const OPENVERSE_ENDPOINT = 'https://api.openverse.org/v1/images/';
@@ -215,7 +216,7 @@ async function searchOpenverseImages(query: string, fetchImpl: FetchLike) {
   return (data.results ?? []).filter((item) => isHttpUrl(item.thumbnail) || isHttpUrl(item.url));
 }
 
-function toCoverSuggestion(item: OpenverseImageResult, query: string): CoverSuggestion | null {
+function toCoverSuggestion(item: OpenverseImageResult, query: string, queryMode: 'ai' | 'heuristic'): CoverSuggestion | null {
   const previewUrl = isHttpUrl(item.thumbnail) ? String(item.thumbnail) : '';
   const coverUrl = previewUrl || (isHttpUrl(item.url) ? String(item.url) : '');
 
@@ -234,6 +235,7 @@ function toCoverSuggestion(item: OpenverseImageResult, query: string): CoverSugg
     sourceUrl: isHttpUrl(item.foreign_landing_url) ? String(item.foreign_landing_url) : (isHttpUrl(item.url) ? String(item.url) : undefined),
     width: typeof item.width === 'number' ? item.width : undefined,
     height: typeof item.height === 'number' ? item.height : undefined,
+    queryMode,
   };
 }
 
@@ -241,9 +243,12 @@ export async function suggestCoverFromContent(
   input: CoverSuggestionInput,
   options: {
     fetchImpl?: FetchLike;
+    preferredQueries?: string[];
   } = {},
 ): Promise<CoverSuggestion | null> {
-  const queries = buildCoverSearchQueries(input);
+  const preferredQueries = (options.preferredQueries ?? []).map((item) => collapseWhitespace(String(item))).filter(Boolean);
+  const heuristicQueries = buildCoverSearchQueries(input);
+  const queries = dedupeQueries([...preferredQueries, ...heuristicQueries]);
 
   if (!queries.length) {
     return null;
@@ -252,6 +257,7 @@ export async function suggestCoverFromContent(
   const fetchImpl = options.fetchImpl ?? fetch;
 
   for (const query of queries) {
+    const queryMode = preferredQueries.some((item) => item.toLowerCase() === query.toLowerCase()) ? 'ai' : 'heuristic';
     const results = await searchOpenverseImages(query, fetchImpl);
 
     if (!results.length) {
@@ -260,7 +266,7 @@ export async function suggestCoverFromContent(
 
     const bestMatch = [...results]
       .sort((left, right) => scoreImageCandidate(right, query) - scoreImageCandidate(left, query))
-      .map((item) => toCoverSuggestion(item, query))
+      .map((item) => toCoverSuggestion(item, query, queryMode))
       .find((item): item is CoverSuggestion => Boolean(item));
 
     if (bestMatch) {
