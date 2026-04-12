@@ -14,7 +14,7 @@ const status = (post?.status ?? 'draft') as PostStatus;
 ---
 
 <div class="admin-form-layout">
-  <form class="admin-form card" action={action} method="post">
+  <form class="admin-form card" action={action} method="post" data-admin-post-form>
     {error ? <div class="admin-alert">{error}</div> : null}
 
     <label class="admin-field">
@@ -39,8 +39,23 @@ const status = (post?.status ?? 'draft') as PostStatus;
 
     <label class="admin-field">
       <span>封面链接</span>
-      <input class="search-input admin-input-rect" type="url" name="cover" value={post?.cover ?? ''} placeholder="https://example.com/cover.png" />
+      <div class="admin-cover-tools">
+        <input class="search-input admin-input-rect" type="url" name="cover" value={post?.cover ?? ''} placeholder="https://example.com/cover.png" />
+        <button class="button" type="button" data-cover-suggest-button>智能匹配封面</button>
+      </div>
     </label>
+
+    <div class="admin-cover-suggestion" data-cover-suggestion hidden>
+      <div class="admin-cover-suggestion-preview">
+        <img src="" alt="智能匹配的封面预览" data-cover-preview-image />
+      </div>
+      <div class="admin-cover-suggestion-body">
+        <div class="admin-cover-suggestion-title" data-cover-preview-title>还没有匹配封面。</div>
+        <div class="admin-cover-suggestion-meta" data-cover-preview-meta></div>
+        <div class="admin-cover-suggestion-links" data-cover-preview-links></div>
+        <div class="admin-cover-suggestion-status" data-cover-preview-status></div>
+      </div>
+    </div>
 
     <div class="grid two">
       <label class="admin-field">
@@ -76,3 +91,110 @@ const status = (post?.status ?? 'draft') as PostStatus;
     </form>
   ) : null}
 </div>
+
+<script is:inline>
+  (() => {
+    const form = document.querySelector('[data-admin-post-form]');
+    const suggestButton = form?.querySelector('[data-cover-suggest-button]');
+    const coverInput = form?.elements?.namedItem('cover');
+    const suggestionCard = form?.querySelector('[data-cover-suggestion]');
+    const previewImage = form?.querySelector('[data-cover-preview-image]');
+    const previewTitle = form?.querySelector('[data-cover-preview-title]');
+    const previewMeta = form?.querySelector('[data-cover-preview-meta]');
+    const previewLinks = form?.querySelector('[data-cover-preview-links]');
+    const previewStatus = form?.querySelector('[data-cover-preview-status]');
+
+    if (!form || !suggestButton || !coverInput || !('value' in coverInput)) {
+      return;
+    }
+
+    const setStatus = (message, isError = false) => {
+      if (!previewStatus) {
+        return;
+      }
+
+      previewStatus.textContent = message;
+      previewStatus.className = isError
+        ? 'admin-cover-suggestion-status is-error'
+        : 'admin-cover-suggestion-status';
+    };
+
+    const renderSuggestion = (suggestion) => {
+      if (!suggestionCard || !previewImage || !previewTitle || !previewMeta || !previewLinks) {
+        return;
+      }
+
+      suggestionCard.hidden = false;
+      previewImage.src = suggestion.previewUrl || suggestion.coverUrl;
+      previewTitle.textContent = suggestion.title || '已匹配到封面';
+
+      const metaParts = [
+        suggestion.creator ? `作者：${suggestion.creator}` : '',
+        suggestion.license ? `许可证：${suggestion.license}` : '',
+        suggestion.query ? `检索词：${suggestion.query}` : '',
+      ].filter(Boolean);
+      previewMeta.textContent = metaParts.join(' · ');
+
+      previewLinks.innerHTML = '';
+
+      if (suggestion.sourceUrl) {
+        const link = document.createElement('a');
+        link.className = 'button';
+        link.href = suggestion.sourceUrl;
+        link.target = '_blank';
+        link.rel = 'noreferrer';
+        link.textContent = '查看来源';
+        previewLinks.append(link);
+      }
+
+      setStatus('已自动填入封面地址。发布前建议再确认一下图片来源和许可证。');
+    };
+
+    suggestButton.addEventListener('click', async () => {
+      const payload = {
+        title: String(form.elements?.namedItem('title')?.value ?? ''),
+        description: String(form.elements?.namedItem('description')?.value ?? ''),
+        tags: String(form.elements?.namedItem('tags')?.value ?? ''),
+        content: String(form.elements?.namedItem('content')?.value ?? ''),
+      };
+
+      if (!payload.title && !payload.description && !payload.tags && !payload.content) {
+        setStatus('请先填写标题、摘要、标签或正文，再尝试匹配封面。', true);
+        if (suggestionCard) {
+          suggestionCard.hidden = false;
+        }
+        return;
+      }
+
+      suggestButton.disabled = true;
+
+      if (suggestionCard) {
+        suggestionCard.hidden = false;
+      }
+
+      setStatus('正在联网匹配封面...');
+
+      try {
+        const response = await fetch('/api/admin/cover/suggest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '封面匹配失败');
+        }
+
+        coverInput.value = data.suggestion.coverUrl || '';
+        renderSuggestion(data.suggestion);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '封面匹配失败，请稍后重试。', true);
+      } finally {
+        suggestButton.disabled = false;
+      }
+    });
+  })();
+</script>

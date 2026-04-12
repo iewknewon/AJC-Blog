@@ -526,6 +526,17 @@ img {
   border-radius: 16px;
 }
 
+.admin-cover-tools {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.admin-cover-tools .search-input {
+  min-width: min(100%, 320px);
+}
+
 .admin-textarea {
   min-height: 360px;
   resize: vertical;
@@ -556,6 +567,55 @@ img {
 
 .admin-status-text.is-error {
   color: #b91c1c;
+}
+
+.admin-cover-suggestion {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-muted);
+}
+
+.admin-cover-suggestion-preview {
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.admin-cover-suggestion-preview img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.admin-cover-suggestion-body {
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+}
+
+.admin-cover-suggestion-title {
+  font-weight: 700;
+}
+
+.admin-cover-suggestion-meta,
+.admin-cover-suggestion-status {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.admin-cover-suggestion-status.is-error {
+  color: #b91c1c;
+}
+
+.admin-cover-suggestion-links {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .ai-stream-output {
@@ -625,6 +685,10 @@ img {
   .header-inner {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .admin-cover-suggestion {
+    grid-template-columns: 1fr;
   }
 
   .toc {
