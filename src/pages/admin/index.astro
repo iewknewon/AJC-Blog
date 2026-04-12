@@ -1,7 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import { ensureAnalyticsSchema, getAnalyticsSummary } from '../../lib/analytics/repository';
 import { isAdminAuthenticated } from '../../lib/auth/guards';
-import { getAnalyticsSummary } from '../../lib/analytics/repository';
 import { getAdminPosts } from '../../lib/posts/repository';
 
 const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
@@ -11,10 +11,23 @@ if (!authenticated) {
 }
 
 const db = Astro.locals.runtime.env.DB;
-const [posts, analyticsSummary] = await Promise.all([
-  getAdminPosts(db),
-  getAnalyticsSummary(db),
-]);
+const posts = await getAdminPosts(db);
+
+let analyticsUnavailable = false;
+let analyticsSummary = {
+  totalViews: 0,
+  uniqueVisitors: 0,
+  articleViews: 0,
+  trackedCountries: 0,
+};
+
+try {
+  await ensureAnalyticsSchema(db);
+  analyticsSummary = await getAnalyticsSummary(db);
+} catch (error) {
+  analyticsUnavailable = true;
+  console.error('Failed to load admin overview analytics summary', error);
+}
 
 const draftCount = posts.filter((post) => post.status === 'draft').length;
 const publishedCount = posts.filter((post) => post.status === 'published').length;
@@ -39,6 +52,14 @@ const publishedCount = posts.filter((post) => post.status === 'published').lengt
       <p class="admin-stat-value">{analyticsSummary.totalViews}</p>
     </article>
   </section>
+
+  {analyticsUnavailable ? (
+    <section class="section" style="padding-bottom: 0;">
+      <div class="empty-state">
+        访问统计摘要暂时不可用，但文章管理不受影响。通常等 Cloudflare 完成统计表初始化后，刷新一次就会恢复。
+      </div>
+    </section>
+  ) : null}
 
   <section class="section" style="padding-bottom: 0;">
     <div class="archive-toolbar">
