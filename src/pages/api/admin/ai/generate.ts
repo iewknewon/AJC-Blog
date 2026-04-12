@@ -46,6 +46,8 @@ export async function POST(context) {
     keywords?: string;
     audience?: string;
     requirements?: string;
+    customPrompt?: string;
+    systemPrompt?: string;
     cover?: string;
     status?: string;
     featured?: boolean;
@@ -91,11 +93,13 @@ export async function POST(context) {
         send('status', { message: '已连接模型，开始流式写作...' });
 
         for await (const chunk of streamCompatiblePostText(baseUrl, apiKey, model, {
-          topic,
-          keywords: payload.keywords,
-          audience: payload.audience,
-          requirements: payload.requirements,
-        })) {
+        topic,
+        keywords: payload.keywords,
+        audience: payload.audience,
+        requirements: payload.requirements,
+        customPrompt: payload.customPrompt,
+        systemPrompt: payload.systemPrompt,
+      })) {
           rawText += chunk;
           send('content', { chunk });
         }

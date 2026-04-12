@@ -66,6 +66,16 @@ if (!authenticated) {
         </label>
 
         <label class="admin-field">
+          <span>自定义提示词</span>
+          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="customPrompt" placeholder="例如：请用更口语化的中文；多举真实部署踩坑案例；结尾给出行动建议。"></textarea>
+        </label>
+
+        <label class="admin-field">
+          <span>系统提示词</span>
+          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="systemPrompt" placeholder="可选。用于补充更底层的写作角色或输出规则。"></textarea>
+        </label>
+
+        <label class="admin-field">
           <span>封面链接</span>
           <input class="search-input admin-input-rect" type="url" name="cover" placeholder="可选，例如 https://example.com/cover.png" />
         </label>
@@ -124,6 +134,8 @@ if (!authenticated) {
       baseUrl: 'ajc.ai.baseUrl',
       apiKey: 'ajc.ai.apiKey',
       model: 'ajc.ai.model',
+      customPrompt: 'ajc.ai.customPrompt',
+      systemPrompt: 'ajc.ai.systemPrompt',
     };
 
     const loadStoredConfig = () => {
@@ -132,21 +144,27 @@ if (!authenticated) {
           baseUrl: localStorage.getItem(STORAGE_KEYS.baseUrl) || '',
           apiKey: localStorage.getItem(STORAGE_KEYS.apiKey) || '',
           model: localStorage.getItem(STORAGE_KEYS.model) || '',
+          customPrompt: localStorage.getItem(STORAGE_KEYS.customPrompt) || '',
+          systemPrompt: localStorage.getItem(STORAGE_KEYS.systemPrompt) || '',
         };
       } catch {
         return {
           baseUrl: '',
           apiKey: '',
           model: '',
+          customPrompt: '',
+          systemPrompt: '',
         };
       }
     };
 
-    const saveStoredConfig = ({ baseUrl, apiKey, model }) => {
+    const saveStoredConfig = ({ baseUrl, apiKey, model, customPrompt, systemPrompt }) => {
       try {
         localStorage.setItem(STORAGE_KEYS.baseUrl, baseUrl || '');
         localStorage.setItem(STORAGE_KEYS.apiKey, apiKey || '');
         localStorage.setItem(STORAGE_KEYS.model, model || '');
+        localStorage.setItem(STORAGE_KEYS.customPrompt, customPrompt || '');
+        localStorage.setItem(STORAGE_KEYS.systemPrompt, systemPrompt || '');
       } catch {
         // Ignore storage failures and continue with in-memory usage only.
       }
@@ -157,6 +175,8 @@ if (!authenticated) {
         localStorage.removeItem(STORAGE_KEYS.baseUrl);
         localStorage.removeItem(STORAGE_KEYS.apiKey);
         localStorage.removeItem(STORAGE_KEYS.model);
+        localStorage.removeItem(STORAGE_KEYS.customPrompt);
+        localStorage.removeItem(STORAGE_KEYS.systemPrompt);
       } catch {
         // Ignore storage cleanup failures.
       }
@@ -275,6 +295,16 @@ if (!authenticated) {
         apiKeyInput.value = stored.apiKey;
       }
 
+      const customPromptInput = form?.elements?.namedItem('customPrompt');
+      if (customPromptInput && 'value' in customPromptInput) {
+        customPromptInput.value = stored.customPrompt;
+      }
+
+      const systemPromptInput = form?.elements?.namedItem('systemPrompt');
+      if (systemPromptInput && 'value' in systemPromptInput) {
+        systemPromptInput.value = stored.systemPrompt;
+      }
+
       if (stored.baseUrl || stored.apiKey) {
         setStatus('已恢复本地保存的 AI 连接配置。');
       }
@@ -287,6 +317,14 @@ if (!authenticated) {
       baseUrlInput.value = '';
       apiKeyInput.value = '';
       modelSelect.innerHTML = '<option value="">请先加载模型列表</option>';
+      const customPromptInput = form?.elements?.namedItem('customPrompt');
+      if (customPromptInput && 'value' in customPromptInput) {
+        customPromptInput.value = '';
+      }
+      const systemPromptInput = form?.elements?.namedItem('systemPrompt');
+      if (systemPromptInput && 'value' in systemPromptInput) {
+        systemPromptInput.value = '';
+      }
       setStatus('已清除本地保存的 AI 连接配置。');
     });
 
@@ -322,6 +360,8 @@ if (!authenticated) {
           baseUrl,
           apiKey,
           model: modelSelect?.value?.trim() || '',
+          customPrompt: String(form?.elements?.namedItem('customPrompt')?.value ?? ''),
+          systemPrompt: String(form?.elements?.namedItem('systemPrompt')?.value ?? ''),
         });
         setStatus(`模型加载成功，共 ${data.models?.length ?? 0} 个。`);
       } catch (error) {
@@ -352,6 +392,8 @@ if (!authenticated) {
         keywords: String(formData.get('keywords') ?? ''),
         audience: String(formData.get('audience') ?? ''),
         requirements: String(formData.get('requirements') ?? ''),
+        customPrompt: String(formData.get('customPrompt') ?? ''),
+        systemPrompt: String(formData.get('systemPrompt') ?? ''),
         cover: String(formData.get('cover') ?? ''),
         status: String(formData.get('status') ?? 'draft'),
         featured: formData.get('featured') === 'on',
@@ -361,6 +403,8 @@ if (!authenticated) {
         baseUrl,
         apiKey,
         model,
+        customPrompt: payload.customPrompt,
+        systemPrompt: payload.systemPrompt,
       });
 
       generateButton.disabled = true;
@@ -418,6 +462,8 @@ if (!authenticated) {
         baseUrl: baseUrlInput?.value?.trim() || '',
         apiKey: apiKeyInput?.value?.trim() || '',
         model: modelSelect?.value?.trim() || '',
+        customPrompt: String(form?.elements?.namedItem('customPrompt')?.value ?? ''),
+        systemPrompt: String(form?.elements?.namedItem('systemPrompt')?.value ?? ''),
       });
     });
   </script>

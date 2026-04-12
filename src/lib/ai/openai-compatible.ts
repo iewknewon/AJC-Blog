@@ -44,6 +44,8 @@ export type GeneratePostRequest = {
   keywords?: string;
   audience?: string;
   requirements?: string;
+  customPrompt?: string;
+  systemPrompt?: string;
 };
 
 export type GeneratedPostDraft = {
@@ -216,7 +218,7 @@ export function parseGeneratedPostDraft(rawText: string, fallbackTopic: string):
 }
 
 function buildWriterPrompt(input: GeneratePostRequest) {
-  return [
+  const sections = [
     '请基于以下要求生成一篇适合技术博客发布的 Markdown 文章。',
     '请严格输出 YAML Frontmatter + Markdown 正文，不要输出解释文字。',
     'Frontmatter 必须包含：title、slug、description、tags。',
@@ -242,7 +244,27 @@ function buildWriterPrompt(input: GeneratePostRequest) {
     '- tags 至少 2 个。',
     '- Markdown 正文首行使用一级标题。',
     '- 默认使用中文写作，除非要求里明确指定其他语言。',
-  ].join('\n');
+  ];
+
+  if (input.customPrompt?.trim()) {
+    sections.push('自定义提示词：');
+    sections.push(input.customPrompt.trim());
+  }
+
+  return sections.join('\n');
+}
+
+function buildSystemPrompt(systemPrompt?: string) {
+  const parts = [
+    '你是一名资深技术博客作者。你必须严格返回 YAML Frontmatter + Markdown 正文，不要输出额外解释。',
+  ];
+
+  if (systemPrompt?.trim()) {
+    parts.push('补充系统提示：');
+    parts.push(systemPrompt.trim());
+  }
+
+  return parts.join('\n');
 }
 
 function extractDeltaContent(choice?: ChatCompletionChoice) {
@@ -304,7 +326,7 @@ export async function generateCompatiblePost(
       messages: [
         {
           role: 'system',
-          content: '你是一名资深技术博客作者。你必须严格返回一个 JSON 对象，不能输出 JSON 以外的解释。',
+          content: buildSystemPrompt(input.systemPrompt),
         },
         {
           role: 'user',
@@ -347,7 +369,7 @@ export async function* streamCompatiblePostText(
       messages: [
         {
           role: 'system',
-          content: '你是一名资深技术博客作者。你必须严格返回 YAML Frontmatter + Markdown 正文，不要输出额外解释。',
+          content: buildSystemPrompt(input.systemPrompt),
         },
         {
           role: 'user',
