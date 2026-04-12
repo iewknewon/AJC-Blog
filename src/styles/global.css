@@ -508,6 +508,11 @@ img {
   gap: 1rem;
 }
 
+.admin-form-layout {
+  display: grid;
+  gap: 1rem;
+}
+
 .inline-form {
   display: inline-flex;
 }

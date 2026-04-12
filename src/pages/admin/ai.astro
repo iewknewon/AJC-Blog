@@ -28,6 +28,7 @@ if (!authenticated) {
 
         <div class="hero-actions">
           <button id="load-models" class="button" type="button">获取可用模型</button>
+          <button id="clear-ai-config" class="button" type="button">清除保存</button>
         </div>
 
         <label class="admin-field">
@@ -118,6 +119,48 @@ if (!authenticated) {
     const statusBody = document.querySelector('#ai-status-body');
     const resultActions = document.querySelector('#ai-result-actions');
     const streamOutput = document.querySelector('#ai-stream-output');
+    const clearConfigButton = document.querySelector('#clear-ai-config');
+    const STORAGE_KEYS = {
+      baseUrl: 'ajc.ai.baseUrl',
+      apiKey: 'ajc.ai.apiKey',
+      model: 'ajc.ai.model',
+    };
+
+    const loadStoredConfig = () => {
+      try {
+        return {
+          baseUrl: localStorage.getItem(STORAGE_KEYS.baseUrl) || '',
+          apiKey: localStorage.getItem(STORAGE_KEYS.apiKey) || '',
+          model: localStorage.getItem(STORAGE_KEYS.model) || '',
+        };
+      } catch {
+        return {
+          baseUrl: '',
+          apiKey: '',
+          model: '',
+        };
+      }
+    };
+
+    const saveStoredConfig = ({ baseUrl, apiKey, model }) => {
+      try {
+        localStorage.setItem(STORAGE_KEYS.baseUrl, baseUrl || '');
+        localStorage.setItem(STORAGE_KEYS.apiKey, apiKey || '');
+        localStorage.setItem(STORAGE_KEYS.model, model || '');
+      } catch {
+        // Ignore storage failures and continue with in-memory usage only.
+      }
+    };
+
+    const clearStoredConfig = () => {
+      try {
+        localStorage.removeItem(STORAGE_KEYS.baseUrl);
+        localStorage.removeItem(STORAGE_KEYS.apiKey);
+        localStorage.removeItem(STORAGE_KEYS.model);
+      } catch {
+        // Ignore storage cleanup failures.
+      }
+    };
 
     const setStatus = (message, isError = false) => {
       statusBody.textContent = message;
@@ -212,7 +255,40 @@ if (!authenticated) {
         option.selected = index === 0;
         modelSelect.append(option);
       });
+
+      const storedConfig = loadStoredConfig();
+      const matched = models.find((model) => model.id === storedConfig.model);
+
+      if (matched) {
+        modelSelect.value = matched.id;
+      }
     };
+
+    const restoreStoredConfig = () => {
+      const stored = loadStoredConfig();
+
+      if (stored.baseUrl) {
+        baseUrlInput.value = stored.baseUrl;
+      }
+
+      if (stored.apiKey) {
+        apiKeyInput.value = stored.apiKey;
+      }
+
+      if (stored.baseUrl || stored.apiKey) {
+        setStatus('已恢复本地保存的 AI 连接配置。');
+      }
+    };
+
+    restoreStoredConfig();
+
+    clearConfigButton?.addEventListener('click', () => {
+      clearStoredConfig();
+      baseUrlInput.value = '';
+      apiKeyInput.value = '';
+      modelSelect.innerHTML = '<option value="">请先加载模型列表</option>';
+      setStatus('已清除本地保存的 AI 连接配置。');
+    });
 
     loadModelsButton?.addEventListener('click', async () => {
       const baseUrl = baseUrlInput?.value?.trim();
@@ -242,6 +318,11 @@ if (!authenticated) {
         }
 
         fillModels(data.models || []);
+        saveStoredConfig({
+          baseUrl,
+          apiKey,
+          model: modelSelect?.value?.trim() || '',
+        });
         setStatus(`模型加载成功，共 ${data.models?.length ?? 0} 个。`);
       } catch (error) {
         setStatus(error instanceof Error ? error.message : '加载模型失败，请检查配置。', true);
@@ -275,6 +356,12 @@ if (!authenticated) {
         status: String(formData.get('status') ?? 'draft'),
         featured: formData.get('featured') === 'on',
       };
+
+      saveStoredConfig({
+        baseUrl,
+        apiKey,
+        model,
+      });
 
       generateButton.disabled = true;
       resultActions.innerHTML = '';
@@ -324,6 +411,14 @@ if (!authenticated) {
       } finally {
         generateButton.disabled = false;
       }
+    });
+
+    modelSelect?.addEventListener('change', () => {
+      saveStoredConfig({
+        baseUrl: baseUrlInput?.value?.trim() || '',
+        apiKey: apiKeyInput?.value?.trim() || '',
+        model: modelSelect?.value?.trim() || '',
+      });
     });
   </script>
 </AdminLayout>

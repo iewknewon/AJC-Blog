@@ -13,63 +13,66 @@ const tags = post?.tags?.join(', ') ?? '';
 const status = (post?.status ?? 'draft') as PostStatus;
 ---
 
-<form class="admin-form card" action={action} method="post">
-  {error ? <div class="admin-alert">{error}</div> : null}
+<div class="admin-form-layout">
+  <form class="admin-form card" action={action} method="post">
+    {error ? <div class="admin-alert">{error}</div> : null}
 
-  <label class="admin-field">
-    <span>Slug</span>
-    <input class="search-input admin-input-rect" type="text" name="slug" value={post?.slug ?? ''} placeholder="例如 hello-astro" required />
-  </label>
-
-  <label class="admin-field">
-    <span>标题</span>
-    <input class="search-input admin-input-rect" type="text" name="title" value={post?.title ?? ''} placeholder="输入文章标题" required />
-  </label>
-
-  <label class="admin-field">
-    <span>摘要</span>
-    <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="description" placeholder="一句话概括文章内容" required>{post?.description ?? ''}</textarea>
-  </label>
-
-  <label class="admin-field">
-    <span>标签</span>
-    <input class="search-input admin-input-rect" type="text" name="tags" value={tags} placeholder="使用英文逗号分隔，例如 Astro, Cloudflare" required />
-  </label>
-
-  <label class="admin-field">
-    <span>封面链接</span>
-    <input class="search-input admin-input-rect" type="url" name="cover" value={post?.cover ?? ''} placeholder="https://example.com/cover.png" />
-  </label>
-
-  <div class="grid two">
     <label class="admin-field">
-      <span>状态</span>
-      <select class="search-input admin-input-rect" name="status">
-        <option value="draft" selected={status === 'draft'}>草稿</option>
-        <option value="published" selected={status === 'published'}>已发布</option>
-      </select>
+      <span>Slug</span>
+      <input class="search-input admin-input-rect" type="text" name="slug" value={post?.slug ?? ''} placeholder="例如 hello-astro" required />
     </label>
 
-    <label class="admin-checkbox">
-      <input type="checkbox" name="featured" checked={post?.featured ?? false} />
-      <span>设为推荐文章</span>
+    <label class="admin-field">
+      <span>标题</span>
+      <input class="search-input admin-input-rect" type="text" name="title" value={post?.title ?? ''} placeholder="输入文章标题" required />
     </label>
-  </div>
 
-  <label class="admin-field">
-    <span>Markdown 正文</span>
-    <textarea class="search-input admin-input-rect admin-textarea" name="content" placeholder="# 标题\n\n开始写正文..." required>{post?.content ?? ''}</textarea>
-  </label>
+    <label class="admin-field">
+      <span>摘要</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="description" placeholder="一句话概括文章内容" required>{post?.description ?? ''}</textarea>
+    </label>
 
-  <div class="hero-actions">
-    <button class="button button-primary" type="submit">{submitLabel}</button>
-    <a class="button" href="/admin/posts">返回列表</a>
-    {post?.slug ? <a class="button" href={`/blog/${post.slug}/`} target="_blank" rel="noreferrer">预览前台</a> : null}
-    {post?.id ? (
-      <form class="inline-form" action={action} method="post" onsubmit="return confirm('确认删除这篇文章吗？此操作不可恢复。')">
-        <input type="hidden" name="intent" value="delete" />
-        <button class="button button-danger" type="submit">删除文章</button>
-      </form>
-    ) : null}
-  </div>
-</form>
+    <label class="admin-field">
+      <span>标签</span>
+      <input class="search-input admin-input-rect" type="text" name="tags" value={tags} placeholder="使用英文逗号分隔，例如 Astro, Cloudflare" required />
+    </label>
+
+    <label class="admin-field">
+      <span>封面链接</span>
+      <input class="search-input admin-input-rect" type="url" name="cover" value={post?.cover ?? ''} placeholder="https://example.com/cover.png" />
+    </label>
+
+    <div class="grid two">
+      <label class="admin-field">
+        <span>状态</span>
+        <select class="search-input admin-input-rect" name="status">
+          <option value="draft" selected={status === 'draft'}>草稿</option>
+          <option value="published" selected={status === 'published'}>已发布</option>
+        </select>
+      </label>
+
+      <label class="admin-checkbox">
+        <input type="checkbox" name="featured" checked={post?.featured ?? false} />
+        <span>设为推荐文章</span>
+      </label>
+    </div>
+
+    <label class="admin-field">
+      <span>Markdown 正文</span>
+      <textarea class="search-input admin-input-rect admin-textarea" name="content" placeholder="# 标题\n\n开始写正文..." required>{post?.content ?? ''}</textarea>
+    </label>
+
+    <div class="hero-actions">
+      <button class="button button-primary" type="submit">{submitLabel}</button>
+      <a class="button" href="/admin/posts">返回列表</a>
+      {post?.slug ? <a class="button" href={`/blog/${post.slug}/`} target="_blank" rel="noreferrer">预览前台</a> : null}
+    </div>
+  </form>
+
+  {post?.id ? (
+    <form class="inline-form" action={action} method="post" onsubmit="return confirm('确认删除这篇文章吗？此操作不可恢复。')">
+      <input type="hidden" name="intent" value="delete" />
+      <button class="button button-danger" type="submit">删除文章</button>
+    </form>
+  ) : null}
+</div>
