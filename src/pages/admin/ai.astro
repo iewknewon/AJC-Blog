@@ -1,8 +1,10 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { isAdminAuthenticated } from '../../lib/auth/guards';
+import { AI_WRITING_PRESETS, DEFAULT_AI_WRITING_PRESET_ID } from '../../lib/ai/presets';
 
 const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+const presetJson = JSON.stringify(AI_WRITING_PRESETS);
 
 if (!authenticated) {
   return Astro.redirect('/admin/login');
@@ -45,6 +47,25 @@ if (!authenticated) {
       <p class="section-description">默认会优先生成短一些、可直接发布的博客稿件，并尝试补齐封面和正文插图。</p>
 
       <form id="ai-writer-form" class="admin-form">
+        <div class="content-card ai-preset-shell" style="padding: 1rem 1rem 1.1rem; background: var(--surface-muted); box-shadow: none;">
+          <label class="admin-field">
+            <span>写作模式</span>
+            <select id="ai-preset" class="search-input admin-input-rect" name="presetId">
+              {AI_WRITING_PRESETS.map((preset) => (
+                <option value={preset.id} selected={preset.id === DEFAULT_AI_WRITING_PRESET_ID}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div class="hero-actions" style="margin-top: 0.25rem;">
+            <button id="apply-ai-preset" class="button" type="button">写入提示词文本框</button>
+          </div>
+
+          <div id="ai-preset-summary" class="ai-preset-summary"></div>
+        </div>
+
         <label class="admin-field">
           <span>文章主题</span>
           <input class="search-input admin-input-rect" type="text" name="topic" placeholder="例如：Astro + Cloudflare 博客上线指南" required />
@@ -182,10 +203,15 @@ if (!authenticated) {
     </div>
   </section>
 
+  <script type="application/json" id="ai-writing-presets" data-default-preset={DEFAULT_AI_WRITING_PRESET_ID}>{presetJson}</script>
   <script is:inline>
     const EMPTY_STREAM_TEXT = '等待生成内容...';
     const EMPTY_RESEARCH_TEXT = '还没有检索结果。';
     const EMPTY_ASSET_TEXT = '还没有生成封面或插图。';
+    const presetDataNode = document.querySelector('#ai-writing-presets');
+    const DEFAULT_PRESET_ID = presetDataNode?.dataset?.defaultPreset || 'blog-default';
+    const WRITING_PRESETS = JSON.parse(presetDataNode?.textContent || '[]');
+    const PRESET_MAP = new Map(WRITING_PRESETS.map((preset) => [preset.id, preset]));
     const loadModelsButton = document.querySelector('#load-models');
     const generateButton = document.querySelector('#generate-post');
     const modelSelect = document.querySelector('#ai-model');
@@ -198,11 +224,15 @@ if (!authenticated) {
     const assetOutput = document.querySelector('#ai-assets-output');
     const streamOutput = document.querySelector('#ai-stream-output');
     const clearConfigButton = document.querySelector('#clear-ai-config');
+    const presetSelect = document.querySelector('#ai-preset');
+    const applyPresetButton = document.querySelector('#apply-ai-preset');
+    const presetSummary = document.querySelector('#ai-preset-summary');
 
     const STORAGE_KEYS = {
       baseUrl: 'ajc.ai.baseUrl',
       apiKey: 'ajc.ai.apiKey',
       model: 'ajc.ai.model',
+      presetId: 'ajc.ai.presetId',
       customPrompt: 'ajc.ai.customPrompt',
       systemPrompt: 'ajc.ai.systemPrompt',
       webSearchEnabled: 'ajc.ai.webSearchEnabled',
@@ -224,6 +254,7 @@ if (!authenticated) {
       baseUrl: baseUrlInput?.value?.trim() || '',
       apiKey: apiKeyInput?.value?.trim() || '',
       model: modelSelect?.value?.trim() || '',
+      presetId: readNamedFieldValue('presetId', DEFAULT_PRESET_ID),
       customPrompt: readNamedFieldValue('customPrompt'),
       systemPrompt: readNamedFieldValue('systemPrompt'),
       webSearchEnabled: readNamedCheckboxValue('webSearchEnabled'),
@@ -240,6 +271,7 @@ if (!authenticated) {
           baseUrl: localStorage.getItem(STORAGE_KEYS.baseUrl) || '',
           apiKey: localStorage.getItem(STORAGE_KEYS.apiKey) || '',
           model: localStorage.getItem(STORAGE_KEYS.model) || '',
+          presetId: localStorage.getItem(STORAGE_KEYS.presetId) || DEFAULT_PRESET_ID,
           customPrompt: localStorage.getItem(STORAGE_KEYS.customPrompt) || '',
           systemPrompt: localStorage.getItem(STORAGE_KEYS.systemPrompt) || '',
           webSearchEnabled: localStorage.getItem(STORAGE_KEYS.webSearchEnabled) === '1',
@@ -254,6 +286,7 @@ if (!authenticated) {
           baseUrl: '',
           apiKey: '',
           model: '',
+          presetId: DEFAULT_PRESET_ID,
           customPrompt: '',
           systemPrompt: '',
           webSearchEnabled: false,
@@ -271,6 +304,7 @@ if (!authenticated) {
         localStorage.setItem(STORAGE_KEYS.baseUrl, snapshot.baseUrl || '');
         localStorage.setItem(STORAGE_KEYS.apiKey, snapshot.apiKey || '');
         localStorage.setItem(STORAGE_KEYS.model, snapshot.model || '');
+        localStorage.setItem(STORAGE_KEYS.presetId, snapshot.presetId || DEFAULT_PRESET_ID);
         localStorage.setItem(STORAGE_KEYS.customPrompt, snapshot.customPrompt || '');
         localStorage.setItem(STORAGE_KEYS.systemPrompt, snapshot.systemPrompt || '');
         localStorage.setItem(STORAGE_KEYS.webSearchEnabled, snapshot.webSearchEnabled ? '1' : '0');
@@ -295,6 +329,59 @@ if (!authenticated) {
     const setStatus = (message, isError = false) => {
       statusBody.textContent = message;
       statusBody.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+    };
+
+    const setNamedFieldValue = (name, value) => {
+      const field = readNamedField(name);
+      if (field && 'value' in field) {
+        field.value = value;
+      }
+    };
+
+    const readPreset = (presetId) => PRESET_MAP.get(String(presetId || '').trim()) || PRESET_MAP.get(DEFAULT_PRESET_ID) || null;
+
+    const updatePresetSummary = (presetId) => {
+      if (!presetSummary) {
+        return;
+      }
+
+      const preset = readPreset(presetId);
+      presetSummary.innerHTML = '';
+
+      if (!preset) {
+        return;
+      }
+
+      const title = document.createElement('div');
+      title.className = 'ai-preset-title';
+      title.textContent = preset.label;
+      presetSummary.append(title);
+
+      const description = document.createElement('p');
+      description.className = 'ai-preset-copy';
+      description.textContent = preset.description;
+      presetSummary.append(description);
+
+      const summary = document.createElement('p');
+      summary.className = 'ai-preset-copy';
+      summary.textContent = `${preset.summary} 选中后会直接参与生成；如果你想继续手改提示词，可以点上面的按钮把预设内容写进文本框。推荐篇幅：${preset.recommendedLengthPreset}，推荐插图：${preset.recommendedIllustrationCount} 张。`;
+      presetSummary.append(summary);
+    };
+
+    const applySelectedPreset = () => {
+      const preset = readPreset(presetSelect?.value);
+
+      if (!preset) {
+        return;
+      }
+
+      setNamedFieldValue('customPrompt', preset.customPrompt || '');
+      setNamedFieldValue('systemPrompt', preset.systemPrompt || '');
+      setNamedFieldValue('lengthPreset', preset.recommendedLengthPreset || 'compact');
+      setNamedFieldValue('illustrationCount', String(preset.recommendedIllustrationCount || 2));
+      updatePresetSummary(preset.id);
+      saveStoredConfig(buildStoredConfigSnapshot());
+      setStatus(`已将「${preset.label}」预设写入提示词。`);
     };
 
     const setResultActions = (post) => {
@@ -627,6 +714,10 @@ if (!authenticated) {
     const restoreStoredConfig = () => {
       const stored = loadStoredConfig();
 
+      if (presetSelect) {
+        presetSelect.value = stored.presetId;
+      }
+
       if (stored.baseUrl) {
         baseUrlInput.value = stored.baseUrl;
       }
@@ -662,6 +753,8 @@ if (!authenticated) {
       if (stored.baseUrl || stored.apiKey) {
         setStatus('已恢复上次保存的 AI 配置。');
       }
+
+      updatePresetSummary(stored.presetId);
     };
 
     restoreStoredConfig();
@@ -673,6 +766,9 @@ if (!authenticated) {
       baseUrlInput.value = '';
       apiKeyInput.value = '';
       modelSelect.innerHTML = '<option value="">请先加载模型</option>';
+      if (presetSelect) {
+        presetSelect.value = DEFAULT_PRESET_ID;
+      }
 
       [
         ['customPrompt', ''],
@@ -701,6 +797,7 @@ if (!authenticated) {
 
       resetResearchOutput(false);
       resetAssetsOutput(true);
+      updatePresetSummary(DEFAULT_PRESET_ID);
       setStatus('本地保存的 AI 配置已清空。');
     });
 
@@ -758,6 +855,7 @@ if (!authenticated) {
         baseUrl,
         apiKey,
         model,
+        presetId: String(formData.get('presetId') ?? DEFAULT_PRESET_ID),
         topic: String(formData.get('topic') ?? ''),
         keywords: String(formData.get('keywords') ?? ''),
         audience: String(formData.get('audience') ?? ''),
@@ -843,6 +941,15 @@ if (!authenticated) {
 
     modelSelect?.addEventListener('change', () => {
       saveStoredConfig(buildStoredConfigSnapshot());
+    });
+
+    presetSelect?.addEventListener('change', () => {
+      updatePresetSummary(presetSelect.value);
+      saveStoredConfig(buildStoredConfigSnapshot());
+    });
+
+    applyPresetButton?.addEventListener('click', () => {
+      applySelectedPreset();
     });
 
     baseUrlInput?.addEventListener('change', () => {

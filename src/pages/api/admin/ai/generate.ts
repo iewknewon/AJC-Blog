@@ -16,6 +16,7 @@ import {
   suggestImageForQuery,
   type CoverSuggestion,
 } from '../../../../lib/covers/suggestions';
+import { getAiWritingPresetById, mergePromptSegments } from '../../../../lib/ai/presets';
 import { createPost, getPostBySlug } from '../../../../lib/posts/repository';
 
 type GeneratePayload = {
@@ -28,6 +29,7 @@ type GeneratePayload = {
   requirements?: string;
   customPrompt?: string;
   systemPrompt?: string;
+  presetId?: string;
   lengthPreset?: string;
   webSearchEnabled?: boolean;
   webSearchQuery?: string;
@@ -204,6 +206,7 @@ export async function POST(context) {
   const model = String(payload.model ?? '').trim();
   const topic = String(payload.topic ?? '').trim();
   const manualCover = String(payload.cover ?? '').trim();
+  const preset = getAiWritingPresetById(payload.presetId);
   const status = payload.status === 'published' ? 'published' : 'draft';
   const featured = Boolean(payload.featured);
   const lengthPreset = parseLengthPreset(payload.lengthPreset);
@@ -278,8 +281,8 @@ export async function POST(context) {
           keywords: payload.keywords,
           audience: payload.audience,
           requirements: payload.requirements,
-          customPrompt: payload.customPrompt,
-          systemPrompt: payload.systemPrompt,
+          customPrompt: mergePromptSegments(preset.customPrompt, payload.customPrompt),
+          systemPrompt: mergePromptSegments(preset.systemPrompt, payload.systemPrompt),
           lengthPreset,
           webResearch,
         })) {
