@@ -9,11 +9,11 @@ if (!authenticated) {
 }
 ---
 
-<AdminLayout title="AI 写作" description="连接兼容 OpenAI API 的模型，生成文章草稿并直接进入你的博客后台。">
+<AdminLayout title="AI 写作" description="接入 OpenAI 兼容接口，一键生成较短的博客草稿，并自动补封面与正文插图。">
   <section class="grid two" style="align-items: start;">
     <article class="content-card">
-      <h2 class="section-title">连接模型</h2>
-      <p class="section-description">填写兼容 OpenAI API 的 Base URL 和 API Key，然后拉取模型列表。</p>
+      <h2 class="section-title">模型配置</h2>
+      <p class="section-description">这里的 Base URL、API Key 和模型只保存在当前浏览器，方便你反复使用。</p>
 
       <div class="admin-form">
         <label class="admin-field">
@@ -23,83 +23,114 @@ if (!authenticated) {
 
         <label class="admin-field">
           <span>API Key</span>
-          <input id="ai-api-key" class="search-input admin-input-rect" type="password" placeholder="输入你的服务商 API Key" />
+          <input id="ai-api-key" class="search-input admin-input-rect" type="password" placeholder="输入可用的 API Key" />
         </label>
 
         <div class="hero-actions">
-          <button id="load-models" class="button" type="button">获取可用模型</button>
-          <button id="clear-ai-config" class="button" type="button">清除保存</button>
+          <button id="load-models" class="button" type="button">获取模型列表</button>
+          <button id="clear-ai-config" class="button" type="button">清空本地配置</button>
         </div>
 
         <label class="admin-field">
           <span>模型</span>
           <select id="ai-model" class="search-input admin-input-rect">
-            <option value="">请先加载模型列表</option>
+            <option value="">请先加载模型</option>
           </select>
         </label>
       </div>
     </article>
 
     <article class="content-card">
-      <h2 class="section-title">写作设置</h2>
-      <p class="section-description">生成时会流式显示内容。完成后会自动创建文章，你可以继续编辑或直接查看前台。</p>
+      <h2 class="section-title">写作参数</h2>
+      <p class="section-description">默认会优先生成短一些、可直接发布的博客稿件，并尝试补齐封面和正文插图。</p>
 
       <form id="ai-writer-form" class="admin-form">
         <label class="admin-field">
           <span>文章主题</span>
-          <input class="search-input admin-input-rect" type="text" name="topic" placeholder="例如：Astro + Cloudflare 博客部署实践" required />
+          <input class="search-input admin-input-rect" type="text" name="topic" placeholder="例如：Astro + Cloudflare 博客上线指南" required />
         </label>
 
         <label class="admin-field">
-          <span>关键词偏好</span>
-          <input class="search-input admin-input-rect" type="text" name="keywords" placeholder="例如：Astro, Cloudflare, D1, 部署" />
+          <span>关键词</span>
+          <input class="search-input admin-input-rect" type="text" name="keywords" placeholder="例如：Astro, Cloudflare, D1, SEO" />
         </label>
 
         <label class="admin-field">
           <span>目标读者</span>
-          <input class="search-input admin-input-rect" type="text" name="audience" placeholder="例如：初中级前端开发者" />
+          <input class="search-input admin-input-rect" type="text" name="audience" placeholder="例如：独立开发者、前端工程师、新手站长" />
         </label>
 
         <label class="admin-field">
-          <span>额外要求</span>
-          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="requirements" placeholder="例如：希望包含实战步骤、常见报错、总结建议。"></textarea>
+          <span>写作要求</span>
+          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="requirements" placeholder="例如：语气自然一点，带清晰步骤，结尾给出建议，不要太学术。"></textarea>
         </label>
 
         <label class="admin-field">
           <span>自定义提示词</span>
-          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="customPrompt" placeholder="例如：请用更口语化的中文；多举真实部署踩坑案例；结尾给出行动建议。"></textarea>
+          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="customPrompt" placeholder="这里可以补充风格、结构、禁用词、写作口吻等额外要求。"></textarea>
         </label>
 
         <label class="admin-field">
           <span>系统提示词</span>
-          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="systemPrompt" placeholder="可选。用于补充更底层的写作角色或输出规则。"></textarea>
+          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="systemPrompt" placeholder="只有在你想强制指定 AI 的角色和行为规则时再填写。"></textarea>
         </label>
 
         <div class="content-card" style="padding: 1rem 1rem 1.1rem; background: var(--surface-muted); box-shadow: none;">
-          <label class="admin-checkbox" style="padding-top: 0;">
+          <div class="ai-option-grid">
+            <label class="admin-field">
+              <span>篇幅控制</span>
+              <select class="search-input admin-input-rect" name="lengthPreset">
+                <option value="compact" selected>短文优先（推荐）</option>
+                <option value="standard">标准长度</option>
+                <option value="detailed">长文深入</option>
+              </select>
+            </label>
+
+            <label class="admin-field">
+              <span>正文插图数量</span>
+              <select class="search-input admin-input-rect" name="illustrationCount">
+                <option value="1">1 张</option>
+                <option value="2" selected>2 张</option>
+                <option value="3">3 张</option>
+                <option value="4">4 张</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="admin-checkbox" style="padding-top: 1rem;">
+            <input type="checkbox" name="autoCoverEnabled" checked />
+            <span>自动匹配封面</span>
+          </label>
+
+          <label class="admin-checkbox">
+            <input type="checkbox" name="autoIllustrationsEnabled" checked />
+            <span>自动插入正文配图</span>
+          </label>
+
+          <label class="admin-checkbox">
             <input type="checkbox" name="webSearchEnabled" />
-            <span>开启联网检索</span>
+            <span>写作前联网检索资料</span>
           </label>
 
           <label class="admin-field" style="margin-top: 0.75rem;">
-            <span>检索关键词</span>
-            <input class="search-input admin-input-rect" type="text" name="webSearchQuery" placeholder="可选。留空时默认使用文章主题。" />
+            <span>联网检索词</span>
+            <input class="search-input admin-input-rect" type="text" name="webSearchQuery" placeholder="留空时默认使用文章主题进行检索" />
           </label>
 
-          <p class="muted" style="margin: 0.75rem 0 0;">开启后会先搜索公开网页并提取摘要，再交给 AI 写作。</p>
+          <p class="muted" style="margin: 0.75rem 0 0;">自动配图会结合标题、摘要、标签和正文内容生成检索词，再从开放图片源里匹配。</p>
         </div>
 
         <label class="admin-field">
-          <span>封面链接</span>
-          <input class="search-input admin-input-rect" type="url" name="cover" placeholder="可选，例如 https://example.com/cover.png" />
+          <span>手动封面 URL</span>
+          <input class="search-input admin-input-rect" type="url" name="cover" placeholder="留空时会在生成过程中自动匹配封面" />
         </label>
 
         <div class="grid two">
           <label class="admin-field">
             <span>保存方式</span>
             <select class="search-input admin-input-rect" name="status">
-              <option value="draft">生成并保存为草稿</option>
-              <option value="published">生成并直接发布</option>
+              <option value="draft">保存为草稿</option>
+              <option value="published">直接发布</option>
             </select>
           </label>
 
@@ -118,32 +149,43 @@ if (!authenticated) {
 
   <section class="section" style="padding-top: 1.5rem;">
     <div id="ai-status" class="content-card">
-      <h2 class="section-title">当前状态</h2>
-      <p class="section-description">连接模型后即可开始生成。生成成功后会自动跳转到后台编辑页。</p>
-      <div id="ai-status-body" class="muted">还没有开始。</div>
+      <h2 class="section-title">生成状态</h2>
+      <p class="section-description">生成过程中会先流式输出正文，再自动补封面和插图，最后直接保存到博客后台。</p>
+      <div id="ai-status-body" class="muted">等待开始生成...</div>
       <div id="ai-result-actions" class="hero-actions" style="margin-top: 1rem;"></div>
     </div>
   </section>
 
-  <section class="section" style="padding-top: 0;">
+  <section class="grid two" style="padding-top: 0;">
     <div class="content-card">
-      <h2 class="section-title">联网参考</h2>
-      <p class="section-description">开启联网检索后，这里会显示本次写作用到的公开资料来源。</p>
+      <h2 class="section-title">联网检索结果</h2>
+      <p class="section-description">如果开启了联网检索，这里会显示参与写作的参考资料。</p>
       <div id="ai-research-output" class="ai-research-output">
-        <div class="ai-research-placeholder">本次还没有联网检索。</div>
+        <div class="ai-research-placeholder">还没有检索结果。</div>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <h2 class="section-title">自动配图结果</h2>
+      <p class="section-description">这里会显示本次自动选择的封面和正文插图，以及对应的检索词。</p>
+      <div id="ai-assets-output" class="ai-assets-output">
+        <div class="ai-assets-placeholder">还没有生成封面或插图。</div>
       </div>
     </div>
   </section>
 
   <section class="section" style="padding-top: 0;">
     <div class="content-card">
-      <h2 class="section-title">流式预览</h2>
-      <p class="section-description">这里会实时显示 AI 正在写的内容。当前输出采用 Frontmatter + Markdown 格式，写完后会自动入库。</p>
-      <pre id="ai-stream-output" class="ai-stream-output">等待开始写作...</pre>
+      <h2 class="section-title">草稿源码</h2>
+      <p class="section-description">这里会实时显示 AI 输出的文章源码；保存成功后，会替换成最终落库版本。</p>
+      <pre id="ai-stream-output" class="ai-stream-output">等待生成内容...</pre>
     </div>
   </section>
 
   <script is:inline>
+    const EMPTY_STREAM_TEXT = '等待生成内容...';
+    const EMPTY_RESEARCH_TEXT = '还没有检索结果。';
+    const EMPTY_ASSET_TEXT = '还没有生成封面或插图。';
     const loadModelsButton = document.querySelector('#load-models');
     const generateButton = document.querySelector('#generate-post');
     const modelSelect = document.querySelector('#ai-model');
@@ -153,8 +195,10 @@ if (!authenticated) {
     const statusBody = document.querySelector('#ai-status-body');
     const resultActions = document.querySelector('#ai-result-actions');
     const researchOutput = document.querySelector('#ai-research-output');
+    const assetOutput = document.querySelector('#ai-assets-output');
     const streamOutput = document.querySelector('#ai-stream-output');
     const clearConfigButton = document.querySelector('#clear-ai-config');
+
     const STORAGE_KEYS = {
       baseUrl: 'ajc.ai.baseUrl',
       apiKey: 'ajc.ai.apiKey',
@@ -163,10 +207,19 @@ if (!authenticated) {
       systemPrompt: 'ajc.ai.systemPrompt',
       webSearchEnabled: 'ajc.ai.webSearchEnabled',
       webSearchQuery: 'ajc.ai.webSearchQuery',
+      lengthPreset: 'ajc.ai.lengthPreset',
+      autoCoverEnabled: 'ajc.ai.autoCoverEnabled',
+      autoIllustrationsEnabled: 'ajc.ai.autoIllustrationsEnabled',
+      illustrationCount: 'ajc.ai.illustrationCount',
     };
 
-    const readNamedFieldValue = (name) => String(form?.elements?.namedItem(name)?.value ?? '');
-    const readNamedCheckboxValue = (name) => Boolean(form?.elements?.namedItem(name)?.checked);
+    const readNamedField = (name) => form?.elements?.namedItem(name);
+    const readNamedFieldValue = (name, fallback = '') => String(readNamedField(name)?.value ?? fallback);
+    const readNamedCheckboxValue = (name, fallback = false) => {
+      const field = readNamedField(name);
+      return field && 'checked' in field ? Boolean(field.checked) : fallback;
+    };
+
     const buildStoredConfigSnapshot = () => ({
       baseUrl: baseUrlInput?.value?.trim() || '',
       apiKey: apiKeyInput?.value?.trim() || '',
@@ -175,6 +228,10 @@ if (!authenticated) {
       systemPrompt: readNamedFieldValue('systemPrompt'),
       webSearchEnabled: readNamedCheckboxValue('webSearchEnabled'),
       webSearchQuery: readNamedFieldValue('webSearchQuery'),
+      lengthPreset: readNamedFieldValue('lengthPreset', 'compact'),
+      autoCoverEnabled: readNamedCheckboxValue('autoCoverEnabled', true),
+      autoIllustrationsEnabled: readNamedCheckboxValue('autoIllustrationsEnabled', true),
+      illustrationCount: readNamedFieldValue('illustrationCount', '2'),
     });
 
     const loadStoredConfig = () => {
@@ -187,6 +244,10 @@ if (!authenticated) {
           systemPrompt: localStorage.getItem(STORAGE_KEYS.systemPrompt) || '',
           webSearchEnabled: localStorage.getItem(STORAGE_KEYS.webSearchEnabled) === '1',
           webSearchQuery: localStorage.getItem(STORAGE_KEYS.webSearchQuery) || '',
+          lengthPreset: localStorage.getItem(STORAGE_KEYS.lengthPreset) || 'compact',
+          autoCoverEnabled: localStorage.getItem(STORAGE_KEYS.autoCoverEnabled) !== '0',
+          autoIllustrationsEnabled: localStorage.getItem(STORAGE_KEYS.autoIllustrationsEnabled) !== '0',
+          illustrationCount: localStorage.getItem(STORAGE_KEYS.illustrationCount) || '2',
         };
       } catch {
         return {
@@ -197,33 +258,35 @@ if (!authenticated) {
           systemPrompt: '',
           webSearchEnabled: false,
           webSearchQuery: '',
+          lengthPreset: 'compact',
+          autoCoverEnabled: true,
+          autoIllustrationsEnabled: true,
+          illustrationCount: '2',
         };
       }
     };
 
-    const saveStoredConfig = ({ baseUrl, apiKey, model, customPrompt, systemPrompt, webSearchEnabled, webSearchQuery }) => {
+    const saveStoredConfig = (snapshot) => {
       try {
-        localStorage.setItem(STORAGE_KEYS.baseUrl, baseUrl || '');
-        localStorage.setItem(STORAGE_KEYS.apiKey, apiKey || '');
-        localStorage.setItem(STORAGE_KEYS.model, model || '');
-        localStorage.setItem(STORAGE_KEYS.customPrompt, customPrompt || '');
-        localStorage.setItem(STORAGE_KEYS.systemPrompt, systemPrompt || '');
-        localStorage.setItem(STORAGE_KEYS.webSearchEnabled, webSearchEnabled ? '1' : '0');
-        localStorage.setItem(STORAGE_KEYS.webSearchQuery, webSearchQuery || '');
+        localStorage.setItem(STORAGE_KEYS.baseUrl, snapshot.baseUrl || '');
+        localStorage.setItem(STORAGE_KEYS.apiKey, snapshot.apiKey || '');
+        localStorage.setItem(STORAGE_KEYS.model, snapshot.model || '');
+        localStorage.setItem(STORAGE_KEYS.customPrompt, snapshot.customPrompt || '');
+        localStorage.setItem(STORAGE_KEYS.systemPrompt, snapshot.systemPrompt || '');
+        localStorage.setItem(STORAGE_KEYS.webSearchEnabled, snapshot.webSearchEnabled ? '1' : '0');
+        localStorage.setItem(STORAGE_KEYS.webSearchQuery, snapshot.webSearchQuery || '');
+        localStorage.setItem(STORAGE_KEYS.lengthPreset, snapshot.lengthPreset || 'compact');
+        localStorage.setItem(STORAGE_KEYS.autoCoverEnabled, snapshot.autoCoverEnabled ? '1' : '0');
+        localStorage.setItem(STORAGE_KEYS.autoIllustrationsEnabled, snapshot.autoIllustrationsEnabled ? '1' : '0');
+        localStorage.setItem(STORAGE_KEYS.illustrationCount, snapshot.illustrationCount || '2');
       } catch {
-        // Ignore storage failures and continue with in-memory usage only.
+        // Ignore storage errors.
       }
     };
 
     const clearStoredConfig = () => {
       try {
-        localStorage.removeItem(STORAGE_KEYS.baseUrl);
-        localStorage.removeItem(STORAGE_KEYS.apiKey);
-        localStorage.removeItem(STORAGE_KEYS.model);
-        localStorage.removeItem(STORAGE_KEYS.customPrompt);
-        localStorage.removeItem(STORAGE_KEYS.systemPrompt);
-        localStorage.removeItem(STORAGE_KEYS.webSearchEnabled);
-        localStorage.removeItem(STORAGE_KEYS.webSearchQuery);
+        Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
       } catch {
         // Ignore storage cleanup failures.
       }
@@ -244,7 +307,7 @@ if (!authenticated) {
       const editLink = document.createElement('a');
       editLink.className = 'button button-primary';
       editLink.href = post.adminUrl;
-      editLink.textContent = '继续编辑';
+      editLink.textContent = '打开后台编辑';
       resultActions.append(editLink);
 
       if (post.publicUrl) {
@@ -253,13 +316,13 @@ if (!authenticated) {
         publicLink.href = post.publicUrl;
         publicLink.target = '_blank';
         publicLink.rel = 'noreferrer';
-        publicLink.textContent = '查看前台';
+        publicLink.textContent = '查看前台页面';
         resultActions.append(publicLink);
       }
     };
 
     const appendStreamOutput = (chunk) => {
-      const current = streamOutput.textContent === '等待开始写作...' ? '' : streamOutput.textContent;
+      const current = streamOutput.textContent === EMPTY_STREAM_TEXT ? '' : streamOutput.textContent;
       streamOutput.textContent = `${current}${chunk}`;
       streamOutput.scrollTop = streamOutput.scrollHeight;
     };
@@ -272,7 +335,7 @@ if (!authenticated) {
       researchOutput.innerHTML = '';
       const placeholder = document.createElement('div');
       placeholder.className = 'ai-research-placeholder';
-      placeholder.textContent = enabled ? '正在联网检索资料...' : '本次未开启联网检索。';
+      placeholder.textContent = enabled ? '正在等待联网检索结果...' : EMPTY_RESEARCH_TEXT;
       researchOutput.append(placeholder);
     };
 
@@ -285,7 +348,7 @@ if (!authenticated) {
 
       const summary = document.createElement('div');
       summary.className = 'ai-research-summary';
-      summary.textContent = message || (sources?.length ? `已检索 ${sources.length} 条资料。` : '没有检索到可用资料。');
+      summary.textContent = message || (Array.isArray(sources) && sources.length ? `共整理 ${sources.length} 条资料。` : '没有可展示的资料。');
       researchOutput.append(summary);
 
       if (query) {
@@ -308,13 +371,15 @@ if (!authenticated) {
         title.textContent = source.title || '未命名来源';
         item.append(title);
 
-        const link = document.createElement('a');
-        link.className = 'ai-research-item-link';
-        link.href = source.url;
-        link.target = '_blank';
-        link.rel = 'noreferrer';
-        link.textContent = source.url;
-        item.append(link);
+        if (source.url) {
+          const link = document.createElement('a');
+          link.className = 'ai-research-item-link';
+          link.href = source.url;
+          link.target = '_blank';
+          link.rel = 'noreferrer';
+          link.textContent = source.url;
+          item.append(link);
+        }
 
         if (source.snippet) {
           const snippet = document.createElement('p');
@@ -327,9 +392,174 @@ if (!authenticated) {
       });
     };
 
+    const resetAssetsOutput = (enabled = false) => {
+      if (!assetOutput) {
+        return;
+      }
+
+      assetOutput.innerHTML = '';
+      const placeholder = document.createElement('div');
+      placeholder.className = 'ai-assets-placeholder';
+      placeholder.textContent = enabled ? '正在等待自动配图...' : EMPTY_ASSET_TEXT;
+      assetOutput.append(placeholder);
+    };
+
+    const appendAssetMeta = (container, text) => {
+      if (!text) {
+        return;
+      }
+
+      const node = document.createElement('p');
+      node.className = 'ai-asset-meta';
+      node.textContent = text;
+      container.append(node);
+    };
+
+    const appendAssetLink = (container, text, href) => {
+      if (!href) {
+        return;
+      }
+
+      const link = document.createElement('a');
+      link.className = 'button';
+      link.href = href;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.textContent = text;
+      container.append(link);
+    };
+
+    const renderAssetCard = ({ label, title, imageUrl, previewUrl, query, creator, license, sourceUrl, caption }) => {
+      const card = document.createElement('article');
+      card.className = 'ai-asset-card';
+
+      const media = document.createElement('div');
+      media.className = 'ai-asset-media';
+      const image = document.createElement('img');
+      image.src = previewUrl || imageUrl;
+      image.alt = title || label;
+      image.loading = 'lazy';
+      media.append(image);
+      card.append(media);
+
+      const body = document.createElement('div');
+      body.className = 'ai-asset-body';
+
+      const eyebrow = document.createElement('div');
+      eyebrow.className = 'ai-asset-eyebrow';
+      eyebrow.textContent = label;
+      body.append(eyebrow);
+
+      const heading = document.createElement('h3');
+      heading.className = 'ai-asset-title';
+      heading.textContent = title || label;
+      body.append(heading);
+
+      appendAssetMeta(body, query ? `检索词：${query}` : '');
+      appendAssetMeta(body, creator ? `作者：${creator}` : '');
+      appendAssetMeta(body, license ? `许可：${license}` : '');
+
+      if (caption) {
+        const captionNode = document.createElement('p');
+        captionNode.className = 'ai-asset-caption';
+        captionNode.textContent = caption;
+        body.append(captionNode);
+      }
+
+      const links = document.createElement('div');
+      links.className = 'ai-asset-links';
+      appendAssetLink(links, '查看图片', imageUrl);
+      appendAssetLink(links, '来源页面', sourceUrl);
+
+      if (links.childElementCount) {
+        body.append(links);
+      }
+
+      card.append(body);
+      return card;
+    };
+
+    const renderAssetsOutput = ({ message, cover, illustrations, plan }) => {
+      if (!assetOutput) {
+        return;
+      }
+
+      assetOutput.innerHTML = '';
+
+      const summary = document.createElement('div');
+      summary.className = 'ai-assets-summary';
+      summary.textContent = message || '自动配图已完成。';
+      assetOutput.append(summary);
+
+      if (plan && (Array.isArray(plan.coverQueries) || Array.isArray(plan.illustrations))) {
+        const planNode = document.createElement('div');
+        planNode.className = 'ai-asset-plan';
+
+        if (Array.isArray(plan.coverQueries) && plan.coverQueries.length) {
+          const coverPlan = document.createElement('p');
+          coverPlan.className = 'ai-asset-meta';
+          coverPlan.textContent = `封面检索词：${plan.coverQueries.join(' / ')}`;
+          planNode.append(coverPlan);
+        }
+
+        if (Array.isArray(plan.illustrations) && plan.illustrations.length) {
+          const illustrationPlan = document.createElement('p');
+          illustrationPlan.className = 'ai-asset-meta';
+          illustrationPlan.textContent = `插图计划：${plan.illustrations.map((item) => `${item.heading} -> ${item.query}`).join('；')}`;
+          planNode.append(illustrationPlan);
+        }
+
+        if (planNode.childElementCount) {
+          assetOutput.append(planNode);
+        }
+      }
+
+      const grid = document.createElement('div');
+      grid.className = 'ai-asset-grid';
+
+      if (cover?.url) {
+        grid.append(renderAssetCard({
+          label: cover.mode === 'manual' ? '手动封面' : '自动封面',
+          title: cover.title || (cover.mode === 'manual' ? '当前封面' : '封面候选'),
+          imageUrl: cover.url,
+          previewUrl: cover.previewUrl,
+          query: cover.query,
+          creator: cover.creator,
+          license: cover.license,
+          sourceUrl: cover.sourceUrl,
+        }));
+      }
+
+      if (Array.isArray(illustrations)) {
+        illustrations.forEach((item, index) => {
+          grid.append(renderAssetCard({
+            label: `正文插图 ${index + 1}`,
+            title: item.alt || item.heading || `正文插图 ${index + 1}`,
+            imageUrl: item.imageUrl,
+            previewUrl: item.previewUrl,
+            query: item.query,
+            creator: item.creator,
+            license: item.license,
+            sourceUrl: item.sourceUrl,
+            caption: item.caption,
+          }));
+        });
+      }
+
+      if (!grid.childElementCount) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'ai-assets-placeholder';
+        placeholder.textContent = message || EMPTY_ASSET_TEXT;
+        assetOutput.append(placeholder);
+        return;
+      }
+
+      assetOutput.append(grid);
+    };
+
     const readEventStream = async (response, handlers) => {
       if (!response.body) {
-        throw new Error('浏览器未拿到可读取的流式响应。');
+        throw new Error('服务端没有返回可读取的流式内容。');
       }
 
       const reader = response.body.getReader();
@@ -370,10 +600,10 @@ if (!authenticated) {
     const fillModels = (models) => {
       modelSelect.innerHTML = '';
 
-      if (!models.length) {
+      if (!Array.isArray(models) || !models.length) {
         const option = document.createElement('option');
         option.value = '';
-        option.textContent = '当前没有可用模型';
+        option.textContent = '没有拿到可用模型';
         modelSelect.append(option);
         return;
       }
@@ -405,57 +635,73 @@ if (!authenticated) {
         apiKeyInput.value = stored.apiKey;
       }
 
-      const customPromptInput = form?.elements?.namedItem('customPrompt');
-      if (customPromptInput && 'value' in customPromptInput) {
-        customPromptInput.value = stored.customPrompt;
-      }
+      [
+        ['customPrompt', stored.customPrompt],
+        ['systemPrompt', stored.systemPrompt],
+        ['webSearchQuery', stored.webSearchQuery],
+        ['lengthPreset', stored.lengthPreset],
+        ['illustrationCount', stored.illustrationCount],
+      ].forEach(([name, value]) => {
+        const field = readNamedField(name);
+        if (field && 'value' in field) {
+          field.value = value;
+        }
+      });
 
-      const systemPromptInput = form?.elements?.namedItem('systemPrompt');
-      if (systemPromptInput && 'value' in systemPromptInput) {
-        systemPromptInput.value = stored.systemPrompt;
-      }
-
-      const webSearchEnabledInput = form?.elements?.namedItem('webSearchEnabled');
-      if (webSearchEnabledInput && 'checked' in webSearchEnabledInput) {
-        webSearchEnabledInput.checked = stored.webSearchEnabled;
-      }
-
-      const webSearchQueryInput = form?.elements?.namedItem('webSearchQuery');
-      if (webSearchQueryInput && 'value' in webSearchQueryInput) {
-        webSearchQueryInput.value = stored.webSearchQuery;
-      }
+      [
+        ['webSearchEnabled', stored.webSearchEnabled],
+        ['autoCoverEnabled', stored.autoCoverEnabled],
+        ['autoIllustrationsEnabled', stored.autoIllustrationsEnabled],
+      ].forEach(([name, checked]) => {
+        const field = readNamedField(name);
+        if (field && 'checked' in field) {
+          field.checked = checked;
+        }
+      });
 
       if (stored.baseUrl || stored.apiKey) {
-        setStatus('已恢复本地保存的 AI 连接配置。');
+        setStatus('已恢复上次保存的 AI 配置。');
       }
     };
 
     restoreStoredConfig();
     resetResearchOutput(readNamedCheckboxValue('webSearchEnabled'));
+    resetAssetsOutput(readNamedCheckboxValue('autoCoverEnabled', true) || readNamedCheckboxValue('autoIllustrationsEnabled', true));
 
     clearConfigButton?.addEventListener('click', () => {
       clearStoredConfig();
       baseUrlInput.value = '';
       apiKeyInput.value = '';
-      modelSelect.innerHTML = '<option value="">请先加载模型列表</option>';
-      const customPromptInput = form?.elements?.namedItem('customPrompt');
-      if (customPromptInput && 'value' in customPromptInput) {
-        customPromptInput.value = '';
-      }
-      const systemPromptInput = form?.elements?.namedItem('systemPrompt');
-      if (systemPromptInput && 'value' in systemPromptInput) {
-        systemPromptInput.value = '';
-      }
-      const webSearchEnabledInput = form?.elements?.namedItem('webSearchEnabled');
-      if (webSearchEnabledInput && 'checked' in webSearchEnabledInput) {
-        webSearchEnabledInput.checked = false;
-      }
-      const webSearchQueryInput = form?.elements?.namedItem('webSearchQuery');
-      if (webSearchQueryInput && 'value' in webSearchQueryInput) {
-        webSearchQueryInput.value = '';
-      }
+      modelSelect.innerHTML = '<option value="">请先加载模型</option>';
+
+      [
+        ['customPrompt', ''],
+        ['systemPrompt', ''],
+        ['webSearchQuery', ''],
+        ['lengthPreset', 'compact'],
+        ['illustrationCount', '2'],
+      ].forEach(([name, value]) => {
+        const field = readNamedField(name);
+        if (field && 'value' in field) {
+          field.value = value;
+        }
+      });
+
+      [
+        ['webSearchEnabled', false],
+        ['autoCoverEnabled', true],
+        ['autoIllustrationsEnabled', true],
+        ['featured', false],
+      ].forEach(([name, checked]) => {
+        const field = readNamedField(name);
+        if (field && 'checked' in field) {
+          field.checked = checked;
+        }
+      });
+
       resetResearchOutput(false);
-      setStatus('已清除本地保存的 AI 连接配置。');
+      resetAssetsOutput(true);
+      setStatus('本地保存的 AI 配置已清空。');
     });
 
     loadModelsButton?.addEventListener('click', async () => {
@@ -468,7 +714,7 @@ if (!authenticated) {
       }
 
       loadModelsButton.disabled = true;
-      setStatus('正在加载可用模型...');
+      setStatus('正在获取模型列表...');
 
       try {
         const response = await fetch('/api/admin/ai/models', {
@@ -482,28 +728,28 @@ if (!authenticated) {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.message || '加载模型失败');
+          throw new Error(data.message || '获取模型列表失败。');
         }
 
         fillModels(data.models || []);
         saveStoredConfig(buildStoredConfigSnapshot());
-        setStatus(`模型加载成功，共 ${data.models?.length ?? 0} 个。`);
+        setStatus(`已获取 ${data.models?.length ?? 0} 个模型。`);
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : '加载模型失败，请检查配置。', true);
+        setStatus(error instanceof Error ? error.message : '获取模型列表失败。', true);
       } finally {
         loadModelsButton.disabled = false;
       }
     });
 
-    form?.addEventListener('submit', async (event) => {
-      event.preventDefault();
+    form?.addEventListener('submit', async (submitEvent) => {
+      submitEvent.preventDefault();
 
       const baseUrl = baseUrlInput?.value?.trim();
       const apiKey = apiKeyInput?.value?.trim();
       const model = modelSelect?.value?.trim();
 
       if (!baseUrl || !apiKey || !model) {
-        setStatus('请先填写连接信息并加载模型。', true);
+        setStatus('请先填写模型配置并加载可用模型。', true);
         return;
       }
 
@@ -518,9 +764,13 @@ if (!authenticated) {
         requirements: String(formData.get('requirements') ?? ''),
         customPrompt: String(formData.get('customPrompt') ?? ''),
         systemPrompt: String(formData.get('systemPrompt') ?? ''),
+        lengthPreset: String(formData.get('lengthPreset') ?? 'compact'),
         webSearchEnabled: formData.get('webSearchEnabled') === 'on',
         webSearchQuery: String(formData.get('webSearchQuery') ?? ''),
         cover: String(formData.get('cover') ?? ''),
+        autoCoverEnabled: formData.get('autoCoverEnabled') === 'on',
+        autoIllustrationsEnabled: formData.get('autoIllustrationsEnabled') === 'on',
+        illustrationCount: Number(formData.get('illustrationCount') ?? 2),
         status: String(formData.get('status') ?? 'draft'),
         featured: formData.get('featured') === 'on',
       };
@@ -529,9 +779,10 @@ if (!authenticated) {
 
       generateButton.disabled = true;
       resultActions.innerHTML = '';
-      streamOutput.textContent = '';
+      streamOutput.textContent = EMPTY_STREAM_TEXT;
       resetResearchOutput(payload.webSearchEnabled);
-      setStatus('AI 正在写作，请稍候...');
+      resetAssetsOutput(payload.autoCoverEnabled || payload.autoIllustrationsEnabled);
+      setStatus('正在启动 AI 写作...');
 
       try {
         const response = await fetch('/api/admin/ai/generate', {
@@ -545,7 +796,7 @@ if (!authenticated) {
 
         if (!response.ok) {
           const data = await response.json();
-          throw new Error(data.message || 'AI 写作失败');
+          throw new Error(data.message || 'AI 写作失败。');
         }
 
         await readEventStream(response, {
@@ -554,6 +805,12 @@ if (!authenticated) {
           },
           research: (data) => {
             renderResearchOutput(data);
+            if (data.message) {
+              setStatus(data.message);
+            }
+          },
+          assets: (data) => {
+            renderAssetsOutput(data);
             if (data.message) {
               setStatus(data.message);
             }
@@ -574,11 +831,11 @@ if (!authenticated) {
               streamOutput.textContent = data.rawText;
             }
 
-            setStatus(data.message || 'AI 写作失败，请稍后重试。', true);
+            setStatus(data.message || 'AI 写作失败，请稍后再试。', true);
           },
         });
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : 'AI 写作失败，请稍后重试。', true);
+        setStatus(error instanceof Error ? error.message : 'AI 写作失败，请稍后再试。', true);
       } finally {
         generateButton.disabled = false;
       }
@@ -596,8 +853,16 @@ if (!authenticated) {
       saveStoredConfig(buildStoredConfigSnapshot());
     });
 
-    form?.addEventListener('change', () => {
+    form?.addEventListener('change', (changeEvent) => {
       saveStoredConfig(buildStoredConfigSnapshot());
+
+      if (changeEvent?.target?.name === 'webSearchEnabled') {
+        resetResearchOutput(readNamedCheckboxValue('webSearchEnabled'));
+      }
+
+      if (changeEvent?.target?.name === 'autoCoverEnabled' || changeEvent?.target?.name === 'autoIllustrationsEnabled') {
+        resetAssetsOutput(readNamedCheckboxValue('autoCoverEnabled', true) || readNamedCheckboxValue('autoIllustrationsEnabled', true));
+      }
     });
   </script>
 </AdminLayout>

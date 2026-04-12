@@ -344,3 +344,34 @@ export async function suggestCoverFromContent(
   });
   return suggestions[0] ?? null;
 }
+
+export async function suggestImageForQuery(
+  query: string,
+  options: {
+    fetchImpl?: FetchLike;
+    queryMode?: 'ai' | 'heuristic';
+  } = {},
+): Promise<CoverSuggestion | null> {
+  const normalizedQuery = collapseWhitespace(query);
+
+  if (!normalizedQuery) {
+    return null;
+  }
+
+  const results = await searchOpenverseImages(normalizedQuery, options.fetchImpl ?? fetch);
+
+  if (!results.length) {
+    return null;
+  }
+
+  const best = [...results]
+    .map((item) => ({
+      item,
+      score: scoreImageCandidate(item, normalizedQuery),
+    }))
+    .sort((left, right) => right.score - left.score)
+    .map(({ item, score }) => toCoverSuggestion(item, normalizedQuery, options.queryMode ?? 'ai', score))
+    .find((item): item is ScoredCoverSuggestion => Boolean(item));
+
+  return best ? stripScore(best) : null;
+}

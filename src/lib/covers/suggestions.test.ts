@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildCoverSearchQueries, suggestCoverCandidatesFromContent, suggestCoverFromContent } from './suggestions';
+import { buildCoverSearchQueries, suggestCoverCandidatesFromContent, suggestCoverFromContent, suggestImageForQuery } from './suggestions';
 
 test('buildCoverSearchQueries 会优先组合标签和正文里的英文关键词', () => {
   const queries = buildCoverSearchQueries({
@@ -175,4 +175,41 @@ test('suggestCoverCandidatesFromContent 会返回最多 3 张候选封面', asyn
 
   assert.equal(suggestions.length, 3);
   assert.equal(suggestions[0]?.coverUrl, 'https://example.com/thumb/one.jpg');
+});
+
+test('suggestImageForQuery 会为正文插图挑出最合适的图片', async () => {
+  const suggestion = await suggestImageForQuery('deployment workflow diagram', {
+    fetchImpl: async () => new Response(JSON.stringify({
+      results: [
+        {
+          title: 'Tiny icon',
+          thumbnail: 'https://example.com/thumb/icon.png',
+          url: 'https://example.com/full/icon.png',
+          width: 300,
+          height: 300,
+          license: 'by',
+        },
+        {
+          title: 'Deployment workflow diagram',
+          thumbnail: 'https://example.com/thumb/diagram.jpg',
+          url: 'https://example.com/full/diagram.jpg',
+          width: 1600,
+          height: 900,
+          license: 'cc0',
+          creator: 'Openverse User',
+          foreign_landing_url: 'https://example.com/diagram',
+        },
+      ],
+    }), {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+    }),
+    queryMode: 'ai',
+  });
+
+  assert.equal(suggestion?.coverUrl, 'https://example.com/thumb/diagram.jpg');
+  assert.equal(suggestion?.query, 'deployment workflow diagram');
+  assert.equal(suggestion?.queryMode, 'ai');
+  assert.equal(suggestion?.creator, 'Openverse User');
 });

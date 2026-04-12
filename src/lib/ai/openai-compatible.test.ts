@@ -1,84 +1,92 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildWriterPrompt, generateCoverSearchQueries, parseGeneratedPostDraft, slugifyTitle } from './openai-compatible';
+import {
+  buildWriterPrompt,
+  generateCoverSearchQueries,
+  generateVisualSearchPlan,
+  parseGeneratedPostDraft,
+  slugifyTitle,
+} from './openai-compatible';
 
-test('slugifyTitle 会把标题转换为 kebab-case slug', () => {
+test('slugifyTitle converts plain titles to kebab-case', () => {
   assert.equal(slugifyTitle('Hello Astro World'), 'hello-astro-world');
   assert.equal(slugifyTitle('Cloudflare + Astro'), 'cloudflare-astro');
 });
 
-test('parseGeneratedPostDraft 会解析 fenced json 并规范 slug', () => {
+test('parseGeneratedPostDraft parses fenced JSON drafts', () => {
   const draft = parseGeneratedPostDraft(
-    '```json\n{"title":"Astro 部署实践","slug":"Astro Deploy Guide","description":"一篇部署总结","tags":["Astro","Cloudflare"],"content":"# Astro 部署实践\\n\\n正文"}\n```',
-    '备用主题',
+    '```json\n{"title":"Astro 部署指南","slug":"Astro Deploy Guide","description":"一篇简短摘要","tags":["Astro","Cloudflare"],"content":"# Astro 部署指南\\n\\n开始写作"}\n```',
+    '默认主题',
   );
 
-  assert.equal(draft.title, 'Astro 部署实践');
+  assert.equal(draft.title, 'Astro 部署指南');
   assert.equal(draft.slug, 'astro-deploy-guide');
-  assert.equal(draft.description, '一篇部署总结');
+  assert.equal(draft.description, '一篇简短摘要');
   assert.deepEqual(draft.tags, ['Astro', 'Cloudflare']);
-  assert.match(draft.content, /^# Astro 部署实践/);
+  assert.match(draft.content, /^# Astro 部署指南/);
 });
 
-test('parseGeneratedPostDraft 会解析 frontmatter markdown', () => {
+test('parseGeneratedPostDraft parses frontmatter markdown drafts', () => {
   const draft = parseGeneratedPostDraft(
     `---
-title: Astro 云端部署实践
+title: Astro Cloudflare 部署指南
 slug: astro-cloud-deploy
-description: 一篇关于 Astro 部署的总结
+description: 一篇介绍 Astro 部署到 Cloudflare 的文章
 tags:
   - Astro
   - Cloudflare
 ---
-# Astro 云端部署实践
+# Astro Cloudflare 部署指南
 
-这里是正文。
-`,
-    '备用主题',
+开始写作`,
+    '默认主题',
   );
 
-  assert.equal(draft.title, 'Astro 云端部署实践');
+  assert.equal(draft.title, 'Astro Cloudflare 部署指南');
   assert.equal(draft.slug, 'astro-cloud-deploy');
-  assert.equal(draft.description, '一篇关于 Astro 部署的总结');
+  assert.equal(draft.description, '一篇介绍 Astro 部署到 Cloudflare 的文章');
   assert.deepEqual(draft.tags, ['Astro', 'Cloudflare']);
-  assert.match(draft.content, /^# Astro 云端部署实践/);
+  assert.match(draft.content, /^# Astro Cloudflare 部署指南/);
 });
 
-test('parseGeneratedPostDraft 在缺少必要字段时抛出错误', () => {
+test('parseGeneratedPostDraft rejects incomplete drafts', () => {
   assert.throws(
-    () => parseGeneratedPostDraft('{"title":"Only Title","slug":"only-title","tags":[],"content":""}', '备用主题'),
-    /结构不完整/,
+    () => parseGeneratedPostDraft('{"title":"Only Title","slug":"only-title","tags":[],"content":""}', '默认主题'),
+    /Markdown Frontmatter|AI/,
   );
 });
 
-test('buildWriterPrompt 会拼接联网检索资料与自定义提示词', () => {
+test('buildWriterPrompt includes web research and compact length guidance', () => {
   const prompt = buildWriterPrompt({
     topic: 'Astro + Cloudflare 部署',
-    audience: '前端开发者',
+    audience: '独立开发者',
     keywords: 'Astro, Cloudflare',
-    requirements: '需要有部署步骤',
-    customPrompt: '请写得更像实战复盘。',
+    requirements: '语气自然，步骤清晰',
+    customPrompt: '请加入一个简短结论。',
+    lengthPreset: 'compact',
     webResearch: {
       query: 'Astro Cloudflare Pages deploy',
       sources: [
         {
           title: 'Deploy your Astro site to Cloudflare Pages',
           url: 'https://example.com/docs/astro-cloudflare',
-          snippet: '官方文档介绍如何部署 Astro 到 Cloudflare Pages。',
-          excerpt: '在 Cloudflare Pages 中连接 GitHub 仓库后，可以直接从构建产物完成部署。',
+          snippet: 'This guide explains how to deploy Astro to Cloudflare Pages.',
+          excerpt: 'Connect your GitHub repository to Cloudflare Pages and configure the build output.',
         },
       ],
     },
   });
 
-  assert.match(prompt, /联网检索词：Astro Cloudflare Pages deploy/);
+  assert.match(prompt, /Astro Cloudflare Pages deploy/);
   assert.match(prompt, /Deploy your Astro site to Cloudflare Pages/);
-  assert.match(prompt, /网页摘录：在 Cloudflare Pages 中连接 GitHub 仓库后/);
-  assert.match(prompt, /请写得更像实战复盘/);
+  assert.match(prompt, /GitHub repository/);
+  assert.match(prompt, /700/);
+  assert.match(prompt, /1100/);
+  assert.match(prompt, /简短结论/);
 });
 
-test('generateCoverSearchQueries 会解析模型返回的 JSON 检索词', async () => {
+test('generateCoverSearchQueries parses model JSON output', async () => {
   const originalFetch = globalThis.fetch;
 
   globalThis.fetch = async () => new Response(JSON.stringify({
@@ -97,10 +105,10 @@ test('generateCoverSearchQueries 会解析模型返回的 JSON 检索词', async
 
   try {
     const queries = await generateCoverSearchQueries('https://api.example.com/v1', 'test-key', 'test-model', {
-      title: 'Cloudflare 部署复盘',
-      description: '记录部署细节',
+      title: 'Cloudflare 后台配置指南',
+      description: '一篇关于仪表盘配置的文章',
       tags: ['Cloudflare', 'Astro'],
-      content: '这里是正文。',
+      content: '正文内容',
     });
 
     assert.deepEqual(queries, [
@@ -108,6 +116,56 @@ test('generateCoverSearchQueries 会解析模型返回的 JSON 检索词', async
       'developer laptop setup',
       'server rack deployment',
     ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('generateVisualSearchPlan parses cover and illustration plans', async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    choices: [
+      {
+        message: {
+          content: JSON.stringify({
+            coverQueries: ['cloudflare dashboard workspace', 'developer setup'],
+            illustrations: [
+              {
+                heading: '部署流程',
+                query: 'deployment workflow diagram',
+                alt: '部署流程示意图',
+                caption: '用流程图帮助读者理解部署步骤。',
+              },
+              {
+                heading: '后台配置',
+                query: 'cloudflare dashboard settings',
+                alt: 'Cloudflare 后台设置图',
+              },
+            ],
+          }),
+        },
+      },
+    ],
+  }), {
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+  });
+
+  try {
+    const plan = await generateVisualSearchPlan('https://api.example.com/v1', 'test-key', 'test-model', {
+      title: 'Cloudflare 部署指南',
+      description: '一篇关于部署和后台配置的文章',
+      tags: ['Cloudflare', 'Astro'],
+      content: '# Cloudflare 部署指南',
+      maxIllustrations: 1,
+    });
+
+    assert.deepEqual(plan.coverQueries, ['cloudflare dashboard workspace', 'developer setup']);
+    assert.equal(plan.illustrations.length, 1);
+    assert.equal(plan.illustrations[0]?.heading, '部署流程');
+    assert.equal(plan.illustrations[0]?.query, 'deployment workflow diagram');
   } finally {
     globalThis.fetch = originalFetch;
   }

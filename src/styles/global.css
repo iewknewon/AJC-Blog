@@ -740,6 +740,90 @@ img {
   color: var(--text-muted);
 }
 
+.ai-option-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ai-assets-output {
+  display: grid;
+  gap: 1rem;
+}
+
+.ai-assets-placeholder,
+.ai-assets-summary {
+  color: var(--text-muted);
+}
+
+.ai-asset-plan {
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  background: var(--surface-muted);
+  padding: 1rem;
+}
+
+.ai-asset-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.ai-asset-card {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface-muted);
+  padding: 1rem;
+}
+
+.ai-asset-media {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.ai-asset-media img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.ai-asset-body {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+}
+
+.ai-asset-eyebrow {
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ai-asset-title {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.ai-asset-meta,
+.ai-asset-caption {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.ai-asset-links {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+
 .admin-stat-value {
   margin: 0;
   font-size: 2rem;
@@ -802,6 +886,11 @@ img {
   }
 
   .admin-cover-candidates {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-option-grid,
+  .ai-asset-card {
     grid-template-columns: 1fr;
   }
 
