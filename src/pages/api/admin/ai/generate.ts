@@ -1,4 +1,4 @@
-import { generateCompatiblePost } from '../../../../lib/ai/openai-compatible';
+import { parseGeneratedPostDraft, streamCompatiblePostText } from '../../../../lib/ai/openai-compatible';
 import { validatePostInput } from '../../../../lib/admin/validation';
 import { requireAdminApiAuth } from '../../../../lib/auth/guards';
 import { createPost, getPostBySlug } from '../../../../lib/posts/repository';
@@ -22,6 +22,10 @@ async function buildUniqueSlug(db: D1Database, desiredSlug: string) {
   }
 
   return candidate;
+}
+
+function createSseEvent(event: string, payload: Record<string, unknown>) {
+  return `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
 }
 
 export async function POST(context) {
@@ -65,51 +69,98 @@ export async function POST(context) {
     return json({ message: '请填写 Base URL、API Key、模型和文章主题。' }, 400);
   }
 
-  try {
-    const generated = await generateCompatiblePost(baseUrl, apiKey, model, {
-      topic,
-      keywords: payload.keywords,
-      audience: payload.audience,
-      requirements: payload.requirements,
-    });
+  const encoder = new TextEncoder();
+  const db = context.locals.runtime.env.DB;
 
-    const uniqueSlug = await buildUniqueSlug(context.locals.runtime.env.DB, generated.slug);
-    const validation = validatePostInput({
-      slug: uniqueSlug,
-      title: generated.title,
-      description: generated.description,
-      content: generated.content,
-      tags: generated.tags.join(', '),
-      cover,
-      featured: featured ? 'on' : '',
-      status,
-    });
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, eventPayload: Record<string, unknown>) => {
+        controller.enqueue(encoder.encode(createSseEvent(event, eventPayload)));
+      };
 
-    if (!validation.success) {
-      return json({
-        message: 'AI 已生成内容，但未通过文章校验，请调整要求后重试。',
-        fieldErrors: validation.fieldErrors,
-      }, 422);
-    }
+      let rawText = '';
+      let closed = false;
+      const close = () => {
+        if (!closed) {
+          closed = true;
+          controller.close();
+        }
+      };
 
-    const post = await createPost(context.locals.runtime.env.DB, validation.data);
+      try {
+        send('status', { message: '已连接模型，开始流式写作...' });
 
-    if (!post) {
-      return json({ message: '文章创建失败，请稍后再试。' }, 500);
-    }
+        for await (const chunk of streamCompatiblePostText(baseUrl, apiKey, model, {
+          topic,
+          keywords: payload.keywords,
+          audience: payload.audience,
+          requirements: payload.requirements,
+        })) {
+          rawText += chunk;
+          send('content', { chunk });
+        }
 
-    return json({
-      message: status === 'published' ? 'AI 文章已生成并发布。' : 'AI 文章已生成并保存为草稿。',
-      post: {
-        id: post.id,
-        title: post.title,
-        slug: post.slug,
-        status: post.status,
-        adminUrl: `/admin/posts/${post.id}`,
-        publicUrl: post.status === 'published' ? `/blog/${post.slug}/` : null,
-      },
-    });
-  } catch (error) {
-    return json({ message: error instanceof Error ? error.message : 'AI 写作失败，请稍后重试。' }, 502);
-  }
+        send('status', { message: 'AI 写作完成，正在整理文章并创建博客...' });
+
+        const generated = parseGeneratedPostDraft(rawText, topic);
+        const uniqueSlug = await buildUniqueSlug(db, generated.slug);
+        const validation = validatePostInput({
+          slug: uniqueSlug,
+          title: generated.title,
+          description: generated.description,
+          content: generated.content,
+          tags: generated.tags.join(', '),
+          cover,
+          featured: featured ? 'on' : '',
+          status,
+        });
+
+        if (!validation.success) {
+          send('error', {
+            message: 'AI 已生成内容，但未通过文章校验，请调整要求后重试。',
+            fieldErrors: validation.fieldErrors,
+            rawText,
+          });
+          close();
+          return;
+        }
+
+        const post = await createPost(db, validation.data);
+
+        if (!post) {
+          send('error', { message: '文章创建失败，请稍后再试。', rawText });
+          close();
+          return;
+        }
+
+        send('done', {
+          message: status === 'published' ? 'AI 文章已生成并发布。' : 'AI 文章已生成并保存为草稿。',
+          rawText,
+          post: {
+            id: post.id,
+            title: post.title,
+            slug: post.slug,
+            status: post.status,
+            adminUrl: `/admin/posts/${post.id}`,
+            publicUrl: post.status === 'published' ? `/blog/${post.slug}/` : null,
+          },
+        });
+      } catch (error) {
+        send('error', {
+          message: error instanceof Error ? error.message : 'AI 写作失败，请稍后重试。',
+          rawText,
+        });
+      } finally {
+        close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+    },
+  });
 }

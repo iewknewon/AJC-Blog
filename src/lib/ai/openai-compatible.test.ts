@@ -21,6 +21,30 @@ test('parseGeneratedPostDraft 会解析 fenced json 并规范 slug', () => {
   assert.match(draft.content, /^# Astro 部署实践/);
 });
 
+test('parseGeneratedPostDraft 会解析 frontmatter markdown', () => {
+  const draft = parseGeneratedPostDraft(
+    `---
+title: Astro 云端部署实践
+slug: astro-cloud-deploy
+description: 一篇关于 Astro 部署的总结
+tags:
+  - Astro
+  - Cloudflare
+---
+# Astro 云端部署实践
+
+这里是正文。
+`,
+    '备用主题',
+  );
+
+  assert.equal(draft.title, 'Astro 云端部署实践');
+  assert.equal(draft.slug, 'astro-cloud-deploy');
+  assert.equal(draft.description, '一篇关于 Astro 部署的总结');
+  assert.deepEqual(draft.tags, ['Astro', 'Cloudflare']);
+  assert.match(draft.content, /^# Astro 云端部署实践/);
+});
+
 test('parseGeneratedPostDraft 在缺少必要字段时抛出错误', () => {
   assert.throws(
     () => parseGeneratedPostDraft('{"title":"Only Title","slug":"only-title","tags":[],"content":""}', '备用主题'),

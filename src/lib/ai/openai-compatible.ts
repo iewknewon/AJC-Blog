@@ -23,6 +23,9 @@ type ChatCompletionMessage = {
 };
 
 type ChatCompletionChoice = {
+  delta?: {
+    content?: string | ChatCompletionTextPart[];
+  };
   message?: ChatCompletionMessage;
 };
 
@@ -83,6 +86,77 @@ function extractTextContent(content: ChatCompletionMessage['content']) {
   return content.map((item) => item?.text ?? '').join('').trim();
 }
 
+function extractFrontmatterDraft(rawText: string, fallbackTopic: string): GeneratedPostDraft | null {
+  const trimmed = rawText.trim();
+
+  if (!trimmed.startsWith('---')) {
+    return null;
+  }
+
+  const frontmatterMatch = trimmed.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n?([\s\S]*)$/);
+
+  if (!frontmatterMatch) {
+    throw new Error('AI 返回的 Frontmatter 格式不正确，请调整提示词后重试。');
+  }
+
+  const [, frontmatterBlock, contentBlock] = frontmatterMatch;
+  const metadata: Record<string, string | string[]> = {};
+  let currentArrayKey: string | null = null;
+
+  for (const line of frontmatterBlock.split(/\r?\n/)) {
+    const trimmedLine = line.trim();
+
+    if (!trimmedLine) {
+      continue;
+    }
+
+    const arrayItemMatch = trimmedLine.match(/^-\s+(.*)$/);
+
+    if (arrayItemMatch && currentArrayKey) {
+      const existing = Array.isArray(metadata[currentArrayKey]) ? metadata[currentArrayKey] : [];
+      metadata[currentArrayKey] = [...existing, arrayItemMatch[1].trim()];
+      continue;
+    }
+
+    const keyValueMatch = trimmedLine.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+
+    if (!keyValueMatch) {
+      continue;
+    }
+
+    const [, key, value] = keyValueMatch;
+
+    if (!value) {
+      currentArrayKey = key;
+      metadata[key] = [];
+      continue;
+    }
+
+    currentArrayKey = null;
+    metadata[key] = value.trim();
+  }
+
+  const title = String(metadata.title ?? fallbackTopic).trim();
+  const description = String(metadata.description ?? '').trim();
+  const tags = Array.isArray(metadata.tags)
+    ? [...new Set(metadata.tags.map((tag) => String(tag).trim()).filter(Boolean))]
+    : [];
+  const slugSource = String(metadata.slug ?? title).trim();
+  const content = contentBlock.trim();
+
+  if (!title || !description || !content || tags.length === 0) {
+    throw new Error('AI 返回的 Markdown Frontmatter 不完整，请调整提示词后重试。');
+  }
+
+  return {
+    title,
+    slug: slugifyTitle(slugSource),
+    description,
+    tags,
+    content,
+  };
+}
+
 function extractJsonBlock(text: string) {
   const fencedMatch = text.match(/```json\s*([\s\S]*?)\s*```/i) ?? text.match(/```\s*([\s\S]*?)\s*```/i);
 
@@ -112,6 +186,12 @@ export function slugifyTitle(input: string) {
 }
 
 export function parseGeneratedPostDraft(rawText: string, fallbackTopic: string): GeneratedPostDraft {
+  const frontmatterDraft = extractFrontmatterDraft(rawText, fallbackTopic);
+
+  if (frontmatterDraft) {
+    return frontmatterDraft;
+  }
+
   const jsonText = extractJsonBlock(rawText);
   const parsed = JSON.parse(jsonText) as Partial<GeneratedPostDraft>;
   const title = String(parsed.title ?? fallbackTopic).trim();
@@ -137,8 +217,21 @@ export function parseGeneratedPostDraft(rawText: string, fallbackTopic: string):
 
 function buildWriterPrompt(input: GeneratePostRequest) {
   return [
-    '请基于以下要求生成一篇适合技术博客发布的 Markdown 文章，并且只返回 JSON 对象。',
-    'JSON 必须包含字段：title、slug、description、tags、content。',
+    '请基于以下要求生成一篇适合技术博客发布的 Markdown 文章。',
+    '请严格输出 YAML Frontmatter + Markdown 正文，不要输出解释文字。',
+    'Frontmatter 必须包含：title、slug、description、tags。',
+    '输出格式示例：',
+    '---',
+    'title: 示例标题',
+    'slug: sample-slug',
+    'description: 一句话摘要',
+    'tags:',
+    '  - Astro',
+    '  - Cloudflare',
+    '---',
+    '# 示例标题',
+    '',
+    '这里开始正文。',
     '要求：',
     `- 文章主题：${input.topic.trim()}`,
     `- 目标读者：${input.audience?.trim() || '默认技术博客读者'}`,
@@ -146,10 +239,28 @@ function buildWriterPrompt(input: GeneratePostRequest) {
     `- 额外要求：${input.requirements?.trim() || '请保持结构清晰、可直接发布'}`,
     '- slug 必须是英文小写短横线格式。',
     '- description 需要是简洁摘要。',
-    '- tags 必须是字符串数组，至少 2 个。',
-    '- content 必须是完整 Markdown 正文，正文首行使用一级标题。',
+    '- tags 至少 2 个。',
+    '- Markdown 正文首行使用一级标题。',
     '- 默认使用中文写作，除非要求里明确指定其他语言。',
   ].join('\n');
+}
+
+function extractDeltaContent(choice?: ChatCompletionChoice) {
+  if (!choice) {
+    return '';
+  }
+
+  const deltaContent = choice.delta?.content;
+
+  if (typeof deltaContent === 'string') {
+    return deltaContent;
+  }
+
+  if (Array.isArray(deltaContent)) {
+    return deltaContent.map((item) => item?.text ?? '').join('');
+  }
+
+  return extractTextContent(choice.message?.content);
 }
 
 export async function listCompatibleModels(baseUrl: string, apiKey: string): Promise<ProviderModel[]> {
@@ -215,4 +326,97 @@ export async function generateCompatiblePost(
   }
 
   return parseGeneratedPostDraft(rawText, input.topic);
+}
+
+export async function* streamCompatiblePostText(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  input: GeneratePostRequest,
+) {
+  const response = await fetch(buildProviderUrl(baseUrl, '/chat/completions'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey.trim()}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.7,
+      stream: true,
+      messages: [
+        {
+          role: 'system',
+          content: '你是一名资深技术博客作者。你必须严格返回 YAML Frontmatter + Markdown 正文，不要输出额外解释。',
+        },
+        {
+          role: 'user',
+          content: buildWriterPrompt(input),
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseProviderError(response));
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (contentType.includes('application/json')) {
+    const data = await response.json() as ChatCompletionResponse;
+    const rawText = extractTextContent(data.choices?.[0]?.message?.content);
+
+    if (!rawText) {
+      throw new Error('AI 服务没有返回可解析的正文内容。');
+    }
+
+    yield rawText;
+    return;
+  }
+
+  if (!response.body) {
+    throw new Error('AI 服务未返回可读取的流式内容。');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split(/\r?\n\r?\n/);
+    buffer = events.pop() ?? '';
+
+    for (const eventText of events) {
+      const dataLines = eventText
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trim())
+        .filter(Boolean);
+
+      if (!dataLines.length) {
+        continue;
+      }
+
+      for (const dataLine of dataLines) {
+        if (dataLine === '[DONE]') {
+          return;
+        }
+
+        const payload = JSON.parse(dataLine) as ChatCompletionResponse;
+        const content = extractDeltaContent(payload.choices?.[0]);
+
+        if (content) {
+          yield content;
+        }
+      }
+    }
+  }
 }

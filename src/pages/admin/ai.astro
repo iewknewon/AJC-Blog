@@ -41,7 +41,7 @@ if (!authenticated) {
 
     <article class="content-card">
       <h2 class="section-title">写作设置</h2>
-      <p class="section-description">生成后会直接创建文章，并跳转到编辑页。默认不保存你的 Base URL 和 API Key。</p>
+      <p class="section-description">生成时会流式显示内容。完成后会自动创建文章，你可以继续编辑或直接查看前台。</p>
 
       <form id="ai-writer-form" class="admin-form">
         <label class="admin-field">
@@ -96,6 +96,15 @@ if (!authenticated) {
       <h2 class="section-title">当前状态</h2>
       <p class="section-description">连接模型后即可开始生成。生成成功后会自动跳转到后台编辑页。</p>
       <div id="ai-status-body" class="muted">还没有开始。</div>
+      <div id="ai-result-actions" class="hero-actions" style="margin-top: 1rem;"></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top: 0;">
+    <div class="content-card">
+      <h2 class="section-title">流式预览</h2>
+      <p class="section-description">这里会实时显示 AI 正在写的内容。当前输出采用 Frontmatter + Markdown 格式，写完后会自动入库。</p>
+      <pre id="ai-stream-output" class="ai-stream-output">等待开始写作...</pre>
     </div>
   </section>
 
@@ -107,10 +116,82 @@ if (!authenticated) {
     const apiKeyInput = document.querySelector('#ai-api-key');
     const form = document.querySelector('#ai-writer-form');
     const statusBody = document.querySelector('#ai-status-body');
+    const resultActions = document.querySelector('#ai-result-actions');
+    const streamOutput = document.querySelector('#ai-stream-output');
 
     const setStatus = (message, isError = false) => {
       statusBody.textContent = message;
       statusBody.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+    };
+
+    const setResultActions = (post) => {
+      resultActions.innerHTML = '';
+
+      if (!post) {
+        return;
+      }
+
+      const editLink = document.createElement('a');
+      editLink.className = 'button button-primary';
+      editLink.href = post.adminUrl;
+      editLink.textContent = '继续编辑';
+      resultActions.append(editLink);
+
+      if (post.publicUrl) {
+        const publicLink = document.createElement('a');
+        publicLink.className = 'button';
+        publicLink.href = post.publicUrl;
+        publicLink.target = '_blank';
+        publicLink.rel = 'noreferrer';
+        publicLink.textContent = '查看前台';
+        resultActions.append(publicLink);
+      }
+    };
+
+    const appendStreamOutput = (chunk) => {
+      const current = streamOutput.textContent === '等待开始写作...' ? '' : streamOutput.textContent;
+      streamOutput.textContent = `${current}${chunk}`;
+      streamOutput.scrollTop = streamOutput.scrollHeight;
+    };
+
+    const readEventStream = async (response, handlers) => {
+      if (!response.body) {
+        throw new Error('浏览器未拿到可读取的流式响应。');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() ?? '';
+
+        events.forEach((eventText) => {
+          const lines = eventText.split(/\r?\n/);
+          const eventLine = lines.find((line) => line.startsWith('event:'));
+          const dataLines = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim());
+
+          if (!eventLine || !dataLines.length) {
+            return;
+          }
+
+          const eventName = eventLine.slice(6).trim();
+          const payload = JSON.parse(dataLines.join('\n'));
+          const handler = handlers[eventName];
+
+          if (handler) {
+            handler(payload);
+          }
+        });
+      }
     };
 
     const fillModels = (models) => {
@@ -196,6 +277,8 @@ if (!authenticated) {
       };
 
       generateButton.disabled = true;
+      resultActions.innerHTML = '';
+      streamOutput.textContent = '';
       setStatus('AI 正在写作，请稍候...');
 
       try {
@@ -203,18 +286,39 @@ if (!authenticated) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Accept: 'text/event-stream',
           },
           body: JSON.stringify(payload),
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
+          const data = await response.json();
           throw new Error(data.message || 'AI 写作失败');
         }
 
-        setStatus(`${data.message} 正在跳转到编辑页...`);
-        window.location.href = data.post.adminUrl;
+        await readEventStream(response, {
+          status: (data) => {
+            setStatus(data.message || 'AI 正在写作...');
+          },
+          content: (data) => {
+            appendStreamOutput(data.chunk || '');
+          },
+          done: (data) => {
+            if (data.rawText) {
+              streamOutput.textContent = data.rawText;
+            }
+
+            setStatus(data.message || 'AI 写作完成。');
+            setResultActions(data.post || null);
+          },
+          error: (data) => {
+            if (data.rawText) {
+              streamOutput.textContent = data.rawText;
+            }
+
+            setStatus(data.message || 'AI 写作失败，请稍后重试。', true);
+          },
+        });
       } catch (error) {
         setStatus(error instanceof Error ? error.message : 'AI 写作失败，请稍后重试。', true);
       } finally {
