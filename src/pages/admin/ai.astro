@@ -1,0 +1,225 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { isAdminAuthenticated } from '../../lib/auth/guards';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+---
+
+<AdminLayout title="AI 写作" description="连接兼容 OpenAI API 的模型，生成文章草稿并直接进入你的博客后台。">
+  <section class="grid two" style="align-items: start;">
+    <article class="content-card">
+      <h2 class="section-title">连接模型</h2>
+      <p class="section-description">填写兼容 OpenAI API 的 Base URL 和 API Key，然后拉取模型列表。</p>
+
+      <div class="admin-form">
+        <label class="admin-field">
+          <span>Base URL</span>
+          <input id="ai-base-url" class="search-input admin-input-rect" type="text" placeholder="例如 https://api.openai.com/v1" />
+        </label>
+
+        <label class="admin-field">
+          <span>API Key</span>
+          <input id="ai-api-key" class="search-input admin-input-rect" type="password" placeholder="输入你的服务商 API Key" />
+        </label>
+
+        <div class="hero-actions">
+          <button id="load-models" class="button" type="button">获取可用模型</button>
+        </div>
+
+        <label class="admin-field">
+          <span>模型</span>
+          <select id="ai-model" class="search-input admin-input-rect">
+            <option value="">请先加载模型列表</option>
+          </select>
+        </label>
+      </div>
+    </article>
+
+    <article class="content-card">
+      <h2 class="section-title">写作设置</h2>
+      <p class="section-description">生成后会直接创建文章，并跳转到编辑页。默认不保存你的 Base URL 和 API Key。</p>
+
+      <form id="ai-writer-form" class="admin-form">
+        <label class="admin-field">
+          <span>文章主题</span>
+          <input class="search-input admin-input-rect" type="text" name="topic" placeholder="例如：Astro + Cloudflare 博客部署实践" required />
+        </label>
+
+        <label class="admin-field">
+          <span>关键词偏好</span>
+          <input class="search-input admin-input-rect" type="text" name="keywords" placeholder="例如：Astro, Cloudflare, D1, 部署" />
+        </label>
+
+        <label class="admin-field">
+          <span>目标读者</span>
+          <input class="search-input admin-input-rect" type="text" name="audience" placeholder="例如：初中级前端开发者" />
+        </label>
+
+        <label class="admin-field">
+          <span>额外要求</span>
+          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="requirements" placeholder="例如：希望包含实战步骤、常见报错、总结建议。"></textarea>
+        </label>
+
+        <label class="admin-field">
+          <span>封面链接</span>
+          <input class="search-input admin-input-rect" type="url" name="cover" placeholder="可选，例如 https://example.com/cover.png" />
+        </label>
+
+        <div class="grid two">
+          <label class="admin-field">
+            <span>保存方式</span>
+            <select class="search-input admin-input-rect" name="status">
+              <option value="draft">生成并保存为草稿</option>
+              <option value="published">生成并直接发布</option>
+            </select>
+          </label>
+
+          <label class="admin-checkbox">
+            <input type="checkbox" name="featured" />
+            <span>设为推荐文章</span>
+          </label>
+        </div>
+
+        <div class="hero-actions">
+          <button id="generate-post" class="button button-primary" type="submit">开始 AI 写作</button>
+        </div>
+      </form>
+    </article>
+  </section>
+
+  <section class="section" style="padding-top: 1.5rem;">
+    <div id="ai-status" class="content-card">
+      <h2 class="section-title">当前状态</h2>
+      <p class="section-description">连接模型后即可开始生成。生成成功后会自动跳转到后台编辑页。</p>
+      <div id="ai-status-body" class="muted">还没有开始。</div>
+    </div>
+  </section>
+
+  <script is:inline>
+    const loadModelsButton = document.querySelector('#load-models');
+    const generateButton = document.querySelector('#generate-post');
+    const modelSelect = document.querySelector('#ai-model');
+    const baseUrlInput = document.querySelector('#ai-base-url');
+    const apiKeyInput = document.querySelector('#ai-api-key');
+    const form = document.querySelector('#ai-writer-form');
+    const statusBody = document.querySelector('#ai-status-body');
+
+    const setStatus = (message, isError = false) => {
+      statusBody.textContent = message;
+      statusBody.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+    };
+
+    const fillModels = (models) => {
+      modelSelect.innerHTML = '';
+
+      if (!models.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = '当前没有可用模型';
+        modelSelect.append(option);
+        return;
+      }
+
+      models.forEach((model, index) => {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = model.id;
+        option.selected = index === 0;
+        modelSelect.append(option);
+      });
+    };
+
+    loadModelsButton?.addEventListener('click', async () => {
+      const baseUrl = baseUrlInput?.value?.trim();
+      const apiKey = apiKeyInput?.value?.trim();
+
+      if (!baseUrl || !apiKey) {
+        setStatus('请先填写 Base URL 和 API Key。', true);
+        return;
+      }
+
+      loadModelsButton.disabled = true;
+      setStatus('正在加载可用模型...');
+
+      try {
+        const response = await fetch('/api/admin/ai/models', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ baseUrl, apiKey }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '加载模型失败');
+        }
+
+        fillModels(data.models || []);
+        setStatus(`模型加载成功，共 ${data.models?.length ?? 0} 个。`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '加载模型失败，请检查配置。', true);
+      } finally {
+        loadModelsButton.disabled = false;
+      }
+    });
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const baseUrl = baseUrlInput?.value?.trim();
+      const apiKey = apiKeyInput?.value?.trim();
+      const model = modelSelect?.value?.trim();
+
+      if (!baseUrl || !apiKey || !model) {
+        setStatus('请先填写连接信息并加载模型。', true);
+        return;
+      }
+
+      const formData = new FormData(form);
+      const payload = {
+        baseUrl,
+        apiKey,
+        model,
+        topic: String(formData.get('topic') ?? ''),
+        keywords: String(formData.get('keywords') ?? ''),
+        audience: String(formData.get('audience') ?? ''),
+        requirements: String(formData.get('requirements') ?? ''),
+        cover: String(formData.get('cover') ?? ''),
+        status: String(formData.get('status') ?? 'draft'),
+        featured: formData.get('featured') === 'on',
+      };
+
+      generateButton.disabled = true;
+      setStatus('AI 正在写作，请稍候...');
+
+      try {
+        const response = await fetch('/api/admin/ai/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'AI 写作失败');
+        }
+
+        setStatus(`${data.message} 正在跳转到编辑页...`);
+        window.location.href = data.post.adminUrl;
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : 'AI 写作失败，请稍后重试。', true);
+      } finally {
+        generateButton.disabled = false;
+      }
+    });
+  </script>
+</AdminLayout>

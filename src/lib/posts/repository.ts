@@ -97,6 +97,11 @@ export async function getPostById(db: D1Database, id: string) {
   return result ? mapPostRow(result) : null;
 }
 
+export async function getPostBySlug(db: D1Database, slug: string) {
+  const result = await db.prepare(`SELECT * FROM posts WHERE slug = ? LIMIT 1`).bind(slug).first<PostRow>();
+  return result ? mapPostRow(result) : null;
+}
+
 export async function createPost(db: D1Database, input: UpsertPostInput) {
   const normalized = normalizePostInput(input);
   const now = new Date().toISOString();
@@ -138,6 +143,10 @@ export async function updatePost(db: D1Database, id: string, input: UpsertPostIn
     .run();
 
   return getPostById(db, id);
+}
+
+export async function deletePost(db: D1Database, id: string) {
+  await db.prepare(`DELETE FROM posts WHERE id = ?`).bind(id).run();
 }
 
 export async function getPostsByTag(db: D1Database, tag: string) {

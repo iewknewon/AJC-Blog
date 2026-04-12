@@ -65,5 +65,11 @@ const status = (post?.status ?? 'draft') as PostStatus;
     <button class="button button-primary" type="submit">{submitLabel}</button>
     <a class="button" href="/admin/posts">返回列表</a>
     {post?.slug ? <a class="button" href={`/blog/${post.slug}/`} target="_blank" rel="noreferrer">预览前台</a> : null}
+    {post?.id ? (
+      <form class="inline-form" action={action} method="post" onsubmit="return confirm('确认删除这篇文章吗？此操作不可恢复。')">
+        <input type="hidden" name="intent" value="delete" />
+        <button class="button button-danger" type="submit">删除文章</button>
+      </form>
+    ) : null}
   </div>
 </form>

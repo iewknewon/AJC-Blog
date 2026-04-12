@@ -191,6 +191,16 @@ img {
   border-color: var(--accent);
 }
 
+.button-danger {
+  color: #b91c1c;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.button-danger:hover {
+  border-color: #ef4444;
+}
+
 .grid {
   display: grid;
   gap: 1.25rem;
@@ -498,6 +508,10 @@ img {
   gap: 1rem;
 }
 
+.inline-form {
+  display: inline-flex;
+}
+
 .admin-field {
   display: grid;
   gap: 0.5rem;
@@ -529,6 +543,14 @@ img {
   color: #b91c1c;
   border-radius: 16px;
   padding: 0.9rem 1rem;
+}
+
+.admin-status-text {
+  color: var(--text);
+}
+
+.admin-status-text.is-error {
+  color: #b91c1c;
 }
 
 .admin-stat-value {

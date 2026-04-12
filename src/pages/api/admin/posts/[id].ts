@@ -1,6 +1,6 @@
 import { validatePostInput } from '../../../../lib/admin/validation';
 import { requireAdminApiAuth } from '../../../../lib/auth/guards';
-import { getPostById, updatePost } from '../../../../lib/posts/repository';
+import { deletePost, getPostById, updatePost } from '../../../../lib/posts/repository';
 
 export async function POST(context) {
   const unauthorized = await requireAdminApiAuth({
@@ -25,6 +25,12 @@ export async function POST(context) {
   }
 
   const formData = await context.request.formData();
+
+  if (String(formData.get('intent') ?? '') === 'delete') {
+    await deletePost(context.locals.runtime.env.DB, id);
+    return context.redirect('/admin/posts');
+  }
+
   const validation = validatePostInput({
     slug: formData.get('slug'),
     title: formData.get('title'),

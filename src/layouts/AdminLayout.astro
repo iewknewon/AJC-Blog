@@ -26,6 +26,7 @@ const { title, description = 'AJC 博客后台' } = Astro.props;
         <nav class="admin-nav">
           <a class:list={["admin-nav-link", Astro.url.pathname === '/admin' && 'is-active']} href="/admin">概览</a>
           <a class:list={["admin-nav-link", Astro.url.pathname.startsWith('/admin/posts') && 'is-active']} href="/admin/posts">文章管理</a>
+          <a class:list={["admin-nav-link", Astro.url.pathname === '/admin/ai' && 'is-active']} href="/admin/ai">AI 写作</a>
           <a class="admin-nav-link" href="/" target="_blank" rel="noreferrer">查看前台</a>
         </nav>
         <form action="/api/admin/logout" method="post" style="margin-top: auto;">

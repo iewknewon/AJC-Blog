@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  deletePost,
   mapPostRow,
   normalizePostInput,
   serializeTags,
@@ -66,4 +67,28 @@ test('mapPostRow 会把数据库行转换成领域对象', () => {
 
 test('serializeTags 会输出 JSON 字符串', () => {
   assert.equal(serializeTags(['Astro', 'Markdown']), '["Astro","Markdown"]');
+});
+
+test('deletePost 会按文章 id 执行删除', async () => {
+  const calls: Array<{ sql: string; values: unknown[] }> = [];
+  const db = {
+    prepare(sql: string) {
+      return {
+        bind(...values: unknown[]) {
+          calls.push({ sql, values });
+          return {
+            async run() {
+              return { success: true };
+            },
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+
+  await deletePost(db, 'post-1');
+
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /DELETE FROM posts WHERE id = \?/);
+  assert.deepEqual(calls[0].values, ['post-1']);
 });
