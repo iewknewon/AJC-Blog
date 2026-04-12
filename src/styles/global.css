@@ -211,6 +211,27 @@ img {
   padding: 1.5rem;
 }
 
+.post-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.post-card-cover-link {
+  display: block;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.post-card-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.post-card-body {
+  padding: 1.5rem;
+}
+
 .card h3,
 .content-card h3,
 .tag-card h3 {
@@ -303,6 +324,20 @@ img {
 
 .article-shell {
   padding: 2rem;
+}
+
+.article-cover {
+  margin: 1.5rem 0;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
+
+.article-cover img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
 }
 
 .article-content :global(pre) {

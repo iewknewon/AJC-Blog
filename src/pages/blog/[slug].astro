@@ -32,6 +32,11 @@ const publishDate = post.publishedAt ?? post.updatedAt;
       <p class="eyebrow">技术文章</p>
       <h1>{post.title}</h1>
       <p class="page-intro">{post.description}</p>
+      {post.cover ? (
+        <figure class="article-cover">
+          <img src={post.cover} alt={`${post.title} 封面图`} loading="eager" decoding="async" />
+        </figure>
+      ) : null}
       <div class="tags" style="margin-top: 1rem; margin-bottom: 1.5rem;">
         <span class="tag">{formatDate(publishDate)}</span>
         <span class="tag">{readingTime}</span>

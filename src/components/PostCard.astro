@@ -10,15 +10,22 @@ const { post } = Astro.props;
 const displayDate = post.publishedAt ?? post.updatedAt;
 ---
 
-<article class="card">
-  <p class="meta">{formatDate(displayDate)}</p>
-  <h3>
-    <a href={`/blog/${post.slug}/`}>{post.title}</a>
-  </h3>
-  <p class="muted">{post.description}</p>
-  <div class="tags">
-    {post.tags.map((tag) => (
-      <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>{tag}</a>
-    ))}
+<article class="card post-card">
+  {post.cover ? (
+    <a class="post-card-cover-link" href={`/blog/${post.slug}/`} aria-label={`阅读《${post.title}》`}>
+      <img class="post-card-cover" src={post.cover} alt={`${post.title} 封面图`} loading="lazy" decoding="async" />
+    </a>
+  ) : null}
+  <div class="post-card-body">
+    <p class="meta">{formatDate(displayDate)}</p>
+    <h3>
+      <a href={`/blog/${post.slug}/`}>{post.title}</a>
+    </h3>
+    <p class="muted">{post.description}</p>
+    <div class="tags">
+      {post.tags.map((tag) => (
+        <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>{tag}</a>
+      ))}
+    </div>
   </div>
 </article>
