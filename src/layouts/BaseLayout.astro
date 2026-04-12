@@ -3,6 +3,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 import { siteConfig } from '../data/site';
+import { serializeInlineJson } from '../lib/utils/inline-json';
 import { getCanonicalUrl } from '../utils/posts';
 
 interface Props {
@@ -43,7 +44,7 @@ const imageUrl = new URL(image, siteConfig.siteUrl).toString();
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={imageUrl} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script type="application/ld+json" set:html={JSON.stringify({
+    <script type="application/ld+json" set:html={serializeInlineJson({
       '@context': 'https://schema.org',
       '@type': 'WebSite',
       name: siteConfig.title,
