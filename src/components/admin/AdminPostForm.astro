@@ -81,6 +81,7 @@ const status = (post?.status ?? 'draft') as PostStatus;
       <button class="button button-primary" type="submit">{submitLabel}</button>
       <a class="button" href="/admin/posts">返回列表</a>
       {post?.slug ? <a class="button" href={`/blog/${post.slug}/`} target="_blank" rel="noreferrer">预览前台</a> : null}
+      {post?.id ? <a class="button" href={`/admin/posts/${post.id}/wechat`}>公众号导出</a> : null}
     </div>
   </form>
 
