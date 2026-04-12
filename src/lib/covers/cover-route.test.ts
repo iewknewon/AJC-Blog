@@ -63,6 +63,24 @@ test('POST 会返回自动匹配到的封面建议', async () => {
             license: 'cc0',
             foreign_landing_url: 'https://example.com/astro',
           },
+          {
+            title: 'Cloud dashboard workspace',
+            thumbnail: 'https://example.com/thumb/dashboard.jpg',
+            url: 'https://example.com/full/dashboard.jpg',
+            width: 1600,
+            height: 900,
+            license: 'cc0',
+            foreign_landing_url: 'https://example.com/dashboard',
+          },
+          {
+            title: 'Server rack monitoring',
+            thumbnail: 'https://example.com/thumb/server.jpg',
+            url: 'https://example.com/full/server.jpg',
+            width: 1600,
+            height: 900,
+            license: 'cc0',
+            foreign_landing_url: 'https://example.com/server',
+          },
         ],
       }), {
         headers: {
@@ -105,6 +123,9 @@ test('POST 会返回自动匹配到的封面建议', async () => {
 
     const payload = await response.json() as {
       message?: string;
+      suggestions?: Array<{
+        coverUrl?: string;
+      }>;
       suggestion?: {
         coverUrl?: string;
         query?: string;
@@ -113,9 +134,10 @@ test('POST 会返回自动匹配到的封面建议', async () => {
     };
 
     assert.equal(fetchCalls[0], 'https://api.example.com/v1/chat/completions');
-    assert.equal(payload.suggestion?.coverUrl, 'https://example.com/thumb/astro.jpg');
+    assert.equal(payload.suggestion?.coverUrl, 'https://example.com/thumb/server.jpg');
     assert.equal(payload.suggestion?.query, 'server rack deployment');
     assert.equal(payload.suggestion?.queryMode, 'ai');
+    assert.equal(payload.suggestions?.length, 3);
     assert.match(payload.message ?? '', /整篇内容/);
   } finally {
     globalThis.fetch = originalFetch;

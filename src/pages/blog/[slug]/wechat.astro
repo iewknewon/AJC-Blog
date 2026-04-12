@@ -1,0 +1,174 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { siteConfig } from '../../../data/site';
+import { buildWechatExport } from '../../../lib/export/wechat';
+import { getPublishedPostBySlug } from '../../../lib/posts/repository';
+import { renderPost } from '../../../utils/posts';
+
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/archive');
+}
+
+const db = Astro.locals.runtime.env.DB;
+const post = await getPublishedPostBySlug(db, slug);
+
+if (!post) {
+  return Astro.redirect('/404');
+}
+
+const renderedPost = await renderPost(post);
+const wechatExport = buildWechatExport({
+  post,
+  html: renderedPost.html,
+  siteTitle: siteConfig.title,
+  siteUrl: siteConfig.siteUrl,
+  author: siteConfig.author,
+});
+---
+
+<BaseLayout title={`${post.title} | 公众号导出`} description={`将《${post.title}》导出为适合粘贴到微信公众号编辑器的格式。`} pathname={`/blog/${post.slug}/wechat/`}>
+  <section class="section">
+    <div class="container">
+      <div class="content-card">
+        <p class="eyebrow">Wechat Export</p>
+        <h1 class="page-title">导出公众号格式</h1>
+        <p class="page-intro">访客可以直接复制富文本或下载 HTML，再粘贴到微信公众号编辑器继续发布。</p>
+        <div class="hero-actions" style="margin-top: 1.5rem;">
+          <button id="wechat-copy-rich" class="button button-primary" type="button">复制公众号格式</button>
+          <button id="wechat-copy-html" class="button" type="button">复制 HTML 源码</button>
+          <button id="wechat-download-html" class="button" type="button">下载 HTML</button>
+          <a class="button" href={`/blog/${post.slug}/`}>返回文章</a>
+        </div>
+        <div id="wechat-export-status" class="muted" style="margin-top: 1rem;">还没有开始导出。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top: 0;">
+    <div class="container">
+      <div class="content-card">
+        <h2 class="section-title">公众号预览</h2>
+        <p class="section-description">下面是导出后的预览。复制公众号格式后，直接粘贴到微信公众号编辑器即可。</p>
+        <div class="wechat-export-preview-shell">
+          <div class="wechat-export-preview" set:html={wechatExport.html}></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top: 0;">
+    <div class="container">
+      <div class="content-card">
+        <h2 class="section-title">HTML 源码</h2>
+        <textarea id="wechat-export-source" class="search-input admin-input-rect admin-textarea wechat-export-source" readonly>{wechatExport.html}</textarea>
+      </div>
+    </div>
+  </section>
+
+  <textarea id="wechat-export-plain" hidden>{wechatExport.plainText}</textarea>
+  <input id="wechat-export-filename" type="hidden" value={wechatExport.filename} />
+
+  <script is:inline>
+    const richButton = document.querySelector('#wechat-copy-rich');
+    const copyHtmlButton = document.querySelector('#wechat-copy-html');
+    const downloadButton = document.querySelector('#wechat-download-html');
+    const statusNode = document.querySelector('#wechat-export-status');
+    const sourceTextarea = document.querySelector('#wechat-export-source');
+    const plainTextarea = document.querySelector('#wechat-export-plain');
+    const filenameInput = document.querySelector('#wechat-export-filename');
+
+    const setStatus = (message, isError = false) => {
+      if (!statusNode) {
+        return;
+      }
+
+      statusNode.textContent = message;
+      statusNode.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+    };
+
+    const copyTextFallback = async (value) => {
+      if (!sourceTextarea) {
+        throw new Error('未找到可复制的导出内容。');
+      }
+
+      sourceTextarea.value = value;
+      sourceTextarea.focus();
+      sourceTextarea.select();
+
+      const success = document.execCommand('copy');
+
+      if (!success) {
+        throw new Error('浏览器没有完成复制，请手动复制源码。');
+      }
+    };
+
+    richButton?.addEventListener('click', async () => {
+      const html = sourceTextarea?.value || '';
+      const plain = plainTextarea?.value || '';
+
+      if (!html) {
+        setStatus('当前没有可导出的内容。', true);
+        return;
+      }
+
+      try {
+        if (navigator.clipboard?.write && window.ClipboardItem) {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': new Blob([html], { type: 'text/html' }),
+              'text/plain': new Blob([plain || html], { type: 'text/plain' }),
+            }),
+          ]);
+        } else {
+          await copyTextFallback(html);
+        }
+
+        setStatus('公众号格式已经复制到剪贴板，直接粘贴到微信公众号编辑器即可。');
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '复制失败，请改用 HTML 源码复制。', true);
+      }
+    });
+
+    copyHtmlButton?.addEventListener('click', async () => {
+      const html = sourceTextarea?.value || '';
+
+      if (!html) {
+        setStatus('当前没有可复制的源码。', true);
+        return;
+      }
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(html);
+        } else {
+          await copyTextFallback(html);
+        }
+
+        setStatus('HTML 源码已复制。');
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : 'HTML 源码复制失败。', true);
+      }
+    });
+
+    downloadButton?.addEventListener('click', () => {
+      const html = sourceTextarea?.value || '';
+
+      if (!html) {
+        setStatus('当前没有可下载的内容。', true);
+        return;
+      }
+
+      const filename = filenameInput?.value || 'wechat-article.html';
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+      setStatus('HTML 文件已开始下载。');
+    });
+  </script>
+</BaseLayout>

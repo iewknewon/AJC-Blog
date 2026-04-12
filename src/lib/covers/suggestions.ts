@@ -39,6 +39,10 @@ export type CoverSuggestion = {
   queryMode: 'ai' | 'heuristic';
 };
 
+type ScoredCoverSuggestion = CoverSuggestion & {
+  score: number;
+};
+
 const OPENVERSE_ENDPOINT = 'https://api.openverse.org/v1/images/';
 const SEARCH_TIMEOUT_MS = 10_000;
 const DEFAULT_PAGE_SIZE = 12;
@@ -216,7 +220,12 @@ async function searchOpenverseImages(query: string, fetchImpl: FetchLike) {
   return (data.results ?? []).filter((item) => isHttpUrl(item.thumbnail) || isHttpUrl(item.url));
 }
 
-function toCoverSuggestion(item: OpenverseImageResult, query: string, queryMode: 'ai' | 'heuristic'): CoverSuggestion | null {
+function toCoverSuggestion(
+  item: OpenverseImageResult,
+  query: string,
+  queryMode: 'ai' | 'heuristic',
+  score: number,
+): ScoredCoverSuggestion | null {
   const previewUrl = isHttpUrl(item.thumbnail) ? String(item.thumbnail) : '';
   const coverUrl = previewUrl || (isHttpUrl(item.url) ? String(item.url) : '');
 
@@ -236,25 +245,49 @@ function toCoverSuggestion(item: OpenverseImageResult, query: string, queryMode:
     width: typeof item.width === 'number' ? item.width : undefined,
     height: typeof item.height === 'number' ? item.height : undefined,
     queryMode,
+    score,
   };
 }
 
-export async function suggestCoverFromContent(
+function getSuggestionKey(item: CoverSuggestion) {
+  return item.sourceUrl || item.coverUrl;
+}
+
+function stripScore(item: ScoredCoverSuggestion): CoverSuggestion {
+  return {
+    query: item.query,
+    coverUrl: item.coverUrl,
+    previewUrl: item.previewUrl,
+    title: item.title,
+    creator: item.creator,
+    creatorUrl: item.creatorUrl,
+    license: item.license,
+    sourceUrl: item.sourceUrl,
+    width: item.width,
+    height: item.height,
+    queryMode: item.queryMode,
+  };
+}
+
+export async function suggestCoverCandidatesFromContent(
   input: CoverSuggestionInput,
   options: {
     fetchImpl?: FetchLike;
     preferredQueries?: string[];
+    limit?: number;
   } = {},
-): Promise<CoverSuggestion | null> {
+): Promise<CoverSuggestion[]> {
   const preferredQueries = (options.preferredQueries ?? []).map((item) => collapseWhitespace(String(item))).filter(Boolean);
   const heuristicQueries = buildCoverSearchQueries(input);
   const queries = dedupeQueries([...preferredQueries, ...heuristicQueries]);
+  const limit = Math.max(1, options.limit ?? 3);
 
   if (!queries.length) {
-    return null;
+    return [];
   }
 
   const fetchImpl = options.fetchImpl ?? fetch;
+  const candidateMap = new Map<string, ScoredCoverSuggestion>();
 
   for (const query of queries) {
     const queryMode = preferredQueries.some((item) => item.toLowerCase() === query.toLowerCase()) ? 'ai' : 'heuristic';
@@ -264,15 +297,50 @@ export async function suggestCoverFromContent(
       continue;
     }
 
-    const bestMatch = [...results]
-      .sort((left, right) => scoreImageCandidate(right, query) - scoreImageCandidate(left, query))
-      .map((item) => toCoverSuggestion(item, query, queryMode))
-      .find((item): item is CoverSuggestion => Boolean(item));
+    const scoredResults = [...results]
+      .map((item) => ({
+        item,
+        score: scoreImageCandidate(item, query),
+      }))
+      .sort((left, right) => right.score - left.score);
 
-    if (bestMatch) {
-      return bestMatch;
+    scoredResults.forEach(({ item, score }) => {
+      const suggestion = toCoverSuggestion(item, query, queryMode, score);
+
+      if (!suggestion) {
+        return;
+      }
+
+      const key = getSuggestionKey(suggestion);
+      const existing = candidateMap.get(key);
+
+      if (!existing || suggestion.score > existing.score) {
+        candidateMap.set(key, suggestion);
+      }
+    });
+
+    if (candidateMap.size >= limit) {
+      break;
     }
   }
 
-  return null;
+  return [...candidateMap.values()]
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit)
+    .map(stripScore);
+}
+
+export async function suggestCoverFromContent(
+  input: CoverSuggestionInput,
+  options: {
+    fetchImpl?: FetchLike;
+    preferredQueries?: string[];
+    limit?: number;
+  } = {},
+): Promise<CoverSuggestion | null> {
+  const suggestions = await suggestCoverCandidatesFromContent(input, {
+    ...options,
+    limit: options.limit ?? 1,
+  });
+  return suggestions[0] ?? null;
 }

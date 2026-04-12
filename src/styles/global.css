@@ -618,6 +618,50 @@ img {
   flex-wrap: wrap;
 }
 
+.admin-cover-candidates {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-cover-candidate-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.admin-cover-candidate-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-cover-candidate-body {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.admin-cover-candidate-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.admin-cover-candidate-meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+.admin-cover-candidate-actions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
 .wechat-export-preview-shell {
   padding: 1rem;
   border: 1px solid var(--border);
@@ -708,6 +752,10 @@ img {
   }
 
   .admin-cover-suggestion {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-cover-candidates {
     grid-template-columns: 1fr;
   }
 

@@ -44,6 +44,9 @@ const publishDate = post.publishedAt ?? post.updatedAt;
           <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>{tag}</a>
         ))}
       </div>
+      <div class="hero-actions" style="margin-bottom: 1.5rem;">
+        <a class="button" href={`/blog/${post.slug}/wechat/`}>导出公众号格式</a>
+      </div>
       <div class="article-content" set:html={renderedPost.html}></div>
       <div class="content-card" style="margin-top: 2rem;">
         <h3>继续阅读</h3>

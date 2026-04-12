@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildCoverSearchQueries, suggestCoverFromContent } from './suggestions';
+import { buildCoverSearchQueries, suggestCoverCandidatesFromContent, suggestCoverFromContent } from './suggestions';
 
 test('buildCoverSearchQueries 会优先组合标签和正文里的英文关键词', () => {
   const queries = buildCoverSearchQueries({
@@ -120,4 +120,59 @@ test('suggestCoverFromContent 会优先使用 AI 生成的检索词', async () =
   assert.equal(fetchCalls.length, 1);
   assert.equal(suggestion?.query, 'server rack deployment');
   assert.equal(suggestion?.queryMode, 'ai');
+});
+
+test('suggestCoverCandidatesFromContent 会返回最多 3 张候选封面', async () => {
+  const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({
+    results: [
+      {
+        title: 'Cloudflare dashboard workspace',
+        thumbnail: 'https://example.com/thumb/one.jpg',
+        url: 'https://example.com/full/one.jpg',
+        width: 1920,
+        height: 1080,
+        license: 'cc0',
+      },
+      {
+        title: 'Developer laptop setup',
+        thumbnail: 'https://example.com/thumb/two.jpg',
+        url: 'https://example.com/full/two.jpg',
+        width: 1920,
+        height: 1080,
+        license: 'cc0',
+      },
+      {
+        title: 'Server rack deployment',
+        thumbnail: 'https://example.com/thumb/three.jpg',
+        url: 'https://example.com/full/three.jpg',
+        width: 1920,
+        height: 1080,
+        license: 'cc0',
+      },
+      {
+        title: 'Extra image',
+        thumbnail: 'https://example.com/thumb/four.jpg',
+        url: 'https://example.com/full/four.jpg',
+        width: 1920,
+        height: 1080,
+        license: 'cc0',
+      },
+    ],
+  }), {
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+  });
+
+  const suggestions = await suggestCoverCandidatesFromContent({
+    title: 'Cloudflare 部署指南',
+    tags: 'Cloudflare, Dashboard, DevOps',
+    description: '讲解如何部署到 Cloudflare Pages',
+  }, {
+    fetchImpl,
+    limit: 3,
+  });
+
+  assert.equal(suggestions.length, 3);
+  assert.equal(suggestions[0]?.coverUrl, 'https://example.com/thumb/one.jpg');
 });
