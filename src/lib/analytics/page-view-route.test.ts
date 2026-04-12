@@ -5,8 +5,14 @@ import { POST } from '../../pages/api/analytics/view';
 
 function createDbMock() {
   const calls: Array<{ sql: string; values: unknown[] }> = [];
+  let execCalls = 0;
 
   const db = {
+    async exec(sql: string) {
+      execCalls += 1;
+      assert.match(sql, /CREATE TABLE IF NOT EXISTS page_views/);
+      return { count: 1 };
+    },
     prepare(sql: string) {
       return {
         bind(...values: unknown[]) {
@@ -21,11 +27,11 @@ function createDbMock() {
     },
   } as unknown as D1Database;
 
-  return { db, calls };
+  return { db, calls, getExecCalls: () => execCalls };
 }
 
 test('POST /api/analytics/view 会记录公开页面访问', async () => {
-  const { db, calls } = createDbMock();
+  const { db, calls, getExecCalls } = createDbMock();
   const request = new Request('https://example.com/api/analytics/view', {
     method: 'POST',
     headers: {
@@ -53,6 +59,7 @@ test('POST /api/analytics/view 会记录公开页面访问', async () => {
   });
 
   assert.equal(response.status, 204);
+  assert.equal(getExecCalls(), 1);
   assert.equal(calls.length, 1);
   assert.match(calls[0].sql, /INSERT INTO page_views/);
   assert.equal(calls[0].values[1], '/blog/hello-world');
@@ -61,7 +68,7 @@ test('POST /api/analytics/view 会记录公开页面访问', async () => {
 });
 
 test('POST /api/analytics/view 会忽略不应统计的路径', async () => {
-  const { db, calls } = createDbMock();
+  const { db, calls, getExecCalls } = createDbMock();
   const response = await POST({
     request: new Request('https://example.com/api/analytics/view', {
       method: 'POST',
@@ -80,5 +87,6 @@ test('POST /api/analytics/view 会忽略不应统计的路径', async () => {
   });
 
   assert.equal(response.status, 204);
+  assert.equal(getExecCalls(), 0);
   assert.equal(calls.length, 0);
 });

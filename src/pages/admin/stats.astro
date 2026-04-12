@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import {
+  ensureAnalyticsSchema,
   formatIpFingerprint,
   formatLocationLabel,
   getAnalyticsSummary,
@@ -18,13 +19,35 @@ if (!authenticated) {
 }
 
 const db = Astro.locals.runtime.env.DB;
-const [summary, topPages, topPosts, locations, recentVisits] = await Promise.all([
-  getAnalyticsSummary(db),
-  getTopPages(db),
-  getTopPosts(db),
-  getLocationBreakdown(db),
-  getRecentVisits(db),
-]);
+
+let analyticsUnavailable = false;
+
+let summary = {
+  totalViews: 0,
+  uniqueVisitors: 0,
+  articleViews: 0,
+  trackedCountries: 0,
+};
+
+let topPages: Awaited<ReturnType<typeof getTopPages>> = [];
+let topPosts: Awaited<ReturnType<typeof getTopPosts>> = [];
+let locations: Awaited<ReturnType<typeof getLocationBreakdown>> = [];
+let recentVisits: Awaited<ReturnType<typeof getRecentVisits>> = [];
+
+try {
+  await ensureAnalyticsSchema(db);
+
+  [summary, topPages, topPosts, locations, recentVisits] = await Promise.all([
+    getAnalyticsSummary(db),
+    getTopPages(db),
+    getTopPosts(db),
+    getLocationBreakdown(db),
+    getRecentVisits(db),
+  ]);
+} catch (error) {
+  analyticsUnavailable = true;
+  console.error('Failed to load analytics dashboard', error);
+}
 
 const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
   dateStyle: 'medium',
@@ -36,7 +59,13 @@ const hasData = summary.totalViews > 0;
 ---
 
 <AdminLayout title="访问统计" description="查看公开页面访问次数、热门内容和访客地区来源。">
-  {hasData ? (
+  {analyticsUnavailable ? (
+    <section class="section" style="padding-top: 0;">
+      <div class="empty-state">
+        访问统计暂时不可用。通常是统计表还没初始化完成，稍后刷新一次即可；如果持续报错，我再继续帮你把 Cloudflare 侧状态一起排查掉。
+      </div>
+    </section>
+  ) : hasData ? (
     <>
       <section class="grid four">
         <article class="content-card">

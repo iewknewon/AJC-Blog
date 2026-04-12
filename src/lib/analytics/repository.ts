@@ -2,6 +2,9 @@ type CloudflareRequest = Request & {
   cf?: Partial<IncomingRequestCfProperties>;
 };
 
+const analyticsSchemaReady = new WeakSet<D1Database>();
+const analyticsSchemaPending = new WeakMap<D1Database, Promise<void>>();
+
 const ANALYTICS_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS page_views (
   id TEXT PRIMARY KEY,
@@ -101,11 +104,53 @@ function readNumericValue(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    return typeof message === 'string' ? message : String(message ?? '');
+  }
+
+  return String(error ?? '');
+}
+
 function isMissingPageViewsTableError(error: unknown) {
-  return error instanceof Error && /no such table:\s*page_views/i.test(error.message);
+  return /no such table:\s*page_views/i.test(getErrorMessage(error));
+}
+
+export async function ensureAnalyticsSchema(db: D1Database) {
+  if (analyticsSchemaReady.has(db)) {
+    return;
+  }
+
+  const existingTask = analyticsSchemaPending.get(db);
+
+  if (existingTask) {
+    await existingTask;
+    return;
+  }
+
+  const task = (async () => {
+    await db.exec(ANALYTICS_SCHEMA_SQL);
+    analyticsSchemaReady.add(db);
+  })().finally(() => {
+    analyticsSchemaPending.delete(db);
+  });
+
+  analyticsSchemaPending.set(db, task);
+  await task;
 }
 
 async function withAnalyticsSchema<T>(db: D1Database, action: () => Promise<T>) {
+  await ensureAnalyticsSchema(db);
+
   try {
     return await action();
   } catch (error) {
@@ -113,7 +158,8 @@ async function withAnalyticsSchema<T>(db: D1Database, action: () => Promise<T>) 
       throw error;
     }
 
-    await db.exec(ANALYTICS_SCHEMA_SQL);
+    analyticsSchemaReady.delete(db);
+    await ensureAnalyticsSchema(db);
     return action();
   }
 }
