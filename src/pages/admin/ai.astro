@@ -75,6 +75,20 @@ if (!authenticated) {
           <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="systemPrompt" placeholder="可选。用于补充更底层的写作角色或输出规则。"></textarea>
         </label>
 
+        <div class="content-card" style="padding: 1rem 1rem 1.1rem; background: var(--surface-muted); box-shadow: none;">
+          <label class="admin-checkbox" style="padding-top: 0;">
+            <input type="checkbox" name="webSearchEnabled" />
+            <span>开启联网检索</span>
+          </label>
+
+          <label class="admin-field" style="margin-top: 0.75rem;">
+            <span>检索关键词</span>
+            <input class="search-input admin-input-rect" type="text" name="webSearchQuery" placeholder="可选。留空时默认使用文章主题。" />
+          </label>
+
+          <p class="muted" style="margin: 0.75rem 0 0;">开启后会先搜索公开网页并提取摘要，再交给 AI 写作。</p>
+        </div>
+
         <label class="admin-field">
           <span>封面链接</span>
           <input class="search-input admin-input-rect" type="url" name="cover" placeholder="可选，例如 https://example.com/cover.png" />
@@ -113,6 +127,16 @@ if (!authenticated) {
 
   <section class="section" style="padding-top: 0;">
     <div class="content-card">
+      <h2 class="section-title">联网参考</h2>
+      <p class="section-description">开启联网检索后，这里会显示本次写作用到的公开资料来源。</p>
+      <div id="ai-research-output" class="ai-research-output">
+        <div class="ai-research-placeholder">本次还没有联网检索。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top: 0;">
+    <div class="content-card">
       <h2 class="section-title">流式预览</h2>
       <p class="section-description">这里会实时显示 AI 正在写的内容。当前输出采用 Frontmatter + Markdown 格式，写完后会自动入库。</p>
       <pre id="ai-stream-output" class="ai-stream-output">等待开始写作...</pre>
@@ -128,6 +152,7 @@ if (!authenticated) {
     const form = document.querySelector('#ai-writer-form');
     const statusBody = document.querySelector('#ai-status-body');
     const resultActions = document.querySelector('#ai-result-actions');
+    const researchOutput = document.querySelector('#ai-research-output');
     const streamOutput = document.querySelector('#ai-stream-output');
     const clearConfigButton = document.querySelector('#clear-ai-config');
     const STORAGE_KEYS = {
@@ -136,7 +161,21 @@ if (!authenticated) {
       model: 'ajc.ai.model',
       customPrompt: 'ajc.ai.customPrompt',
       systemPrompt: 'ajc.ai.systemPrompt',
+      webSearchEnabled: 'ajc.ai.webSearchEnabled',
+      webSearchQuery: 'ajc.ai.webSearchQuery',
     };
+
+    const readNamedFieldValue = (name) => String(form?.elements?.namedItem(name)?.value ?? '');
+    const readNamedCheckboxValue = (name) => Boolean(form?.elements?.namedItem(name)?.checked);
+    const buildStoredConfigSnapshot = () => ({
+      baseUrl: baseUrlInput?.value?.trim() || '',
+      apiKey: apiKeyInput?.value?.trim() || '',
+      model: modelSelect?.value?.trim() || '',
+      customPrompt: readNamedFieldValue('customPrompt'),
+      systemPrompt: readNamedFieldValue('systemPrompt'),
+      webSearchEnabled: readNamedCheckboxValue('webSearchEnabled'),
+      webSearchQuery: readNamedFieldValue('webSearchQuery'),
+    });
 
     const loadStoredConfig = () => {
       try {
@@ -146,6 +185,8 @@ if (!authenticated) {
           model: localStorage.getItem(STORAGE_KEYS.model) || '',
           customPrompt: localStorage.getItem(STORAGE_KEYS.customPrompt) || '',
           systemPrompt: localStorage.getItem(STORAGE_KEYS.systemPrompt) || '',
+          webSearchEnabled: localStorage.getItem(STORAGE_KEYS.webSearchEnabled) === '1',
+          webSearchQuery: localStorage.getItem(STORAGE_KEYS.webSearchQuery) || '',
         };
       } catch {
         return {
@@ -154,17 +195,21 @@ if (!authenticated) {
           model: '',
           customPrompt: '',
           systemPrompt: '',
+          webSearchEnabled: false,
+          webSearchQuery: '',
         };
       }
     };
 
-    const saveStoredConfig = ({ baseUrl, apiKey, model, customPrompt, systemPrompt }) => {
+    const saveStoredConfig = ({ baseUrl, apiKey, model, customPrompt, systemPrompt, webSearchEnabled, webSearchQuery }) => {
       try {
         localStorage.setItem(STORAGE_KEYS.baseUrl, baseUrl || '');
         localStorage.setItem(STORAGE_KEYS.apiKey, apiKey || '');
         localStorage.setItem(STORAGE_KEYS.model, model || '');
         localStorage.setItem(STORAGE_KEYS.customPrompt, customPrompt || '');
         localStorage.setItem(STORAGE_KEYS.systemPrompt, systemPrompt || '');
+        localStorage.setItem(STORAGE_KEYS.webSearchEnabled, webSearchEnabled ? '1' : '0');
+        localStorage.setItem(STORAGE_KEYS.webSearchQuery, webSearchQuery || '');
       } catch {
         // Ignore storage failures and continue with in-memory usage only.
       }
@@ -177,6 +222,8 @@ if (!authenticated) {
         localStorage.removeItem(STORAGE_KEYS.model);
         localStorage.removeItem(STORAGE_KEYS.customPrompt);
         localStorage.removeItem(STORAGE_KEYS.systemPrompt);
+        localStorage.removeItem(STORAGE_KEYS.webSearchEnabled);
+        localStorage.removeItem(STORAGE_KEYS.webSearchQuery);
       } catch {
         // Ignore storage cleanup failures.
       }
@@ -215,6 +262,69 @@ if (!authenticated) {
       const current = streamOutput.textContent === '等待开始写作...' ? '' : streamOutput.textContent;
       streamOutput.textContent = `${current}${chunk}`;
       streamOutput.scrollTop = streamOutput.scrollHeight;
+    };
+
+    const resetResearchOutput = (enabled = false) => {
+      if (!researchOutput) {
+        return;
+      }
+
+      researchOutput.innerHTML = '';
+      const placeholder = document.createElement('div');
+      placeholder.className = 'ai-research-placeholder';
+      placeholder.textContent = enabled ? '正在联网检索资料...' : '本次未开启联网检索。';
+      researchOutput.append(placeholder);
+    };
+
+    const renderResearchOutput = ({ query, sources, message }) => {
+      if (!researchOutput) {
+        return;
+      }
+
+      researchOutput.innerHTML = '';
+
+      const summary = document.createElement('div');
+      summary.className = 'ai-research-summary';
+      summary.textContent = message || (sources?.length ? `已检索 ${sources.length} 条资料。` : '没有检索到可用资料。');
+      researchOutput.append(summary);
+
+      if (query) {
+        const queryNode = document.createElement('div');
+        queryNode.className = 'ai-research-query';
+        queryNode.textContent = `检索词：${query}`;
+        researchOutput.append(queryNode);
+      }
+
+      if (!Array.isArray(sources) || !sources.length) {
+        return;
+      }
+
+      sources.forEach((source) => {
+        const item = document.createElement('article');
+        item.className = 'ai-research-item';
+
+        const title = document.createElement('h3');
+        title.className = 'ai-research-item-title';
+        title.textContent = source.title || '未命名来源';
+        item.append(title);
+
+        const link = document.createElement('a');
+        link.className = 'ai-research-item-link';
+        link.href = source.url;
+        link.target = '_blank';
+        link.rel = 'noreferrer';
+        link.textContent = source.url;
+        item.append(link);
+
+        if (source.snippet) {
+          const snippet = document.createElement('p');
+          snippet.className = 'ai-research-item-snippet';
+          snippet.textContent = source.snippet;
+          item.append(snippet);
+        }
+
+        researchOutput.append(item);
+      });
     };
 
     const readEventStream = async (response, handlers) => {
@@ -305,12 +415,23 @@ if (!authenticated) {
         systemPromptInput.value = stored.systemPrompt;
       }
 
+      const webSearchEnabledInput = form?.elements?.namedItem('webSearchEnabled');
+      if (webSearchEnabledInput && 'checked' in webSearchEnabledInput) {
+        webSearchEnabledInput.checked = stored.webSearchEnabled;
+      }
+
+      const webSearchQueryInput = form?.elements?.namedItem('webSearchQuery');
+      if (webSearchQueryInput && 'value' in webSearchQueryInput) {
+        webSearchQueryInput.value = stored.webSearchQuery;
+      }
+
       if (stored.baseUrl || stored.apiKey) {
         setStatus('已恢复本地保存的 AI 连接配置。');
       }
     };
 
     restoreStoredConfig();
+    resetResearchOutput(readNamedCheckboxValue('webSearchEnabled'));
 
     clearConfigButton?.addEventListener('click', () => {
       clearStoredConfig();
@@ -325,6 +446,15 @@ if (!authenticated) {
       if (systemPromptInput && 'value' in systemPromptInput) {
         systemPromptInput.value = '';
       }
+      const webSearchEnabledInput = form?.elements?.namedItem('webSearchEnabled');
+      if (webSearchEnabledInput && 'checked' in webSearchEnabledInput) {
+        webSearchEnabledInput.checked = false;
+      }
+      const webSearchQueryInput = form?.elements?.namedItem('webSearchQuery');
+      if (webSearchQueryInput && 'value' in webSearchQueryInput) {
+        webSearchQueryInput.value = '';
+      }
+      resetResearchOutput(false);
       setStatus('已清除本地保存的 AI 连接配置。');
     });
 
@@ -356,13 +486,7 @@ if (!authenticated) {
         }
 
         fillModels(data.models || []);
-        saveStoredConfig({
-          baseUrl,
-          apiKey,
-          model: modelSelect?.value?.trim() || '',
-          customPrompt: String(form?.elements?.namedItem('customPrompt')?.value ?? ''),
-          systemPrompt: String(form?.elements?.namedItem('systemPrompt')?.value ?? ''),
-        });
+        saveStoredConfig(buildStoredConfigSnapshot());
         setStatus(`模型加载成功，共 ${data.models?.length ?? 0} 个。`);
       } catch (error) {
         setStatus(error instanceof Error ? error.message : '加载模型失败，请检查配置。', true);
@@ -394,22 +518,19 @@ if (!authenticated) {
         requirements: String(formData.get('requirements') ?? ''),
         customPrompt: String(formData.get('customPrompt') ?? ''),
         systemPrompt: String(formData.get('systemPrompt') ?? ''),
+        webSearchEnabled: formData.get('webSearchEnabled') === 'on',
+        webSearchQuery: String(formData.get('webSearchQuery') ?? ''),
         cover: String(formData.get('cover') ?? ''),
         status: String(formData.get('status') ?? 'draft'),
         featured: formData.get('featured') === 'on',
       };
 
-      saveStoredConfig({
-        baseUrl,
-        apiKey,
-        model,
-        customPrompt: payload.customPrompt,
-        systemPrompt: payload.systemPrompt,
-      });
+      saveStoredConfig(buildStoredConfigSnapshot());
 
       generateButton.disabled = true;
       resultActions.innerHTML = '';
       streamOutput.textContent = '';
+      resetResearchOutput(payload.webSearchEnabled);
       setStatus('AI 正在写作，请稍候...');
 
       try {
@@ -430,6 +551,12 @@ if (!authenticated) {
         await readEventStream(response, {
           status: (data) => {
             setStatus(data.message || 'AI 正在写作...');
+          },
+          research: (data) => {
+            renderResearchOutput(data);
+            if (data.message) {
+              setStatus(data.message);
+            }
           },
           content: (data) => {
             appendStreamOutput(data.chunk || '');
@@ -458,13 +585,19 @@ if (!authenticated) {
     });
 
     modelSelect?.addEventListener('change', () => {
-      saveStoredConfig({
-        baseUrl: baseUrlInput?.value?.trim() || '',
-        apiKey: apiKeyInput?.value?.trim() || '',
-        model: modelSelect?.value?.trim() || '',
-        customPrompt: String(form?.elements?.namedItem('customPrompt')?.value ?? ''),
-        systemPrompt: String(form?.elements?.namedItem('systemPrompt')?.value ?? ''),
-      });
+      saveStoredConfig(buildStoredConfigSnapshot());
+    });
+
+    baseUrlInput?.addEventListener('change', () => {
+      saveStoredConfig(buildStoredConfigSnapshot());
+    });
+
+    apiKeyInput?.addEventListener('change', () => {
+      saveStoredConfig(buildStoredConfigSnapshot());
+    });
+
+    form?.addEventListener('change', () => {
+      saveStoredConfig(buildStoredConfigSnapshot());
     });
   </script>
 </AdminLayout>

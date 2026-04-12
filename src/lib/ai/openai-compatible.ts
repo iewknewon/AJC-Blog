@@ -1,3 +1,5 @@
+import type { WebResearchContext } from './web-search';
+
 type ProviderErrorShape = {
   error?: {
     message?: string;
@@ -46,6 +48,7 @@ export type GeneratePostRequest = {
   requirements?: string;
   customPrompt?: string;
   systemPrompt?: string;
+  webResearch?: WebResearchContext | null;
 };
 
 export type GeneratedPostDraft = {
@@ -217,7 +220,42 @@ export function parseGeneratedPostDraft(rawText: string, fallbackTopic: string):
   };
 }
 
-function buildWriterPrompt(input: GeneratePostRequest) {
+function trimPromptText(input: string, limit: number) {
+  const normalized = input.replace(/\s+/g, ' ').trim();
+
+  if (normalized.length <= limit) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, Math.max(0, limit - 1)).trimEnd()}…`;
+}
+
+function appendWebResearchSections(sections: string[], webResearch?: WebResearchContext | null) {
+  if (!webResearch?.sources?.length) {
+    return;
+  }
+
+  sections.push('以下是本次联网检索得到的参考资料，请优先依据这些资料写作，不要虚构未检索到的事实：');
+  sections.push(`- 联网检索词：${webResearch.query}`);
+
+  webResearch.sources.slice(0, 4).forEach((source, index) => {
+    sections.push(`资料 ${index + 1}：`);
+    sections.push(`- 标题：${trimPromptText(source.title, 120)}`);
+    sections.push(`- 链接：${source.url}`);
+
+    if (source.snippet) {
+      sections.push(`- 搜索摘要：${trimPromptText(source.snippet, 240)}`);
+    }
+
+    if (source.excerpt) {
+      sections.push(`- 网页摘录：${trimPromptText(source.excerpt, 600)}`);
+    }
+  });
+
+  sections.push('若正文确实使用了上述资料，请在文章末尾增加“参考链接”小节，并只列出真正使用到的链接。');
+}
+
+export function buildWriterPrompt(input: GeneratePostRequest) {
   const sections = [
     '请基于以下要求生成一篇适合技术博客发布的 Markdown 文章。',
     '请严格输出 YAML Frontmatter + Markdown 正文，不要输出解释文字。',
@@ -245,6 +283,8 @@ function buildWriterPrompt(input: GeneratePostRequest) {
     '- Markdown 正文首行使用一级标题。',
     '- 默认使用中文写作，除非要求里明确指定其他语言。',
   ];
+
+  appendWebResearchSections(sections, input.webResearch);
 
   if (input.customPrompt?.trim()) {
     sections.push('自定义提示词：');

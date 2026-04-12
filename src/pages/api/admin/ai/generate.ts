@@ -1,4 +1,5 @@
 import { parseGeneratedPostDraft, streamCompatiblePostText } from '../../../../lib/ai/openai-compatible';
+import { collectWebResearch } from '../../../../lib/ai/web-search';
 import { validatePostInput } from '../../../../lib/admin/validation';
 import { requireAdminApiAuth } from '../../../../lib/auth/guards';
 import { createPost, getPostBySlug } from '../../../../lib/posts/repository';
@@ -48,6 +49,8 @@ export async function POST(context) {
     requirements?: string;
     customPrompt?: string;
     systemPrompt?: string;
+    webSearchEnabled?: boolean;
+    webSearchQuery?: string;
     cover?: string;
     status?: string;
     featured?: boolean;
@@ -66,6 +69,8 @@ export async function POST(context) {
   const cover = String(payload.cover ?? '').trim();
   const status = payload.status === 'published' ? 'published' : 'draft';
   const featured = Boolean(payload.featured);
+  const webSearchEnabled = Boolean(payload.webSearchEnabled);
+  const webSearchQuery = String(payload.webSearchQuery ?? '').trim();
 
   if (!baseUrl || !apiKey || !model || !topic) {
     return json({ message: '请填写 Base URL、API Key、模型和文章主题。' }, 400);
@@ -90,16 +95,47 @@ export async function POST(context) {
       };
 
       try {
+        let webResearch: Awaited<ReturnType<typeof collectWebResearch>> | null = null;
+
+        if (webSearchEnabled) {
+          const query = webSearchQuery || topic;
+          send('status', { message: `正在联网检索参考资料：${query}` });
+
+          try {
+            webResearch = await collectWebResearch(query);
+            send('research', {
+              query,
+              sources: webResearch.sources.map((source) => ({
+                title: source.title,
+                url: source.url,
+                snippet: source.snippet,
+              })),
+              message: webResearch.sources.length
+                ? `已整理 ${webResearch.sources.length} 条联网资料，开始流式写作...`
+                : '本次没有检索到可用资料，将按你的提示词继续写作。',
+            });
+          } catch (error) {
+            send('research', {
+              query,
+              sources: [],
+              message: error instanceof Error
+                ? `${error.message}，本次改为不联网继续写作。`
+                : '联网检索失败，本次改为不联网继续写作。',
+            });
+          }
+        }
+
         send('status', { message: '已连接模型，开始流式写作...' });
 
         for await (const chunk of streamCompatiblePostText(baseUrl, apiKey, model, {
-        topic,
-        keywords: payload.keywords,
-        audience: payload.audience,
-        requirements: payload.requirements,
-        customPrompt: payload.customPrompt,
-        systemPrompt: payload.systemPrompt,
-      })) {
+          topic,
+          keywords: payload.keywords,
+          audience: payload.audience,
+          requirements: payload.requirements,
+          customPrompt: payload.customPrompt,
+          systemPrompt: payload.systemPrompt,
+          webResearch,
+        })) {
           rawText += chunk;
           send('content', { chunk });
         }

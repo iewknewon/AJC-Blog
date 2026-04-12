@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseGeneratedPostDraft, slugifyTitle } from './openai-compatible';
+import { buildWriterPrompt, parseGeneratedPostDraft, slugifyTitle } from './openai-compatible';
 
 test('slugifyTitle 会把标题转换为 kebab-case slug', () => {
   assert.equal(slugifyTitle('Hello Astro World'), 'hello-astro-world');
@@ -50,4 +50,30 @@ test('parseGeneratedPostDraft 在缺少必要字段时抛出错误', () => {
     () => parseGeneratedPostDraft('{"title":"Only Title","slug":"only-title","tags":[],"content":""}', '备用主题'),
     /结构不完整/,
   );
+});
+
+test('buildWriterPrompt 会拼接联网检索资料与自定义提示词', () => {
+  const prompt = buildWriterPrompt({
+    topic: 'Astro + Cloudflare 部署',
+    audience: '前端开发者',
+    keywords: 'Astro, Cloudflare',
+    requirements: '需要有部署步骤',
+    customPrompt: '请写得更像实战复盘。',
+    webResearch: {
+      query: 'Astro Cloudflare Pages deploy',
+      sources: [
+        {
+          title: 'Deploy your Astro site to Cloudflare Pages',
+          url: 'https://example.com/docs/astro-cloudflare',
+          snippet: '官方文档介绍如何部署 Astro 到 Cloudflare Pages。',
+          excerpt: '在 Cloudflare Pages 中连接 GitHub 仓库后，可以直接从构建产物完成部署。',
+        },
+      ],
+    },
+  });
+
+  assert.match(prompt, /联网检索词：Astro Cloudflare Pages deploy/);
+  assert.match(prompt, /Deploy your Astro site to Cloudflare Pages/);
+  assert.match(prompt, /网页摘录：在 Cloudflare Pages 中连接 GitHub 仓库后/);
+  assert.match(prompt, /请写得更像实战复盘/);
 });
