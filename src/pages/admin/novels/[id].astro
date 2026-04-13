@@ -36,6 +36,7 @@ const error = Astro.url.searchParams.get('error');
 const pageData = serializeInlineJson({
   projectId: project.id,
   researchApiUrl: `/api/admin/novels/${project.id}/research`,
+  bibleApiUrl: `/api/admin/novels/${project.id}/bible`,
   outlineApiUrl: `/api/admin/novels/${project.id}/outline`,
   generateApiUrl: `/api/admin/novels/${project.id}/generate`,
   sources: sources.map((source) => ({
@@ -91,6 +92,7 @@ const pageData = serializeInlineJson({
         <div class="hero-actions">
           <button id="novel-load-models" class="button" type="button">获取模型列表</button>
           <button id="novel-research-button" class="button" type="button">检索参考作品</button>
+          <button id="novel-bible-button" class="button" type="button">生成人物与设定卡</button>
           <button id="novel-outline-button" class="button" type="button">生成分卷骨架</button>
         </div>
 
@@ -218,6 +220,7 @@ const pageData = serializeInlineJson({
     const modelSelect = document.querySelector('#novel-ai-model');
     const loadModelsButton = document.querySelector('#novel-load-models');
     const researchButton = document.querySelector('#novel-research-button');
+    const bibleButton = document.querySelector('#novel-bible-button');
     const outlineButton = document.querySelector('#novel-outline-button');
     const generateButton = document.querySelector('#generate-novel-chapter');
     const statusBody = document.querySelector('#novel-status-body');
@@ -515,6 +518,50 @@ const pageData = serializeInlineJson({
         setStatus(error instanceof Error ? error.message : '检索参考资料失败。', true);
       } finally {
         researchButton.disabled = false;
+      }
+    });
+
+    bibleButton?.addEventListener('click', async () => {
+      bibleButton.disabled = true;
+      setStatus('正在生成人物卡、世界观和文风约束...');
+
+      try {
+        const response = await fetch(PAGE_DATA.bibleApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            baseUrl: baseUrlInput?.value?.trim() || '',
+            apiKey: apiKeyInput?.value?.trim() || '',
+            model: modelSelect?.value?.trim() || '',
+            project: gatherProjectSnapshot(),
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '生成人物与设定卡失败。');
+        }
+
+        [
+          ['writingGoals', data.writingGoals],
+          ['worldBible', data.worldBible],
+          ['characterBible', data.characterBible],
+          ['styleGuide', data.styleGuide],
+        ].forEach(([name, value]) => {
+          const field = projectForm?.elements?.namedItem(name);
+
+          if (field && 'value' in field) {
+            field.value = value || '';
+          }
+        });
+
+        setStatus(data.message || '人物与设定卡生成完成。');
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '生成人物与设定卡失败。', true);
+      } finally {
+        bibleButton.disabled = false;
       }
     });
 

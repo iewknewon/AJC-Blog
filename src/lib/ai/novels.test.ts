@@ -6,6 +6,7 @@ import {
   buildNovelOutlinePrompt,
   buildNovelPostTags,
   buildNovelResearchQuery,
+  buildNovelStoryBiblePrompt,
   getNextNovelChapterPosition,
   mergeNovelContinuityNotes,
 } from './novels';
@@ -106,6 +107,38 @@ test('buildNovelOutlinePrompt 会要求输出分卷和章节骨架', () => {
   assert.match(prompt, /系列规划/);
   assert.match(prompt, /共输出 3 卷/);
   assert.match(prompt, /每卷规划约 8 章/);
+});
+
+test('buildNovelStoryBiblePrompt 会要求输出人物卡和世界观', () => {
+  const prompt = buildNovelStoryBiblePrompt({
+    project: {
+      id: 'novel-1',
+      slug: 'token-emperor',
+      title: '斗破苍穹番外篇之 Token 大帝',
+      premise: '主角误入区块链异火秘境',
+      genre: '玄幻',
+      writingGoals: '长篇连载',
+      referenceTitle: '斗破苍穹',
+      referenceSummary: '斗气大陆与异火体系仍然有效。',
+      referenceNotes: '萧炎已经成帝，旧主角不能被随意削弱。',
+      worldBible: '',
+      characterBible: '',
+      outline: '',
+      styleGuide: '',
+      continuityNotes: '',
+      status: 'planning',
+      chaptersCount: 0,
+      lastChapterNumber: 0,
+      lastVolumeNumber: 1,
+      createdAt: new Date('2026-04-13T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-13T00:00:00.000Z'),
+    },
+  });
+
+  assert.match(prompt, /Story Bible/);
+  assert.match(prompt, /characterBible/);
+  assert.match(prompt, /worldBible/);
+  assert.match(prompt, /styleGuide/);
 });
 
 test('mergeNovelContinuityNotes 会追加新章节记忆', () => {

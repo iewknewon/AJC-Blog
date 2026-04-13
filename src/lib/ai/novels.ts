@@ -13,6 +13,13 @@ export type NovelMemoryUpdate = {
   continuityDelta: string;
 };
 
+export type NovelStoryBible = {
+  writingGoals: string;
+  worldBible: string;
+  characterBible: string;
+  styleGuide: string;
+};
+
 type NovelGenerationContext = {
   project: NovelProject;
   chapters: NovelChapter[];
@@ -218,6 +225,51 @@ export function buildNovelOutlinePrompt(input: {
   ].join('\n');
 }
 
+export function buildNovelStoryBiblePrompt(input: {
+  project: NovelProject;
+}) {
+  const { project } = input;
+
+  return [
+    '请把下面这个长篇小说项目整理成一套适合持续连载的 Story Bible。',
+    '你必须只返回 JSON，不要输出解释。',
+    '格式如下：',
+    '{"writingGoals":"","worldBible":"","characterBible":"","styleGuide":""}',
+    '要求：',
+    '- writingGoals：提炼成 4 到 8 条项目目标，用项目符号风格，偏向更新策略、读者预期和节奏要求。',
+    '- worldBible：写成可长期维护的世界观规则库，包含世界背景、势力、能力体系、关键禁忌和长期冲突。',
+    '- characterBible：至少列出主角、主要对手、核心盟友，写明身份、动机、弱点、关系张力和成长方向。',
+    '- styleGuide：写清楚叙事口吻、节奏、章节钩子、对话风格、禁忌和保持一致性的写法约束。',
+    '- 如果项目已经有部分设定，请在保留其核心的基础上补全，不要推翻已有方向。',
+    '',
+    `项目标题：${project.title}`,
+    `核心设定：${project.premise}`,
+    `题材方向：${project.genre || '未指定'}`,
+    `参考作品：${project.referenceTitle || '无'}`,
+    '',
+    '参考作品公开梗概：',
+    project.referenceSummary || '无',
+    '',
+    '参考约束：',
+    project.referenceNotes || '无',
+    '',
+    '当前写作目标：',
+    project.writingGoals || '无',
+    '',
+    '当前世界观：',
+    project.worldBible || '无',
+    '',
+    '当前人物卡：',
+    project.characterBible || '无',
+    '',
+    '当前文风要求：',
+    project.styleGuide || '无',
+    '',
+    '当前长线大纲：',
+    project.outline || '无',
+  ].join('\n');
+}
+
 export function buildNovelChapterPrompt(input: NovelGenerationContext) {
   const { project } = input;
   const titleHint = String(input.chapterTitleHint ?? '').trim();
@@ -291,6 +343,34 @@ export async function generateNovelOutline(
   });
 
   return stripFencedMarkdown(rawText);
+}
+
+export async function generateNovelStoryBible(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  input: {
+    project: NovelProject;
+  },
+) {
+  const rawText = await generateCompatibleText(baseUrl, apiKey, model, {
+    temperature: 0.45,
+    systemPrompt: [
+      '你是专业的中文长篇小说编辑。',
+      '你的任务是把零散创意整理成适合长期连载维护的 Story Bible。',
+      '你必须只返回 JSON，不要输出解释。',
+    ].join('\n'),
+    userPrompt: buildNovelStoryBiblePrompt(input),
+  });
+
+  const parsed = JSON.parse(extractJsonBlock(rawText)) as Partial<NovelStoryBible>;
+
+  return {
+    writingGoals: String(parsed.writingGoals ?? '').trim() || input.project.writingGoals,
+    worldBible: String(parsed.worldBible ?? '').trim() || input.project.worldBible,
+    characterBible: String(parsed.characterBible ?? '').trim() || input.project.characterBible,
+    styleGuide: String(parsed.styleGuide ?? '').trim() || input.project.styleGuide,
+  };
 }
 
 export async function generateNovelMemoryUpdate(
