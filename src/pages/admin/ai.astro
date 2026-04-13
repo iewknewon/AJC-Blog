@@ -203,14 +203,27 @@ if (!authenticated) {
     </div>
   </section>
 
-  <script type="application/json" id="ai-writing-presets" data-default-preset={DEFAULT_AI_WRITING_PRESET_ID}>{presetJson}</script>
+  <script
+    type="application/json"
+    id="ai-writing-presets"
+    data-default-preset={DEFAULT_AI_WRITING_PRESET_ID}
+    set:html={presetJson}
+  ></script>
   <script is:inline>
     const EMPTY_STREAM_TEXT = '等待生成内容...';
     const EMPTY_RESEARCH_TEXT = '还没有检索结果。';
     const EMPTY_ASSET_TEXT = '还没有生成封面或插图。';
     const presetDataNode = document.querySelector('#ai-writing-presets');
     const DEFAULT_PRESET_ID = presetDataNode?.dataset?.defaultPreset || 'blog-default';
-    const WRITING_PRESETS = JSON.parse(presetDataNode?.textContent || '[]');
+    let WRITING_PRESETS = [];
+
+    try {
+      WRITING_PRESETS = JSON.parse(presetDataNode?.textContent || '[]');
+    } catch (error) {
+      console.error('[admin-ai] failed to parse writing presets', error);
+      WRITING_PRESETS = [];
+    }
+
     const PRESET_MAP = new Map(WRITING_PRESETS.map((preset) => [preset.id, preset]));
     const loadModelsButton = document.querySelector('#load-models');
     const generateButton = document.querySelector('#generate-post');
