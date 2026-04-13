@@ -5,12 +5,26 @@ import {
   buildNovelChapterPrompt,
   buildNovelNextChapterPlanPrompt,
   buildNovelOutlinePrompt,
+  buildNovelProjectBlueprintPrompt,
   buildNovelPostTags,
   buildNovelResearchQuery,
   buildNovelStoryBiblePrompt,
   getNextNovelChapterPosition,
   mergeNovelContinuityNotes,
 } from './novels';
+
+test('buildNovelProjectBlueprintPrompt 会包含创意描述和参考作品', () => {
+  const prompt = buildNovelProjectBlueprintPrompt({
+    title: '斗气 Token 传',
+    concept: '把斗气体系替换成 Token 体系，主角通过链上异火成长。',
+    referenceTitle: '斗破苍穹',
+  });
+
+  assert.match(prompt, /创意描述/);
+  assert.match(prompt, /斗破苍穹/);
+  assert.match(prompt, /slug/);
+  assert.match(prompt, /Token 体系/);
+});
 
 test('buildNovelResearchQuery 会优先使用参考作品名', () => {
   const query = buildNovelResearchQuery({

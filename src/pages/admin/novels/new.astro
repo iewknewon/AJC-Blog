@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import AdminNovelForm from '../../../components/admin/AdminNovelForm.astro';
+import { serializeInlineJson } from '../../../lib/utils/inline-json';
 import { isAdminAuthenticated } from '../../../lib/auth/guards';
 
 const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
@@ -9,15 +10,326 @@ if (!authenticated) {
   return Astro.redirect('/admin/login');
 }
 
-const error = Astro.url.searchParams.get('error');
+const pageData = serializeInlineJson({
+  quickstartApiUrl: '/api/admin/novels/quickstart',
+  loadModelsApiUrl: '/api/admin/ai/models',
+});
 ---
 
-<AdminLayout title="新建小说项目" description="先把核心设定、参考作品和世界观框架建起来，再开始持续连载。">
-  <section class="section" style="padding-top: 0;">
-    <AdminNovelForm
-      action="/api/admin/novels"
-      submitLabel="保存项目"
-      error={error ? '小说项目校验失败，请检查后重试。' : undefined}
-    />
+<AdminLayout title="新建小说项目" description="现在可以先给一个创意描述和参考作品，其余设定、大纲和第一章都交给系统自动完成。">
+  <section class="grid two" style="padding-top: 0; align-items: start;">
+    <article class="content-card">
+      <h2 class="section-title">一键自动建书</h2>
+      <p class="section-description">输入创意描述和参考作品后，系统会自动检索资料、补全设定、大纲，并直接写出第一章草稿。</p>
+
+      <form id="novel-quickstart-form" class="admin-form">
+        <label class="admin-field">
+          <span>小说标题 / 工作名</span>
+          <input class="search-input admin-input-rect" type="text" name="title" placeholder="可选，例如：斗破苍穹番外篇之 Token 大帝" />
+        </label>
+
+        <label class="admin-field">
+          <span>创意描述</span>
+          <textarea
+            class="search-input admin-input-rect admin-textarea admin-textarea-sm"
+            name="concept"
+            placeholder="例如：参考斗破苍穹的成长主线，但把斗气体系替换成 Token 体系，主角通过链上异火成长。"
+            required
+          ></textarea>
+        </label>
+
+        <label class="admin-field">
+          <span>参考作品</span>
+          <input class="search-input admin-input-rect" type="text" name="referenceTitle" placeholder="例如：斗破苍穹" />
+        </label>
+
+        <div class="grid two">
+          <label class="admin-field">
+            <span>首章篇幅</span>
+            <select class="search-input admin-input-rect" name="lengthPreset">
+              <option value="tight">紧凑章节</option>
+              <option value="standard" selected>标准章节</option>
+              <option value="expanded">展开章节</option>
+            </select>
+          </label>
+
+          <label class="admin-field">
+            <span>首章保存方式</span>
+            <select class="search-input admin-input-rect" name="firstChapterStatus">
+              <option value="draft" selected>保存为草稿</option>
+              <option value="published">直接发布</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="content-card" style="padding: 1rem 1rem 1.1rem; background: var(--surface-muted); box-shadow: none;">
+          <h3 style="margin-bottom: 0.5rem;">AI 配置</h3>
+          <p class="muted" style="margin-top: 0;">这里沿用 AI 写作页的本地配置，只保存在当前浏览器。</p>
+
+          <div class="admin-form">
+            <label class="admin-field">
+              <span>Base URL</span>
+              <input id="novel-quickstart-base-url" class="search-input admin-input-rect" type="text" placeholder="例如 https://api.openai.com/v1" />
+            </label>
+
+            <label class="admin-field">
+              <span>API Key</span>
+              <input id="novel-quickstart-api-key" class="search-input admin-input-rect" type="password" placeholder="输入可用的 API Key" />
+            </label>
+
+            <div class="hero-actions">
+              <button id="novel-quickstart-load-models" class="button" type="button">获取模型列表</button>
+            </div>
+
+            <label class="admin-field">
+              <span>模型</span>
+              <select id="novel-quickstart-model" class="search-input admin-input-rect">
+                <option value="">请先加载模型</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="hero-actions">
+          <button id="novel-quickstart-submit" class="button button-primary" type="submit">自动建书并写第一章</button>
+          <a class="button" href="/admin/novels">返回项目列表</a>
+        </div>
+      </form>
+    </article>
+
+    <div class="admin-form" style="gap: 1.25rem;">
+      <article class="content-card">
+        <h2 class="section-title">自动化会做什么</h2>
+        <div class="admin-insight-list">
+          <div class="admin-insight-row">
+            <div>
+              <p class="admin-insight-title">1. 自动检索参考作品</p>
+              <p class="admin-insight-meta">会围绕你给的参考书名抓公开梗概、人物关系、世界观和主线信息。</p>
+            </div>
+          </div>
+          <div class="admin-insight-row">
+            <div>
+              <p class="admin-insight-title">2. 自动补齐项目设定</p>
+              <p class="admin-insight-meta">会生成项目标题、核心设定、题材、写作目标、人物卡、世界观、文风要求和长线大纲。</p>
+            </div>
+          </div>
+          <div class="admin-insight-row">
+            <div>
+              <p class="admin-insight-title">3. 自动规划并写第一章</p>
+              <p class="admin-insight-meta">会先生成首章任务卡，再按当前设定直接写出第一章，落到你的博客后台。</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="content-card">
+        <h2 class="section-title">执行状态</h2>
+        <p id="novel-quickstart-status" class="muted">等待开始自动建书...</p>
+        <div id="novel-quickstart-actions" class="hero-actions" style="margin-top: 1rem;"></div>
+      </article>
+
+      <details class="content-card">
+        <summary style="cursor: pointer; font-weight: 700;">高级模式：手动建项目</summary>
+        <p class="muted" style="margin-top: 1rem;">如果你想精细控制每一项，也可以继续用原来的手动表单。</p>
+        <div style="margin-top: 1rem;">
+          <AdminNovelForm
+            action="/api/admin/novels"
+            submitLabel="保存项目"
+          />
+        </div>
+      </details>
+    </div>
   </section>
+
+  <script type="application/json" id="novel-quickstart-page-data" set:html={pageData}></script>
+  <script is:inline>
+    const STORAGE_KEYS = {
+      baseUrl: 'ajc.ai.baseUrl',
+      apiKey: 'ajc.ai.apiKey',
+      model: 'ajc.ai.model',
+    };
+    const pageDataNode = document.querySelector('#novel-quickstart-page-data');
+    const PAGE_DATA = JSON.parse(pageDataNode?.textContent || '{}');
+    const form = document.querySelector('#novel-quickstart-form');
+    const submitButton = document.querySelector('#novel-quickstart-submit');
+    const statusNode = document.querySelector('#novel-quickstart-status');
+    const actionsNode = document.querySelector('#novel-quickstart-actions');
+    const baseUrlInput = document.querySelector('#novel-quickstart-base-url');
+    const apiKeyInput = document.querySelector('#novel-quickstart-api-key');
+    const modelSelect = document.querySelector('#novel-quickstart-model');
+    const loadModelsButton = document.querySelector('#novel-quickstart-load-models');
+
+    const setStatus = (message, isError = false) => {
+      statusNode.textContent = message;
+      statusNode.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+    };
+
+    const appendResultActions = (data) => {
+      actionsNode.innerHTML = '';
+
+      if (data?.project?.adminUrl) {
+        const projectLink = document.createElement('a');
+        projectLink.className = 'button button-primary';
+        projectLink.href = data.project.adminUrl;
+        projectLink.textContent = '打开小说工作台';
+        actionsNode.append(projectLink);
+      }
+
+      if (data?.post?.adminUrl) {
+        const postLink = document.createElement('a');
+        postLink.className = 'button';
+        postLink.href = data.post.adminUrl;
+        postLink.textContent = '查看第一章';
+        actionsNode.append(postLink);
+      }
+
+      if (data?.post?.publicUrl) {
+        const publicLink = document.createElement('a');
+        publicLink.className = 'button';
+        publicLink.href = data.post.publicUrl;
+        publicLink.target = '_blank';
+        publicLink.rel = 'noreferrer';
+        publicLink.textContent = '查看前台';
+        actionsNode.append(publicLink);
+      }
+    };
+
+    const fillModels = (models) => {
+      const storedModel = localStorage.getItem(STORAGE_KEYS.model) || '';
+      modelSelect.innerHTML = '';
+
+      if (!Array.isArray(models) || models.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = '没有读取到可用模型';
+        modelSelect.append(option);
+        return;
+      }
+
+      models.forEach((model) => {
+        const option = document.createElement('option');
+        option.value = model.id || '';
+        option.textContent = model.id || '未命名模型';
+        if (storedModel && storedModel === option.value) {
+          option.selected = true;
+        }
+        modelSelect.append(option);
+      });
+    };
+
+    const restoreStoredConfig = () => {
+      try {
+        baseUrlInput.value = localStorage.getItem(STORAGE_KEYS.baseUrl) || '';
+        apiKeyInput.value = localStorage.getItem(STORAGE_KEYS.apiKey) || '';
+      } catch {
+        baseUrlInput.value = '';
+        apiKeyInput.value = '';
+      }
+    };
+
+    const saveStoredConfig = () => {
+      try {
+        localStorage.setItem(STORAGE_KEYS.baseUrl, baseUrlInput?.value?.trim() || '');
+        localStorage.setItem(STORAGE_KEYS.apiKey, apiKeyInput?.value?.trim() || '');
+        localStorage.setItem(STORAGE_KEYS.model, modelSelect?.value?.trim() || '');
+      } catch {
+        // ignore localStorage failures
+      }
+    };
+
+    restoreStoredConfig();
+
+    loadModelsButton?.addEventListener('click', async () => {
+      const baseUrl = baseUrlInput?.value?.trim();
+      const apiKey = apiKeyInput?.value?.trim();
+
+      if (!baseUrl || !apiKey) {
+        setStatus('请先填写 Base URL 和 API Key。', true);
+        return;
+      }
+
+      loadModelsButton.disabled = true;
+      setStatus('正在获取模型列表...');
+
+      try {
+        const response = await fetch(PAGE_DATA.loadModelsApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ baseUrl, apiKey }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '获取模型列表失败。');
+        }
+
+        fillModels(data.models || []);
+        saveStoredConfig();
+        setStatus(`已获取 ${data.models?.length ?? 0} 个模型。`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '获取模型列表失败。', true);
+      } finally {
+        loadModelsButton.disabled = false;
+      }
+    });
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      actionsNode.innerHTML = '';
+
+      const formData = new FormData(form);
+      const baseUrl = baseUrlInput?.value?.trim();
+      const apiKey = apiKeyInput?.value?.trim();
+      const model = modelSelect?.value?.trim();
+
+      if (!baseUrl || !apiKey || !model) {
+        setStatus('请先填写 AI 配置并加载模型。', true);
+        return;
+      }
+
+      saveStoredConfig();
+      submitButton.disabled = true;
+      setStatus('正在自动检索参考资料、补全设定并写第一章，这可能需要 20 到 60 秒...');
+
+      try {
+        const response = await fetch(PAGE_DATA.quickstartApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: String(formData.get('title') ?? ''),
+            concept: String(formData.get('concept') ?? ''),
+            referenceTitle: String(formData.get('referenceTitle') ?? ''),
+            lengthPreset: String(formData.get('lengthPreset') ?? 'standard'),
+            firstChapterStatus: String(formData.get('firstChapterStatus') ?? 'draft'),
+            baseUrl,
+            apiKey,
+            model,
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          appendResultActions(data);
+          throw new Error(data.message || '自动建书失败。');
+        }
+
+        setStatus(data.message || '自动建书完成。');
+        appendResultActions(data);
+
+        if (data.project?.adminUrl) {
+          setTimeout(() => {
+            window.location.href = data.project.adminUrl;
+          }, 1200);
+        }
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '自动建书失败。', true);
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+  </script>
 </AdminLayout>

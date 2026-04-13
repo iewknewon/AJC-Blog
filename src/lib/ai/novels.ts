@@ -1,3 +1,4 @@
+import { slugifyTitle } from './openai-compatible';
 import { extractJsonBlock, generateCompatibleText } from './openai-generic';
 import type { NovelChapter, NovelProject, NovelReferenceSource } from '../novels/types';
 
@@ -25,6 +26,16 @@ export type NovelNextChapterPlan = {
   chapterBrief: string;
   progressionChecklist: string;
   endingHook: string;
+};
+
+export type NovelProjectBlueprint = {
+  title: string;
+  slug: string;
+  premise: string;
+  genre: string;
+  writingGoals: string;
+  referenceTitle: string;
+  styleGuide: string;
 };
 
 type NovelGenerationContext = {
@@ -99,12 +110,76 @@ function buildRecentChapterDigest(chapters: NovelChapter[]) {
     .join('\n');
 }
 
+export function buildNovelProjectBlueprintPrompt(input: {
+  title?: string;
+  concept: string;
+  referenceTitle?: string;
+}) {
+  const title = String(input.title ?? '').trim();
+  const referenceTitle = String(input.referenceTitle ?? '').trim();
+
+  return [
+    '请把下面这个小说创意整理成一个可直接启动的长篇连载项目。',
+    '你必须只返回 JSON，不要输出解释。',
+    '格式如下：',
+    '{"title":"","slug":"","premise":"","genre":"","writingGoals":"","referenceTitle":"","styleGuide":""}',
+    '要求：',
+    '- 如果用户已经给了标题，就保留该标题；如果没有，再补一个适合中文连载的标题。',
+    '- slug 必须是简短的英文或拼音风格 kebab-case，只能包含小写字母、数字和短横线。',
+    '- premise 要写成 1 到 3 句的核心设定，明确主角、主冲突、改写方向和故事卖点。',
+    '- genre 写最适合的主类型，例如 玄幻、科幻、悬疑、都市。',
+    '- writingGoals 用中文项目符号整理成 4 到 6 条，强调节奏、章节钩子、长期连载策略和读者预期。',
+    '- 如果给了参考作品，就保留或细化 referenceTitle；如果没有且创意里明显指向某部作品，可以推断，但不要乱猜。',
+    '- styleGuide 用中文写 4 到 6 条文风要求，重点是叙事节奏、语气、章节断点、人物对话和避免跑偏的约束。',
+    '- 如果创意是“把原书的某个核心概念替换成新设定”，必须把这个替换逻辑写进 premise、writingGoals 和 styleGuide。',
+    '',
+    `用户提供的标题：${title || '未提供'}`,
+    `用户提供的创意描述：${input.concept}`,
+    `用户提供的参考作品：${referenceTitle || '未提供'}`,
+  ].join('\n');
+}
+
 export function buildNovelResearchQuery(project: Pick<NovelProject, 'title' | 'referenceTitle' | 'genre' | 'premise'>) {
   const referenceTitle = String(project.referenceTitle ?? '').trim();
   const seed = referenceTitle || project.title.trim();
   const genre = project.genre.trim();
 
   return [seed, genre, '小说 人物 世界观 剧情 梗概'].filter(Boolean).join(' ');
+}
+
+export async function generateNovelProjectBlueprint(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  input: {
+    title?: string;
+    concept: string;
+    referenceTitle?: string;
+  },
+) {
+  const rawText = await generateCompatibleText(baseUrl, apiKey, model, {
+    temperature: 0.45,
+    systemPrompt: [
+      '你是中文长篇小说策划编辑。',
+      '你的任务是根据一个创意描述和参考作品，生成一个可以立刻进入连载工作台的项目蓝图。',
+      '你必须只返回 JSON，不要输出解释。',
+    ].join('\n'),
+    userPrompt: buildNovelProjectBlueprintPrompt(input),
+  });
+
+  const parsed = JSON.parse(extractJsonBlock(rawText)) as Partial<NovelProjectBlueprint>;
+  const title = String(parsed.title ?? input.title ?? '').trim() || '未命名小说项目';
+  const referenceTitle = String(parsed.referenceTitle ?? input.referenceTitle ?? '').trim();
+
+  return {
+    title,
+    slug: slugifyTitle(String(parsed.slug ?? title).trim()),
+    premise: String(parsed.premise ?? '').trim() || input.concept.trim(),
+    genre: String(parsed.genre ?? '').trim(),
+    writingGoals: String(parsed.writingGoals ?? '').trim(),
+    referenceTitle,
+    styleGuide: String(parsed.styleGuide ?? '').trim(),
+  } satisfies NovelProjectBlueprint;
 }
 
 function buildReferencePackFallback(

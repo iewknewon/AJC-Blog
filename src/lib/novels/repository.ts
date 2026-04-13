@@ -404,6 +404,17 @@ export async function getNovelProjectById(db: D1Database, id: string) {
   return result ? mapNovelProjectRow(result) : null;
 }
 
+export async function getNovelProjectBySlug(db: D1Database, slug: string) {
+  const result = await withNovelSchema(db, () => db.prepare(`
+      ${PROJECT_QUERY}
+      WHERE p.slug = ?
+      GROUP BY p.id
+      LIMIT 1
+    `).bind(slug).first<NovelProjectQueryRow>());
+
+  return result ? mapNovelProjectRow(result) : null;
+}
+
 export async function getPublishedNovelProjects(db: D1Database) {
   const result = await withNovelSchema(db, () => db.prepare(`
       ${PUBLISHED_PROJECT_STATS_QUERY}
