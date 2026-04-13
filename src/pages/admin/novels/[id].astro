@@ -1,0 +1,615 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminNovelForm from '../../../components/admin/AdminNovelForm.astro';
+import { serializeInlineJson } from '../../../lib/utils/inline-json';
+import { isAdminAuthenticated } from '../../../lib/auth/guards';
+import {
+  getNovelChaptersByProjectId,
+  getNovelProjectById,
+  getNovelReferenceSources,
+} from '../../../lib/novels/repository';
+import { getNextNovelChapterPosition } from '../../../lib/ai/novels';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect('/admin/novels');
+}
+
+const db = Astro.locals.runtime.env.DB;
+const project = await getNovelProjectById(db, id);
+
+if (!project) {
+  return Astro.redirect('/admin/novels');
+}
+
+const chapters = await getNovelChaptersByProjectId(db, id);
+const sources = await getNovelReferenceSources(db, id);
+const nextChapter = getNextNovelChapterPosition(chapters);
+const error = Astro.url.searchParams.get('error');
+const pageData = serializeInlineJson({
+  projectId: project.id,
+  researchApiUrl: `/api/admin/novels/${project.id}/research`,
+  generateApiUrl: `/api/admin/novels/${project.id}/generate`,
+  sources: sources.map((source) => ({
+    title: source.title,
+    url: source.url,
+    snippet: source.snippet,
+    excerpt: source.excerpt,
+  })),
+});
+---
+
+<AdminLayout title={`小说工作台：${project.title}`} description="维护参考作品、世界观和连续记忆，然后按章节持续续写。">
+  <section class="grid three" style="padding-top: 0;">
+    <article class="content-card">
+      <h3>当前状态</h3>
+      <p class="admin-stat-value" style="font-size: 1.3rem;">{project.status === 'planning' ? '筹备中' : project.status === 'serializing' ? '连载中' : project.status === 'paused' ? '已暂停' : '已完结'}</p>
+    </article>
+    <article class="content-card">
+      <h3>已写章节</h3>
+      <p class="admin-stat-value">{project.chaptersCount}</p>
+    </article>
+    <article class="content-card">
+      <h3>下一章</h3>
+      <p class="admin-stat-value" style="font-size: 1.3rem;">第 {nextChapter.chapterNumber} 章</p>
+    </article>
+  </section>
+
+  <section class="grid two" style="padding-top: 1.5rem;">
+    <div>
+      <AdminNovelForm
+        action={`/api/admin/novels/${project.id}`}
+        submitLabel="保存项目更新"
+        project={project}
+        error={error ? '小说项目校验失败，请检查后重试。' : undefined}
+      />
+    </div>
+
+    <article class="content-card">
+      <h2 class="section-title">AI 续写</h2>
+      <p class="section-description">这里会读取和 AI 写作页共享的 Base URL、API Key 和模型配置。</p>
+
+      <div class="admin-form">
+        <label class="admin-field">
+          <span>Base URL</span>
+          <input id="novel-ai-base-url" class="search-input admin-input-rect" type="text" placeholder="例如 https://api.openai.com/v1" />
+        </label>
+
+        <label class="admin-field">
+          <span>API Key</span>
+          <input id="novel-ai-api-key" class="search-input admin-input-rect" type="password" placeholder="输入可用的 API Key" />
+        </label>
+
+        <div class="hero-actions">
+          <button id="novel-load-models" class="button" type="button">获取模型列表</button>
+          <button id="novel-research-button" class="button" type="button">检索参考作品</button>
+        </div>
+
+        <label class="admin-field">
+          <span>模型</span>
+          <select id="novel-ai-model" class="search-input admin-input-rect">
+            <option value="">请先加载模型</option>
+          </select>
+        </label>
+      </div>
+
+      <form id="novel-generate-form" class="admin-form" style="margin-top: 1.25rem;">
+        <div class="grid two">
+          <label class="admin-field">
+            <span>卷号</span>
+            <input class="search-input admin-input-rect" type="number" name="volumeNumber" min="1" value={nextChapter.volumeNumber} />
+          </label>
+
+          <label class="admin-field">
+            <span>章号</span>
+            <input class="search-input admin-input-rect" type="number" name="chapterNumber" min="1" value={nextChapter.chapterNumber} />
+          </label>
+        </div>
+
+        <label class="admin-field">
+          <span>建议章名</span>
+          <input class="search-input admin-input-rect" type="text" name="chapterTitleHint" placeholder="例如 黑市交易" />
+        </label>
+
+        <label class="admin-field">
+          <span>本章任务说明</span>
+          <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="chapterBrief" placeholder="写清楚这章要推进什么、谁要出场、冲突和钩子是什么。" required></textarea>
+        </label>
+
+        <div class="grid two">
+          <label class="admin-field">
+            <span>篇幅</span>
+            <select class="search-input admin-input-rect" name="lengthPreset">
+              <option value="tight">紧凑章节</option>
+              <option value="standard" selected>标准章节</option>
+              <option value="expanded">展开章节</option>
+            </select>
+          </label>
+
+          <label class="admin-field">
+            <span>保存方式</span>
+            <select class="search-input admin-input-rect" name="status">
+              <option value="draft" selected>保存为草稿</option>
+              <option value="published">直接发布</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="hero-actions">
+          <button id="generate-novel-chapter" class="button button-primary" type="submit">开始写这一章</button>
+        </div>
+      </form>
+    </article>
+  </section>
+
+  <section class="section" style="padding-top: 1.5rem; padding-bottom: 0;">
+    <div class="content-card">
+      <h2 class="section-title">生成状态</h2>
+      <p class="section-description">会先整理参考资料，再流式输出章节正文，最后自动把章节写入博客文章并更新连续记忆。</p>
+      <div id="novel-status-body" class="muted">等待开始续写...</div>
+      <div id="novel-result-actions" class="hero-actions" style="margin-top: 1rem;"></div>
+    </div>
+  </section>
+
+  <section class="grid two" style="padding-top: 1.5rem;">
+    <div class="content-card">
+      <h2 class="section-title">参考资料</h2>
+      <p class="section-description">优先保存公开摘要和世界观笔记，不直接喂整本原文。</p>
+      <div id="novel-research-output" class="ai-research-output">
+        <div class="ai-research-placeholder">还没有检索结果。</div>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <h2 class="section-title">章节列表</h2>
+      <p class="section-description">每一章都会同步成博客文章，并回写连续记忆。</p>
+      {chapters.length > 0 ? (
+        <div class="admin-insight-list">
+          {chapters.map((chapter) => (
+            <article class="admin-insight-row">
+              <div>
+                <p class="admin-insight-title">第 {chapter.volumeNumber} 卷 第 {chapter.chapterNumber} 章《{chapter.title}》</p>
+                <p class="admin-insight-meta">{chapter.summary || chapter.description}</p>
+              </div>
+              <div class="hero-actions" style="margin-top: 0;">
+                {chapter.postId ? <a class="button" href={`/admin/posts/${chapter.postId}`}>编辑文章</a> : null}
+                {chapter.status === 'published' && chapter.postSlug ? <a class="button" href={`/blog/${chapter.postSlug}/`} target="_blank" rel="noreferrer">查看前台</a> : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div class="empty-state">还没有写任何章节，先在右侧填好本章任务说明再开始。</div>
+      )}
+    </div>
+  </section>
+
+  <section class="section" style="padding-top: 1.5rem;">
+    <div class="content-card">
+      <h2 class="section-title">流式预览</h2>
+      <p class="section-description">这里会实时显示 AI 正在写的章节草稿。</p>
+      <pre id="novel-stream-output" class="ai-stream-output">等待开始续写...</pre>
+    </div>
+  </section>
+
+  <script type="application/json" id="novel-page-data" set:html={pageData}></script>
+  <script is:inline>
+    const STORAGE_KEYS = {
+      baseUrl: 'ajc.ai.baseUrl',
+      apiKey: 'ajc.ai.apiKey',
+      model: 'ajc.ai.model',
+    };
+    const EMPTY_STREAM_TEXT = '等待开始续写...';
+    const pageDataNode = document.querySelector('#novel-page-data');
+    const PAGE_DATA = JSON.parse(pageDataNode?.textContent || '{}');
+    const projectForm = document.querySelector('#novel-project-form');
+    const generateForm = document.querySelector('#novel-generate-form');
+    const baseUrlInput = document.querySelector('#novel-ai-base-url');
+    const apiKeyInput = document.querySelector('#novel-ai-api-key');
+    const modelSelect = document.querySelector('#novel-ai-model');
+    const loadModelsButton = document.querySelector('#novel-load-models');
+    const researchButton = document.querySelector('#novel-research-button');
+    const generateButton = document.querySelector('#generate-novel-chapter');
+    const statusBody = document.querySelector('#novel-status-body');
+    const streamOutput = document.querySelector('#novel-stream-output');
+    const resultActions = document.querySelector('#novel-result-actions');
+    const researchOutput = document.querySelector('#novel-research-output');
+
+    const setStatus = (message, isError = false) => {
+      statusBody.textContent = message;
+      statusBody.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+    };
+
+    const loadStoredConfig = () => {
+      try {
+        return {
+          baseUrl: localStorage.getItem(STORAGE_KEYS.baseUrl) || '',
+          apiKey: localStorage.getItem(STORAGE_KEYS.apiKey) || '',
+          model: localStorage.getItem(STORAGE_KEYS.model) || '',
+        };
+      } catch {
+        return {
+          baseUrl: '',
+          apiKey: '',
+          model: '',
+        };
+      }
+    };
+
+    const saveStoredConfig = () => {
+      try {
+        localStorage.setItem(STORAGE_KEYS.baseUrl, baseUrlInput?.value?.trim() || '');
+        localStorage.setItem(STORAGE_KEYS.apiKey, apiKeyInput?.value?.trim() || '');
+        localStorage.setItem(STORAGE_KEYS.model, modelSelect?.value?.trim() || '');
+      } catch {
+        // Ignore storage errors.
+      }
+    };
+
+    const restoreStoredConfig = () => {
+      const stored = loadStoredConfig();
+
+      if (stored.baseUrl) {
+        baseUrlInput.value = stored.baseUrl;
+      }
+
+      if (stored.apiKey) {
+        apiKeyInput.value = stored.apiKey;
+      }
+
+      if (stored.model) {
+        modelSelect.innerHTML = `<option value="${stored.model}">${stored.model}</option>`;
+        modelSelect.value = stored.model;
+      }
+    };
+
+    const fillModels = (models) => {
+      modelSelect.innerHTML = '';
+
+      if (!Array.isArray(models) || !models.length) {
+        modelSelect.innerHTML = '<option value="">没有可用模型</option>';
+        return;
+      }
+
+      const storedModel = loadStoredConfig().model;
+
+      models.forEach((model, index) => {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = model.id;
+        option.selected = storedModel ? model.id === storedModel : index === 0;
+        modelSelect.append(option);
+      });
+    };
+
+    const gatherProjectSnapshot = () => ({
+      slug: String(projectForm?.elements?.namedItem('slug')?.value ?? ''),
+      title: String(projectForm?.elements?.namedItem('title')?.value ?? ''),
+      premise: String(projectForm?.elements?.namedItem('premise')?.value ?? ''),
+      genre: String(projectForm?.elements?.namedItem('genre')?.value ?? ''),
+      writingGoals: String(projectForm?.elements?.namedItem('writingGoals')?.value ?? ''),
+      referenceTitle: String(projectForm?.elements?.namedItem('referenceTitle')?.value ?? ''),
+      referenceSummary: String(projectForm?.elements?.namedItem('referenceSummary')?.value ?? ''),
+      referenceNotes: String(projectForm?.elements?.namedItem('referenceNotes')?.value ?? ''),
+      worldBible: String(projectForm?.elements?.namedItem('worldBible')?.value ?? ''),
+      characterBible: String(projectForm?.elements?.namedItem('characterBible')?.value ?? ''),
+      outline: String(projectForm?.elements?.namedItem('outline')?.value ?? ''),
+      styleGuide: String(projectForm?.elements?.namedItem('styleGuide')?.value ?? ''),
+      continuityNotes: String(projectForm?.elements?.namedItem('continuityNotes')?.value ?? ''),
+      status: String(projectForm?.elements?.namedItem('status')?.value ?? 'planning'),
+    });
+
+    const renderResearchOutput = ({ query, sources, message }) => {
+      researchOutput.innerHTML = '';
+
+      const summary = document.createElement('div');
+      summary.className = 'ai-research-summary';
+      summary.textContent = message || '还没有检索结果。';
+      researchOutput.append(summary);
+
+      if (query) {
+        const queryNode = document.createElement('div');
+        queryNode.className = 'ai-research-query';
+        queryNode.textContent = `检索词：${query}`;
+        researchOutput.append(queryNode);
+      }
+
+      if (!Array.isArray(sources) || !sources.length) {
+        return;
+      }
+
+      sources.forEach((source) => {
+        const item = document.createElement('article');
+        item.className = 'ai-research-item';
+
+        const title = document.createElement('h3');
+        title.className = 'ai-research-item-title';
+        title.textContent = source.title || '未命名来源';
+        item.append(title);
+
+        if (source.url) {
+          const link = document.createElement('a');
+          link.className = 'ai-research-item-link';
+          link.href = source.url;
+          link.target = '_blank';
+          link.rel = 'noreferrer';
+          link.textContent = source.url;
+          item.append(link);
+        }
+
+        const snippet = document.createElement('p');
+        snippet.className = 'ai-research-item-snippet';
+        snippet.textContent = source.excerpt || source.snippet || '';
+        item.append(snippet);
+        researchOutput.append(item);
+      });
+    };
+
+    const setResultActions = (post) => {
+      resultActions.innerHTML = '';
+
+      if (!post) {
+        return;
+      }
+
+      const editLink = document.createElement('a');
+      editLink.className = 'button button-primary';
+      editLink.href = post.adminUrl;
+      editLink.textContent = '打开文章编辑';
+      resultActions.append(editLink);
+
+      if (post.publicUrl) {
+        const publicLink = document.createElement('a');
+        publicLink.className = 'button';
+        publicLink.href = post.publicUrl;
+        publicLink.target = '_blank';
+        publicLink.rel = 'noreferrer';
+        publicLink.textContent = '查看前台';
+        resultActions.append(publicLink);
+      }
+
+      const refreshButton = document.createElement('button');
+      refreshButton.className = 'button';
+      refreshButton.type = 'button';
+      refreshButton.textContent = '刷新章节列表';
+      refreshButton.addEventListener('click', () => window.location.reload());
+      resultActions.append(refreshButton);
+    };
+
+    const readEventStream = async (response, handlers) => {
+      if (!response.body) {
+        throw new Error('服务端没有返回可读取的流式内容。');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() ?? '';
+
+        events.forEach((eventText) => {
+          const lines = eventText.split(/\r?\n/);
+          const eventLine = lines.find((line) => line.startsWith('event:'));
+          const dataLines = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim());
+
+          if (!eventLine || !dataLines.length) {
+            return;
+          }
+
+          const eventName = eventLine.slice(6).trim();
+          const payload = JSON.parse(dataLines.join('\n'));
+          const handler = handlers[eventName];
+
+          if (handler) {
+            handler(payload);
+          }
+        });
+      }
+    };
+
+    restoreStoredConfig();
+    renderResearchOutput({
+      query: '',
+      sources: PAGE_DATA.sources || [],
+      message: Array.isArray(PAGE_DATA.sources) && PAGE_DATA.sources.length
+        ? `已载入 ${PAGE_DATA.sources.length} 条参考资料。`
+        : '还没有检索结果。',
+    });
+
+    [baseUrlInput, apiKeyInput, modelSelect].forEach((field) => {
+      field?.addEventListener('change', saveStoredConfig);
+    });
+
+    loadModelsButton?.addEventListener('click', async () => {
+      const baseUrl = baseUrlInput?.value?.trim();
+      const apiKey = apiKeyInput?.value?.trim();
+
+      if (!baseUrl || !apiKey) {
+        setStatus('请先填写 Base URL 和 API Key。', true);
+        return;
+      }
+
+      loadModelsButton.disabled = true;
+      setStatus('正在获取模型列表...');
+
+      try {
+        const response = await fetch('/api/admin/ai/models', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ baseUrl, apiKey }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '获取模型列表失败。');
+        }
+
+        fillModels(data.models || []);
+        saveStoredConfig();
+        setStatus(`已获取 ${data.models?.length ?? 0} 个模型。`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '获取模型列表失败。', true);
+      } finally {
+        loadModelsButton.disabled = false;
+      }
+    });
+
+    researchButton?.addEventListener('click', async () => {
+      researchButton.disabled = true;
+      setStatus('正在检索参考作品资料...');
+
+      try {
+        const response = await fetch(PAGE_DATA.researchApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            baseUrl: baseUrlInput?.value?.trim() || '',
+            apiKey: apiKeyInput?.value?.trim() || '',
+            model: modelSelect?.value?.trim() || '',
+            project: gatherProjectSnapshot(),
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '检索参考资料失败。');
+        }
+
+        const referenceSummaryField = projectForm?.elements?.namedItem('referenceSummary');
+        const referenceNotesField = projectForm?.elements?.namedItem('referenceNotes');
+
+        if (referenceSummaryField && 'value' in referenceSummaryField) {
+          referenceSummaryField.value = data.referenceSummary || '';
+        }
+
+        if (referenceNotesField && 'value' in referenceNotesField) {
+          referenceNotesField.value = data.referenceNotes || '';
+        }
+
+        renderResearchOutput(data);
+        setStatus(data.message || '参考资料整理完成。');
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '检索参考资料失败。', true);
+      } finally {
+        researchButton.disabled = false;
+      }
+    });
+
+    generateForm?.addEventListener('submit', async (submitEvent) => {
+      submitEvent.preventDefault();
+
+      const baseUrl = baseUrlInput?.value?.trim();
+      const apiKey = apiKeyInput?.value?.trim();
+      const model = modelSelect?.value?.trim();
+
+      if (!baseUrl || !apiKey || !model) {
+        setStatus('请先填写模型配置并加载可用模型。', true);
+        return;
+      }
+
+      const formData = new FormData(generateForm);
+      saveStoredConfig();
+      generateButton.disabled = true;
+      streamOutput.textContent = EMPTY_STREAM_TEXT;
+      resultActions.innerHTML = '';
+      setStatus('正在启动小说续写...');
+
+      try {
+        const response = await fetch(PAGE_DATA.generateApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'text/event-stream',
+          },
+          body: JSON.stringify({
+            baseUrl,
+            apiKey,
+            model,
+            project: gatherProjectSnapshot(),
+            volumeNumber: Number(formData.get('volumeNumber') ?? 1),
+            chapterNumber: Number(formData.get('chapterNumber') ?? 1),
+            chapterTitleHint: String(formData.get('chapterTitleHint') ?? ''),
+            chapterBrief: String(formData.get('chapterBrief') ?? ''),
+            lengthPreset: String(formData.get('lengthPreset') ?? 'standard'),
+            status: String(formData.get('status') ?? 'draft'),
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.message || '章节生成失败。');
+        }
+
+        await readEventStream(response, {
+          status: (data) => {
+            setStatus(data.message || 'AI 正在续写...');
+          },
+          research: (data) => {
+            const referenceSummaryField = projectForm?.elements?.namedItem('referenceSummary');
+            const referenceNotesField = projectForm?.elements?.namedItem('referenceNotes');
+
+            if (referenceSummaryField && 'value' in referenceSummaryField && data.referenceSummary) {
+              referenceSummaryField.value = data.referenceSummary;
+            }
+
+            if (referenceNotesField && 'value' in referenceNotesField && data.referenceNotes) {
+              referenceNotesField.value = data.referenceNotes;
+            }
+
+            renderResearchOutput(data);
+          },
+          content: (data) => {
+            const current = streamOutput.textContent === EMPTY_STREAM_TEXT ? '' : streamOutput.textContent;
+            streamOutput.textContent = `${current}${data.chunk || ''}`;
+            streamOutput.scrollTop = streamOutput.scrollHeight;
+          },
+          done: (data) => {
+            if (data.rawText) {
+              streamOutput.textContent = data.rawText;
+            }
+
+            const continuityField = projectForm?.elements?.namedItem('continuityNotes');
+
+            if (continuityField && 'value' in continuityField && data.project?.continuityNotes) {
+              continuityField.value = data.project.continuityNotes;
+            }
+
+            setStatus(data.message || '章节生成完成。');
+            setResultActions(data.post || null);
+          },
+          error: (data) => {
+            if (data.rawText) {
+              streamOutput.textContent = data.rawText;
+            }
+
+            setStatus(data.message || '章节生成失败，请稍后再试。', true);
+          },
+        });
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '章节生成失败，请稍后再试。', true);
+      } finally {
+        generateButton.disabled = false;
+      }
+    });
+  </script>
+</AdminLayout>

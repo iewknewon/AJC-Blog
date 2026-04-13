@@ -1,0 +1,23 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminNovelForm from '../../../components/admin/AdminNovelForm.astro';
+import { isAdminAuthenticated } from '../../../lib/auth/guards';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const error = Astro.url.searchParams.get('error');
+---
+
+<AdminLayout title="新建小说项目" description="先把核心设定、参考作品和世界观框架建起来，再开始持续连载。">
+  <section class="section" style="padding-top: 0;">
+    <AdminNovelForm
+      action="/api/admin/novels"
+      submitLabel="保存项目"
+      error={error ? '小说项目校验失败，请检查后重试。' : undefined}
+    />
+  </section>
+</AdminLayout>

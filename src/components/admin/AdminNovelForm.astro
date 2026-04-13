@@ -1,0 +1,109 @@
+---
+import type { NovelProject, NovelProjectStatus } from '../../lib/novels/types';
+
+interface Props {
+  action: string;
+  submitLabel: string;
+  project?: Partial<NovelProject>;
+  error?: string;
+  formId?: string;
+}
+
+const { action, submitLabel, project, error, formId = 'novel-project-form' } = Astro.props;
+const status = (project?.status ?? 'planning') as NovelProjectStatus;
+---
+
+<div class="admin-form-layout">
+  <form id={formId} class="admin-form card" action={action} method="post">
+    {error ? <div class="admin-alert">{error}</div> : null}
+
+    <label class="admin-field">
+      <span>项目 Slug</span>
+      <input class="search-input admin-input-rect" type="text" name="slug" value={project?.slug ?? ''} placeholder="例如 token-emperor" required />
+    </label>
+
+    <label class="admin-field">
+      <span>项目标题</span>
+      <input class="search-input admin-input-rect" type="text" name="title" value={project?.title ?? ''} placeholder="例如 斗破苍穹番外篇之 Token 大帝" required />
+    </label>
+
+    <label class="admin-field">
+      <span>核心设定</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="premise" placeholder="一句话说清楚这是怎样的故事，要写什么新冲突。" required>{project?.premise ?? ''}</textarea>
+    </label>
+
+    <div class="grid two">
+      <label class="admin-field">
+        <span>题材</span>
+        <input class="search-input admin-input-rect" type="text" name="genre" value={project?.genre ?? ''} placeholder="例如 玄幻、科幻、悬疑" />
+      </label>
+
+      <label class="admin-field">
+        <span>项目状态</span>
+        <select class="search-input admin-input-rect" name="status">
+          <option value="planning" selected={status === 'planning'}>筹备中</option>
+          <option value="serializing" selected={status === 'serializing'}>连载中</option>
+          <option value="paused" selected={status === 'paused'}>已暂停</option>
+          <option value="completed" selected={status === 'completed'}>已完结</option>
+        </select>
+      </label>
+    </div>
+
+    <label class="admin-field">
+      <span>写作目标</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="writingGoals" placeholder="例如 保持网文节奏、单章有钩子、适合长期周更。">{project?.writingGoals ?? ''}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>参考作品</span>
+      <input class="search-input admin-input-rect" type="text" name="referenceTitle" value={project?.referenceTitle ?? ''} placeholder="例如 斗破苍穹" />
+    </label>
+
+    <label class="admin-field">
+      <span>参考作品公开梗概</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="referenceSummary" placeholder="这里保存检索后的公开梗概，避免直接吃原文。">{project?.referenceSummary ?? ''}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>参考约束与续写笔记</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="referenceNotes" placeholder="写参考作品的人物现状、世界规则和不能碰坏的主线约束。">{project?.referenceNotes ?? ''}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>世界观 / 规则库</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="worldBible" placeholder="例如 修炼体系、组织势力、世界规则、特殊道具。">{project?.worldBible ?? ''}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>人物卡与关系</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="characterBible" placeholder="主角、配角、阵营、人物弧光和关系变化。">{project?.characterBible ?? ''}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>长线大纲</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="outline" placeholder="分卷方向、关键转折、阶段目标。">{project?.outline ?? ''}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>文风要求</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="styleGuide" placeholder="例如 偏网文、快节奏、章末留悬念、尽量少说教。">{project?.styleGuide ?? ''}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>连续性记忆</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="continuityNotes" placeholder="这里会持续累计每一章的关键变化，也可以手动补充。">{project?.continuityNotes ?? ''}</textarea>
+    </label>
+
+    <div class="hero-actions">
+      <button class="button button-primary" type="submit">{submitLabel}</button>
+      <a class="button" href="/admin/novels">返回项目列表</a>
+    </div>
+  </form>
+
+  {project?.id ? (
+    <form class="inline-form" action={action} method="post" onsubmit="return confirm('确认删除这个小说项目吗？相关章节记录也会一起删除。')">
+      <input type="hidden" name="intent" value="delete" />
+      <button class="button button-danger" type="submit">删除项目</button>
+    </form>
+  ) : null}
+</div>

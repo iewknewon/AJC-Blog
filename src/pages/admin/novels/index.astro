@@ -1,0 +1,28 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import AdminNovelList from '../../../components/admin/AdminNovelList.astro';
+import { isAdminAuthenticated } from '../../../lib/auth/guards';
+import { getNovelProjects } from '../../../lib/novels/repository';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const db = Astro.locals.runtime.env.DB;
+const projects = await getNovelProjects(db);
+---
+
+<AdminLayout title="小说连载" description="用项目制的方式管理长篇小说、参考作品和章节续写。">
+  <section class="section" style="padding-top: 0;">
+    <div class="archive-toolbar" style="margin-bottom: 1rem;">
+      <div>
+        <h2 class="section-title">连载项目</h2>
+        <p class="section-description">每个项目都可以维护自己的世界观、人物卡、参考作品和连续记忆。</p>
+      </div>
+      <a class="button button-primary" href="/admin/novels/new">新建小说项目</a>
+    </div>
+    <AdminNovelList projects={projects} />
+  </section>
+</AdminLayout>

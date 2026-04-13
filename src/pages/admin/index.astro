@@ -33,7 +33,7 @@ const draftCount = posts.filter((post) => post.status === 'draft').length;
 const publishedCount = posts.filter((post) => post.status === 'published').length;
 ---
 
-<AdminLayout title="后台概览" description="集中管理文章、AI 写作和站点访问情况。">
+<AdminLayout title="后台概览" description="集中管理文章、小说连载、AI 写作和站点访问情况。">
   <section class="grid four">
     <article class="content-card">
       <h3>文章总数</h3>
@@ -65,11 +65,12 @@ const publishedCount = posts.filter((post) => post.status === 'published').lengt
     <div class="archive-toolbar">
       <div>
         <h2 class="section-title">开始管理内容</h2>
-        <p class="section-description">从这里继续写作、整理文章，或者查看访客来自哪些地区。</p>
+        <p class="section-description">从这里继续写作、整理文章、维护小说项目，或者查看访客来自哪些地区。</p>
       </div>
       <div class="hero-actions">
         <a class="button button-primary" href="/admin/posts/new">新建文章</a>
         <a class="button" href="/admin/posts">管理文章</a>
+        <a class="button" href="/admin/novels">小说连载</a>
         <a class="button" href="/admin/stats">访问统计</a>
         <a class="button" href="/admin/ai">AI 写作</a>
       </div>

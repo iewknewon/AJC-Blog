@@ -1,0 +1,20 @@
+---
+import type { NovelProjectStatus } from '../../lib/novels/types';
+
+interface Props {
+  status: NovelProjectStatus;
+}
+
+const { status } = Astro.props;
+
+const STATUS_LABELS: Record<NovelProjectStatus, string> = {
+  planning: '筹备中',
+  serializing: '连载中',
+  paused: '已暂停',
+  completed: '已完结',
+};
+---
+
+<span class:list={['admin-status-badge', `is-${status}`]}>
+  {STATUS_LABELS[status] ?? status}
+</span>

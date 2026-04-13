@@ -512,6 +512,30 @@ img {
   border-color: #fde68a;
 }
 
+.admin-status-badge.is-planning {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-color: #bfdbfe;
+}
+
+.admin-status-badge.is-serializing {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #bbf7d0;
+}
+
+.admin-status-badge.is-paused {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+
+.admin-status-badge.is-completed {
+  color: #7c3aed;
+  background: #ede9fe;
+  border-color: #ddd6fe;
+}
+
 .admin-form {
   display: grid;
   gap: 1rem;

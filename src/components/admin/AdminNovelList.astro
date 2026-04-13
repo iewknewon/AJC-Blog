@@ -1,0 +1,53 @@
+---
+import EmptyState from '../EmptyState.astro';
+import { formatDate } from '../../utils/format';
+import type { NovelProject } from '../../lib/novels/types';
+import AdminNovelStatusBadge from './AdminNovelStatusBadge.astro';
+
+interface Props {
+  projects: NovelProject[];
+}
+
+const { projects } = Astro.props;
+---
+
+{projects.length > 0 ? (
+  <div class="admin-table-wrapper card">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>项目</th>
+          <th>Slug</th>
+          <th>状态</th>
+          <th>章节</th>
+          <th>更新</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {projects.map((project) => (
+          <tr>
+            <td>
+              <div class="admin-table-title">{project.title}</div>
+              <p class="admin-insight-meta" style="margin-top: 0.25rem;">{project.premise}</p>
+            </td>
+            <td>{project.slug}</td>
+            <td><AdminNovelStatusBadge status={project.status} /></td>
+            <td>
+              {project.chaptersCount}
+              {project.lastChapterNumber > 0 ? ` / 最新第 ${project.lastChapterNumber} 章` : ''}
+            </td>
+            <td>{formatDate(project.updatedAt)}</td>
+            <td>
+              <div class="hero-actions" style="margin-top: 0;">
+                <a class="button" href={`/admin/novels/${project.id}`}>工作台</a>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+) : (
+  <EmptyState title="还没有小说项目" description="先创建一个长篇小说项目，再去做参考作品检索、设定整理和章节续写。" />
+)}
