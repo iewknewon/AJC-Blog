@@ -77,7 +77,7 @@ const pageData = serializeInlineJson({
 
     <article class="content-card">
       <h2 class="section-title">AI 续写</h2>
-      <p class="section-description">这里会读取和 AI 写作页共享的 Base URL、API Key 和模型配置。</p>
+      <p class="section-description">这里会读取和 AI 写作页共享的 Base URL、API Key 和模型配置，也支持直接一键自动续写下一章。</p>
 
       <div class="admin-form">
         <label class="admin-field">
@@ -151,7 +151,8 @@ const pageData = serializeInlineJson({
         </div>
 
         <div class="hero-actions">
-          <button id="generate-novel-chapter" class="button button-primary" type="submit">开始写这一章</button>
+          <button id="generate-novel-chapter-auto" class="button" type="button">一键自动续写下一章</button>
+          <button id="generate-novel-chapter" class="button button-primary" type="submit">按当前任务写这一章</button>
         </div>
       </form>
     </article>
@@ -227,6 +228,7 @@ const pageData = serializeInlineJson({
     const bibleButton = document.querySelector('#novel-bible-button');
     const outlineButton = document.querySelector('#novel-outline-button');
     const planNextButton = document.querySelector('#novel-plan-next-button');
+    const autoGenerateButton = document.querySelector('#generate-novel-chapter-auto');
     const generateButton = document.querySelector('#generate-novel-chapter');
     const statusBody = document.querySelector('#novel-status-body');
     const streamOutput = document.querySelector('#novel-stream-output');
@@ -399,6 +401,26 @@ const pageData = serializeInlineJson({
         hook.textContent = `结尾钩子：${plan.endingHook}`;
         planOutput.append(hook);
       }
+    };
+
+    const applyPlanToForm = (plan) => {
+      const titleField = generateForm?.elements?.namedItem('chapterTitleHint');
+      const briefField = generateForm?.elements?.namedItem('chapterBrief');
+
+      if (titleField && 'value' in titleField) {
+        titleField.value = plan.chapterTitleHint || '';
+      }
+
+      if (briefField && 'value' in briefField) {
+        const combinedBrief = [
+          plan.chapterBrief || '',
+          plan.progressionChecklist ? `\n\n推进清单：\n${plan.progressionChecklist}` : '',
+          plan.endingHook ? `\n\n结尾钩子：${plan.endingHook}` : '',
+        ].join('').trim();
+        briefField.value = combinedBrief;
+      }
+
+      renderPlanOutput(plan);
     };
 
     const setResultActions = (post) => {
@@ -674,23 +696,7 @@ const pageData = serializeInlineJson({
           throw new Error(data.message || '生成下一章任务卡失败。');
         }
 
-        const titleField = generateForm?.elements?.namedItem('chapterTitleHint');
-        const briefField = generateForm?.elements?.namedItem('chapterBrief');
-
-        if (titleField && 'value' in titleField) {
-          titleField.value = data.chapterTitleHint || '';
-        }
-
-        if (briefField && 'value' in briefField) {
-          const combinedBrief = [
-            data.chapterBrief || '',
-            data.progressionChecklist ? `\n\n推进清单：\n${data.progressionChecklist}` : '',
-            data.endingHook ? `\n\n结尾钩子：${data.endingHook}` : '',
-          ].join('').trim();
-          briefField.value = combinedBrief;
-        }
-
-        renderPlanOutput(data);
+        applyPlanToForm(data);
         setStatus(data.message || '下一章任务卡生成完成。');
       } catch (error) {
         setStatus(error instanceof Error ? error.message : '生成下一章任务卡失败。', true);
@@ -699,9 +705,7 @@ const pageData = serializeInlineJson({
       }
     });
 
-    generateForm?.addEventListener('submit', async (submitEvent) => {
-      submitEvent.preventDefault();
-
+    const runGenerate = async ({ autoPlan = false } = {}) => {
       const baseUrl = baseUrlInput?.value?.trim();
       const apiKey = apiKeyInput?.value?.trim();
       const model = modelSelect?.value?.trim();
@@ -714,9 +718,10 @@ const pageData = serializeInlineJson({
       const formData = new FormData(generateForm);
       saveStoredConfig();
       generateButton.disabled = true;
+      autoGenerateButton.disabled = true;
       streamOutput.textContent = EMPTY_STREAM_TEXT;
       resultActions.innerHTML = '';
-      setStatus('正在启动小说续写...');
+      setStatus(autoPlan ? '正在自动规划并续写下一章...' : '正在启动小说续写...');
 
       try {
         const response = await fetch(PAGE_DATA.generateApiUrl, {
@@ -736,6 +741,7 @@ const pageData = serializeInlineJson({
             chapterBrief: String(formData.get('chapterBrief') ?? ''),
             lengthPreset: String(formData.get('lengthPreset') ?? 'standard'),
             status: String(formData.get('status') ?? 'draft'),
+            autoPlan,
           }),
         });
 
@@ -761,6 +767,10 @@ const pageData = serializeInlineJson({
             }
 
             renderResearchOutput(data);
+          },
+          plan: (data) => {
+            applyPlanToForm(data);
+            setStatus(data.message || '下一章任务卡已自动生成。');
           },
           content: (data) => {
             const current = streamOutput.textContent === EMPTY_STREAM_TEXT ? '' : streamOutput.textContent;
@@ -793,7 +803,17 @@ const pageData = serializeInlineJson({
         setStatus(error instanceof Error ? error.message : '章节生成失败，请稍后再试。', true);
       } finally {
         generateButton.disabled = false;
+        autoGenerateButton.disabled = false;
       }
+    };
+
+    autoGenerateButton?.addEventListener('click', async () => {
+      await runGenerate({ autoPlan: true });
+    });
+
+    generateForm?.addEventListener('submit', async (submitEvent) => {
+      submitEvent.preventDefault();
+      await runGenerate({ autoPlan: false });
     });
   </script>
 </AdminLayout>

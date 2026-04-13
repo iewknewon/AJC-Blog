@@ -4,6 +4,7 @@ import {
   buildNovelResearchQuery,
   buildNovelSystemPrompt,
   generateNovelMemoryUpdate,
+  generateNovelNextChapterPlan,
   generateNovelReferencePack,
   type NovelLengthPreset,
   mergeNovelContinuityNotes,
@@ -36,6 +37,7 @@ type GeneratePayload = {
   chapterTitleHint?: string;
   lengthPreset?: string;
   status?: string;
+  autoPlan?: boolean;
   project?: Record<string, unknown>;
 };
 
@@ -139,12 +141,13 @@ export async function POST(context) {
   const chapterTitleHint = String(payload.chapterTitleHint ?? '').trim();
   const status = payload.status === 'published' ? 'published' : 'draft';
   const lengthPreset = parseLengthPreset(payload.lengthPreset);
+  const autoPlan = payload.autoPlan === true || (!chapterBrief && !chapterTitleHint);
 
   if (!baseUrl || !apiKey || !model) {
     return json({ message: '请先填写 Base URL、API Key 和模型。' }, 400);
   }
 
-  if (!chapterBrief) {
+  if (!chapterBrief && !autoPlan) {
     return json({ message: '请先填写这一章的任务说明。' }, 400);
   }
 
@@ -200,6 +203,8 @@ export async function POST(context) {
 
       try {
         let sources = await getNovelReferenceSources(db, id);
+        let effectiveChapterBrief = chapterBrief;
+        let effectiveChapterTitleHint = chapterTitleHint;
 
         if (project.referenceTitle && sources.length === 0) {
           const query = buildNovelResearchQuery(project);
@@ -257,6 +262,26 @@ export async function POST(context) {
           }
         }
 
+        if (autoPlan || !effectiveChapterBrief) {
+          send('status', { message: '正在自动规划下一章任务卡...' });
+
+          const plan = await generateNovelNextChapterPlan(baseUrl, apiKey, model, {
+            project,
+            chapters,
+            sources,
+            volumeNumber,
+            chapterNumber,
+          });
+
+          effectiveChapterTitleHint = effectiveChapterTitleHint || plan.chapterTitleHint;
+          effectiveChapterBrief = plan.chapterBrief;
+
+          send('plan', {
+            ...plan,
+            message: '已自动生成下一章任务卡，接下来开始续写。',
+          });
+        }
+
         send('status', { message: '正在流式写作这一章...' });
 
         for await (const chunk of streamCompatibleText(baseUrl, apiKey, model, {
@@ -267,8 +292,8 @@ export async function POST(context) {
             sources,
             volumeNumber,
             chapterNumber,
-            chapterBrief,
-            chapterTitleHint,
+            chapterBrief: effectiveChapterBrief,
+            chapterTitleHint: effectiveChapterTitleHint,
             lengthPreset,
           }),
           temperature: 0.85,
@@ -281,7 +306,7 @@ export async function POST(context) {
 
         const generated = parseGeneratedPostDraft(
           rawText,
-          chapterTitleHint || `${project.title} 第${chapterNumber}章`,
+          effectiveChapterTitleHint || `${project.title} 第${chapterNumber}章`,
         );
         const uniqueSlug = await buildUniqueSlug(db, generated.slug);
         const tags = buildNovelPostTags(project, generated.tags);
@@ -341,7 +366,7 @@ export async function POST(context) {
           chapterNumber,
           title: generated.title,
           description: generated.description,
-          brief: chapterBrief,
+          brief: effectiveChapterBrief,
           summary: memoryUpdate.summary,
           continuityDelta: memoryUpdate.continuityDelta,
           postId: post.id,
