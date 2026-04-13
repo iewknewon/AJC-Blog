@@ -53,15 +53,15 @@ const pageData = serializeInlineJson({
   <section class="grid three" style="padding-top: 0;">
     <article class="content-card">
       <h3>当前状态</h3>
-      <p class="admin-stat-value" style="font-size: 1.3rem;">{project.status === 'planning' ? '筹备中' : project.status === 'serializing' ? '连载中' : project.status === 'paused' ? '已暂停' : '已完结'}</p>
+      <p id="novel-project-status" class="admin-stat-value" style="font-size: 1.3rem;">{project.status === 'planning' ? '筹备中' : project.status === 'serializing' ? '连载中' : project.status === 'paused' ? '已暂停' : '已完结'}</p>
     </article>
     <article class="content-card">
       <h3>已写章节</h3>
-      <p class="admin-stat-value">{project.chaptersCount}</p>
+      <p id="novel-project-chapters-count" class="admin-stat-value">{project.chaptersCount}</p>
     </article>
     <article class="content-card">
       <h3>下一章</h3>
-      <p class="admin-stat-value" style="font-size: 1.3rem;">第 {nextChapter.chapterNumber} 章</p>
+      <p id="novel-project-next-chapter" class="admin-stat-value" style="font-size: 1.3rem;">第 {nextChapter.chapterNumber} 章</p>
     </article>
   </section>
 
@@ -150,8 +150,18 @@ const pageData = serializeInlineJson({
           </label>
         </div>
 
+        <label class="admin-field">
+          <span>连续自动写作章数</span>
+          <select class="search-input admin-input-rect" name="batchCount">
+            <option value="2">连续写 2 章</option>
+            <option value="3" selected>连续写 3 章</option>
+            <option value="5">连续写 5 章</option>
+          </select>
+        </label>
+
         <div class="hero-actions">
           <button id="generate-novel-chapter-auto" class="button" type="button">一键自动续写下一章</button>
+          <button id="generate-novel-chapter-batch" class="button" type="button">自动连续写多章</button>
           <button id="generate-novel-chapter" class="button button-primary" type="submit">按当前任务写这一章</button>
         </div>
       </form>
@@ -229,12 +239,23 @@ const pageData = serializeInlineJson({
     const outlineButton = document.querySelector('#novel-outline-button');
     const planNextButton = document.querySelector('#novel-plan-next-button');
     const autoGenerateButton = document.querySelector('#generate-novel-chapter-auto');
+    const batchGenerateButton = document.querySelector('#generate-novel-chapter-batch');
     const generateButton = document.querySelector('#generate-novel-chapter');
     const statusBody = document.querySelector('#novel-status-body');
     const streamOutput = document.querySelector('#novel-stream-output');
     const resultActions = document.querySelector('#novel-result-actions');
     const researchOutput = document.querySelector('#novel-research-output');
     const planOutput = document.querySelector('#novel-plan-output');
+    const projectStatusValue = document.querySelector('#novel-project-status');
+    const projectChaptersCountValue = document.querySelector('#novel-project-chapters-count');
+    const projectNextChapterValue = document.querySelector('#novel-project-next-chapter');
+
+    const PROJECT_STATUS_LABELS = {
+      planning: '筹备中',
+      serializing: '连载中',
+      paused: '已暂停',
+      completed: '已完结',
+    };
 
     const setStatus = (message, isError = false) => {
       statusBody.textContent = message;
@@ -421,6 +442,71 @@ const pageData = serializeInlineJson({
       }
 
       renderPlanOutput(plan);
+    };
+
+    const clearPlanFromForm = () => {
+      const titleField = generateForm?.elements?.namedItem('chapterTitleHint');
+      const briefField = generateForm?.elements?.namedItem('chapterBrief');
+
+      if (titleField && 'value' in titleField) {
+        titleField.value = '';
+      }
+
+      if (briefField && 'value' in briefField) {
+        briefField.value = '';
+      }
+
+      if (planOutput) {
+        planOutput.hidden = true;
+        planOutput.innerHTML = '';
+      }
+    };
+
+    const applyNextChapterToForm = (nextChapter) => {
+      if (!nextChapter) {
+        return;
+      }
+
+      const volumeField = generateForm?.elements?.namedItem('volumeNumber');
+      const chapterField = generateForm?.elements?.namedItem('chapterNumber');
+
+      if (volumeField && 'value' in volumeField) {
+        volumeField.value = String(nextChapter.volumeNumber ?? 1);
+      }
+
+      if (chapterField && 'value' in chapterField) {
+        chapterField.value = String(nextChapter.chapterNumber ?? 1);
+      }
+
+      if (projectNextChapterValue) {
+        projectNextChapterValue.textContent = `第 ${nextChapter.chapterNumber ?? 1} 章`;
+      }
+
+      clearPlanFromForm();
+    };
+
+    const updateProjectStats = (project) => {
+      if (!project) {
+        return;
+      }
+
+      if (project.status && projectStatusValue) {
+        projectStatusValue.textContent = PROJECT_STATUS_LABELS[project.status] || project.status;
+      }
+
+      if (typeof project.chaptersCount === 'number' && projectChaptersCountValue) {
+        projectChaptersCountValue.textContent = String(project.chaptersCount);
+      }
+
+      if (project.nextChapter) {
+        applyNextChapterToForm(project.nextChapter);
+      }
+    };
+
+    const setGenerationButtonsDisabled = (disabled) => {
+      generateButton.disabled = disabled;
+      autoGenerateButton.disabled = disabled;
+      batchGenerateButton.disabled = disabled;
     };
 
     const setResultActions = (post) => {
@@ -705,7 +791,7 @@ const pageData = serializeInlineJson({
       }
     });
 
-    const runGenerate = async ({ autoPlan = false } = {}) => {
+    const runGenerate = async ({ autoPlan = false, manageButtons = true, resetOutput = true } = {}) => {
       const baseUrl = baseUrlInput?.value?.trim();
       const apiKey = apiKeyInput?.value?.trim();
       const model = modelSelect?.value?.trim();
@@ -717,11 +803,20 @@ const pageData = serializeInlineJson({
 
       const formData = new FormData(generateForm);
       saveStoredConfig();
-      generateButton.disabled = true;
-      autoGenerateButton.disabled = true;
-      streamOutput.textContent = EMPTY_STREAM_TEXT;
-      resultActions.innerHTML = '';
+
+      if (manageButtons) {
+        setGenerationButtonsDisabled(true);
+      }
+
+      if (resetOutput) {
+        streamOutput.textContent = EMPTY_STREAM_TEXT;
+        resultActions.innerHTML = '';
+      }
+
       setStatus(autoPlan ? '正在自动规划并续写下一章...' : '正在启动小说续写...');
+      let donePayload = null;
+      let streamFailed = false;
+      let streamErrorMessage = '';
 
       try {
         const response = await fetch(PAGE_DATA.generateApiUrl, {
@@ -778,6 +873,7 @@ const pageData = serializeInlineJson({
             streamOutput.scrollTop = streamOutput.scrollHeight;
           },
           done: (data) => {
+            donePayload = data;
             if (data.rawText) {
               streamOutput.textContent = data.rawText;
             }
@@ -788,27 +884,71 @@ const pageData = serializeInlineJson({
               continuityField.value = data.project.continuityNotes;
             }
 
+            updateProjectStats(data.project || null);
             setStatus(data.message || '章节生成完成。');
             setResultActions(data.post || null);
           },
           error: (data) => {
+            streamFailed = true;
+            streamErrorMessage = data.message || '章节生成失败，请稍后再试。';
             if (data.rawText) {
               streamOutput.textContent = data.rawText;
             }
 
-            setStatus(data.message || '章节生成失败，请稍后再试。', true);
+            setStatus(streamErrorMessage, true);
           },
         });
+
+        if (streamFailed) {
+          throw new Error(streamErrorMessage);
+        }
+
+        return donePayload;
       } catch (error) {
         setStatus(error instanceof Error ? error.message : '章节生成失败，请稍后再试。', true);
+        throw error;
       } finally {
-        generateButton.disabled = false;
-        autoGenerateButton.disabled = false;
+        if (manageButtons) {
+          setGenerationButtonsDisabled(false);
+        }
       }
     };
 
     autoGenerateButton?.addEventListener('click', async () => {
       await runGenerate({ autoPlan: true });
+    });
+
+    batchGenerateButton?.addEventListener('click', async () => {
+      const batchCount = Math.max(1, Math.min(5, Number(generateForm?.elements?.namedItem('batchCount')?.value ?? 3) || 3));
+      let completedCount = 0;
+
+      setGenerationButtonsDisabled(true);
+      resultActions.innerHTML = '';
+
+      try {
+        for (let index = 0; index < batchCount; index += 1) {
+          setStatus(`正在自动连续写作第 ${index + 1} / ${batchCount} 章...`);
+
+          await runGenerate({
+            autoPlan: true,
+            manageButtons: false,
+            resetOutput: true,
+          });
+
+          completedCount += 1;
+        }
+
+        setStatus(`已自动连续完成 ${completedCount} 章。`);
+      } catch (error) {
+        setStatus(
+          completedCount > 0
+            ? `已完成 ${completedCount} 章，后续中断：${error instanceof Error ? error.message : '自动连续写作失败。'}`
+            : (error instanceof Error ? error.message : '自动连续写作失败。'),
+          true,
+        );
+      } finally {
+        setGenerationButtonsDisabled(false);
+      }
     });
 
     generateForm?.addEventListener('submit', async (submitEvent) => {

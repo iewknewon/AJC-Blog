@@ -3,6 +3,7 @@ import {
   buildNovelPostTags,
   buildNovelResearchQuery,
   buildNovelSystemPrompt,
+  getNextNovelChapterPosition,
   generateNovelMemoryUpdate,
   generateNovelNextChapterPlan,
   generateNovelReferencePack,
@@ -273,7 +274,7 @@ export async function POST(context) {
             chapterNumber,
           });
 
-          effectiveChapterTitleHint = effectiveChapterTitleHint || plan.chapterTitleHint;
+          effectiveChapterTitleHint = autoPlan ? plan.chapterTitleHint : (effectiveChapterTitleHint || plan.chapterTitleHint);
           effectiveChapterBrief = plan.chapterBrief;
 
           send('plan', {
@@ -395,6 +396,7 @@ export async function POST(context) {
           ),
         }) ?? project;
         chapters = await getNovelChaptersByProjectId(db, id);
+        const nextChapter = getNextNovelChapterPosition(chapters);
 
         send('done', {
           message: status === 'published'
@@ -419,8 +421,10 @@ export async function POST(context) {
           },
           project: {
             id: project.id,
+            status: project.status,
             chaptersCount: chapters.length,
             continuityNotes: project.continuityNotes,
+            nextChapter,
           },
         });
       } catch (error) {
