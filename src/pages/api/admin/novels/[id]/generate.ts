@@ -24,6 +24,7 @@ import {
 } from '../../../../../lib/novels/repository';
 import { validateNovelProjectInput } from '../../../../../lib/novels/validation';
 import { createPost, getPostBySlug } from '../../../../../lib/posts/repository';
+import { getNovelChapterUrl } from '../../../../../utils/novels';
 
 type GeneratePayload = {
   baseUrl?: string;
@@ -381,7 +382,9 @@ export async function POST(context) {
             slug: post.slug,
             status: post.status,
             adminUrl: `/admin/posts/${post.id}`,
-            publicUrl: post.status === 'published' ? `/blog/${post.slug}/` : null,
+            publicUrl: post.status === 'published'
+              ? getNovelChapterUrl(project.slug, chapter.volumeNumber, chapter.chapterNumber)
+              : null,
           },
           chapter: {
             id: chapter.id,

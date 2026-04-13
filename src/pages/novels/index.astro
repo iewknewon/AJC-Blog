@@ -1,0 +1,88 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { siteConfig } from '../../data/site';
+import { getPublishedNovelProjects } from '../../lib/novels/repository';
+import { formatDate } from '../../utils/format';
+import { getNovelChapterLabel, getNovelChapterUrl, getNovelUrl } from '../../utils/novels';
+
+const db = Astro.locals.runtime.env.DB;
+const novels = await getPublishedNovelProjects(db);
+---
+
+<BaseLayout
+  title={`小说连载 | ${siteConfig.title}`}
+  description="查看站点内公开发布的长篇小说、连载章节与更新进度。"
+  pathname="/novels"
+>
+  <section class="section">
+    <div class="container">
+      <div class="hero novel-landing-hero">
+        <p class="eyebrow">小说连载</p>
+        <h1>公开连载中的长篇故事</h1>
+        <p>
+          这里会集中展示已经公开发布的小说项目、最新更新进度和章节入口。
+          后台写作完成后，前台会直接沉淀成可连续阅读的连载页。
+        </p>
+      </div>
+
+      {novels.length ? (
+        <div class="grid two" style="margin-top: 2rem;">
+          {novels.map((project) => (
+            <article class="card novel-card">
+              <a class="novel-card-cover-link" href={getNovelUrl(project.slug)}>
+                {project.cover ? (
+                  <img
+                    class="novel-card-cover"
+                    src={project.cover}
+                    alt={`${project.title} 封面图`}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <div class="novel-card-cover novel-card-cover-placeholder">
+                    <span>{project.genre || '连载中'}</span>
+                  </div>
+                )}
+              </a>
+              <div class="novel-card-body">
+                <div class="tags" style="margin-top: 0;">
+                  {project.genre ? <span class="tag">{project.genre}</span> : null}
+                  <span class="tag">{project.status === 'completed' ? '已完结' : '连载中'}</span>
+                  <span class="tag">已发布 {project.chaptersCount} 章</span>
+                </div>
+                <h2 class="novel-card-title">
+                  <a href={getNovelUrl(project.slug)}>{project.title}</a>
+                </h2>
+                <p class="muted">{project.premise}</p>
+                <div class="novel-card-meta">
+                  <span>最新更新：{formatDate(project.latestPublishedAt ?? project.updatedAt)}</span>
+                  {project.lastChapterNumber ? (
+                    <span>{getNovelChapterLabel(project.lastVolumeNumber, project.lastChapterNumber)}</span>
+                  ) : null}
+                </div>
+                {project.latestChapterTitle ? (
+                  <p class="muted">最近更新章节：{project.latestChapterTitle}</p>
+                ) : null}
+                <div class="hero-actions" style="margin-top: 1rem;">
+                  <a class="button button-primary" href={getNovelUrl(project.slug)}>查看目录</a>
+                  {project.lastChapterNumber ? (
+                    <a
+                      class="button"
+                      href={getNovelChapterUrl(project.slug, project.lastVolumeNumber, project.lastChapterNumber)}
+                    >
+                      阅读最新章节
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div class="empty-state" style="margin-top: 2rem;">
+          目前还没有公开发布的小说章节，等第一章上线后，这里就会自动展示。
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,150 @@
+---
+import BaseLayout from '../../../../../../layouts/BaseLayout.astro';
+import TableOfContents from '../../../../../../components/TableOfContents.astro';
+import { siteConfig } from '../../../../../../data/site';
+import {
+  getPublishedNovelChapterByPosition,
+  getPublishedNovelChapterSummariesByProjectId,
+  getPublishedNovelProjectBySlug,
+} from '../../../../../../lib/novels/repository';
+import { formatDate, getReadingTime } from '../../../../../../utils/format';
+import {
+  getAdjacentNovelChapters,
+  getNovelChapterLabel,
+  getNovelChapterUrl,
+  getNovelUrl,
+  renderNovelChapter,
+} from '../../../../../../utils/novels';
+
+const { slug, volume, chapter } = Astro.params;
+
+if (!slug || !volume || !chapter) {
+  return Astro.redirect('/novels');
+}
+
+const volumeNumber = Number(volume);
+const chapterNumber = Number(chapter);
+
+if (!Number.isFinite(volumeNumber) || !Number.isFinite(chapterNumber) || volumeNumber <= 0 || chapterNumber <= 0) {
+  return Astro.redirect(getNovelUrl(slug));
+}
+
+const db = Astro.locals.runtime.env.DB;
+const project = await getPublishedNovelProjectBySlug(db, slug);
+
+if (!project) {
+  return Astro.redirect('/novels');
+}
+
+const chapterRecord = await getPublishedNovelChapterByPosition(db, project.id, volumeNumber, chapterNumber);
+
+if (!chapterRecord) {
+  return Astro.redirect(getNovelUrl(project.slug));
+}
+
+const chapterList = await getPublishedNovelChapterSummariesByProjectId(db, project.id);
+const adjacentChapters = getAdjacentNovelChapters(chapterList, volumeNumber, chapterNumber);
+const renderedChapter = await renderNovelChapter(chapterRecord);
+const readingTime = getReadingTime(renderedChapter.plainText);
+const publishDate = chapterRecord.post.publishedAt ?? chapterRecord.post.updatedAt;
+const chapterPath = getNovelChapterUrl(project.slug, volumeNumber, chapterNumber);
+---
+
+<BaseLayout
+  title={`${chapterRecord.title} | ${project.title} | ${siteConfig.title}`}
+  description={chapterRecord.description}
+  pathname={chapterPath}
+  image={chapterRecord.post.cover ?? project.cover ?? '/favicon.svg'}
+>
+  <div class="container article-layout">
+    <article class="article-shell">
+      <p class="eyebrow">小说连载</p>
+      <h1>{chapterRecord.title}</h1>
+      <p class="page-intro">{chapterRecord.description}</p>
+
+      <div class="tags" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+        <a class="tag" href={getNovelUrl(project.slug)}>{project.title}</a>
+        <span class="tag">{getNovelChapterLabel(chapterRecord.volumeNumber, chapterRecord.chapterNumber)}</span>
+        <span class="tag">{formatDate(publishDate)}</span>
+        <span class="tag">{readingTime}</span>
+      </div>
+
+      <div class="hero-actions" style="margin-bottom: 1.5rem;">
+        <a class="button button-primary" href={getNovelUrl(project.slug)}>查看章节目录</a>
+        <a class="button" href={`/blog/${chapterRecord.post.slug}/wechat/`}>导出公众号格式</a>
+      </div>
+
+      {chapterRecord.post.cover ? (
+        <figure class="article-cover">
+          <img src={chapterRecord.post.cover} alt={`${chapterRecord.title} 插图`} loading="eager" decoding="async" />
+        </figure>
+      ) : null}
+
+      <div class="article-content" set:html={renderedChapter.html}></div>
+
+      <div class="content-card" style="margin-top: 2rem;">
+        <h3>{project.title}</h3>
+        <p class="muted">{project.premise}</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+          <a class="button" href={getNovelUrl(project.slug)}>返回目录</a>
+          <a class="button" href="/novels">查看全部连载</a>
+        </div>
+      </div>
+
+      <div class="post-nav">
+        {adjacentChapters.previous ? (
+          <a
+            class="card novel-reader-nav-card"
+            href={getNovelChapterUrl(
+              project.slug,
+              adjacentChapters.previous.volumeNumber,
+              adjacentChapters.previous.chapterNumber,
+            )}
+          >
+            <span class="meta">上一章</span>
+            <strong>{adjacentChapters.previous.title}</strong>
+            <span class="muted">
+              {getNovelChapterLabel(
+                adjacentChapters.previous.volumeNumber,
+                adjacentChapters.previous.chapterNumber,
+              )}
+            </span>
+          </a>
+        ) : (
+          <div class="empty-state novel-reader-nav-card">
+            <span class="meta">上一章</span>
+            <strong>已经是开篇</strong>
+            <span class="muted">可以回到目录挑选其他章节。</span>
+          </div>
+        )}
+
+        {adjacentChapters.next ? (
+          <a
+            class="card novel-reader-nav-card"
+            href={getNovelChapterUrl(
+              project.slug,
+              adjacentChapters.next.volumeNumber,
+              adjacentChapters.next.chapterNumber,
+            )}
+          >
+            <span class="meta">下一章</span>
+            <strong>{adjacentChapters.next.title}</strong>
+            <span class="muted">
+              {getNovelChapterLabel(
+                adjacentChapters.next.volumeNumber,
+                adjacentChapters.next.chapterNumber,
+              )}
+            </span>
+          </a>
+        ) : (
+          <div class="empty-state novel-reader-nav-card">
+            <span class="meta">下一章</span>
+            <strong>这是当前最新章</strong>
+            <span class="muted">后续更新后，这里会自动接上。</span>
+          </div>
+        )}
+      </div>
+    </article>
+    <TableOfContents headings={renderedChapter.headings} />
+  </div>
+</BaseLayout>

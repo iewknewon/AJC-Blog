@@ -5,6 +5,7 @@ const githubUrl = import.meta.env.PUBLIC_GITHUB_URL ?? 'https://github.com/iewkn
 export const navigation = [
   { label: '首页', href: '/' },
   { label: '归档', href: '/archive' },
+  { label: '连载', href: '/novels' },
   { label: '标签', href: '/tags' },
   { label: '项目', href: '/projects' },
   { label: '搜索', href: '/search' },
@@ -48,4 +49,3 @@ export const siteConfig = {
   },
   footer: '© 2026 AJC. 使用 Astro 与 Cloudflare Pages 构建。',
 };
-

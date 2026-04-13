@@ -4,12 +4,19 @@ import type {
   NovelChapter,
   NovelChapterRow,
   NovelProject,
+  PublishedNovelChapter,
+  PublishedNovelChapterQueryRow,
+  PublishedNovelChapterSummary,
+  PublishedNovelChapterSummaryQueryRow,
+  PublishedNovelProject,
+  PublishedNovelProjectQueryRow,
   NovelProjectQueryRow,
   NovelReferenceSource,
   NovelReferenceSourceInput,
   NovelReferenceSourceRow,
   UpsertNovelProjectInput,
 } from './types';
+import { mapPostRow } from '../posts/repository';
 
 const novelSchemaReady = new WeakSet<D1Database>();
 const novelSchemaPending = new WeakMap<D1Database, Promise<void>>();
@@ -186,6 +193,17 @@ export function mapNovelProjectRow(row: NovelProjectQueryRow): NovelProject {
   };
 }
 
+export function mapPublishedNovelProjectRow(row: PublishedNovelProjectQueryRow): PublishedNovelProject {
+  const project = mapNovelProjectRow(row);
+
+  return {
+    ...project,
+    latestPublishedAt: row.latest_published_at ? new Date(row.latest_published_at) : null,
+    latestChapterTitle: row.latest_chapter_title ?? undefined,
+    cover: row.cover_image ?? undefined,
+  };
+}
+
 export function mapNovelChapterRow(row: NovelChapterRow): NovelChapter {
   return {
     id: row.id,
@@ -202,6 +220,40 @@ export function mapNovelChapterRow(row: NovelChapterRow): NovelChapter {
     status: row.status,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
+  };
+}
+
+export function mapPublishedNovelChapterSummaryRow(
+  row: PublishedNovelChapterSummaryQueryRow,
+): PublishedNovelChapterSummary {
+  const chapter = mapNovelChapterRow(row);
+
+  return {
+    ...chapter,
+    publishedAt: row.post_published_at ? new Date(row.post_published_at) : null,
+    cover: row.post_cover ?? undefined,
+  };
+}
+
+export function mapPublishedNovelChapterRow(row: PublishedNovelChapterQueryRow): PublishedNovelChapter {
+  const chapter = mapPublishedNovelChapterSummaryRow(row);
+
+  return {
+    ...chapter,
+    post: mapPostRow({
+      id: row.post_id ?? '',
+      slug: row.current_post_slug,
+      title: row.post_title,
+      description: row.post_description,
+      content: row.post_content,
+      tags: row.post_tags,
+      cover: row.post_cover,
+      featured: row.post_featured,
+      status: row.post_status,
+      published_at: row.post_published_at,
+      created_at: row.post_created_at,
+      updated_at: row.post_updated_at,
+    }),
   };
 }
 
@@ -275,6 +327,62 @@ const PROJECT_QUERY = `
   LEFT JOIN novel_chapters c ON c.project_id = p.id
 `;
 
+function getPublishedNovelVisibilityClause(chapterAlias: string, postAlias: string) {
+  return `
+    ${chapterAlias}.status = 'published'
+    AND ${chapterAlias}.post_id IS NOT NULL
+    AND ${postAlias}.status = 'published'
+    AND ${postAlias}.published_at IS NOT NULL
+  `;
+}
+
+const PUBLISHED_PROJECT_STATS_QUERY = `
+  SELECT
+    p.*,
+    COUNT(c.id) AS chapters_count,
+    COALESCE((
+      SELECT c2.chapter_number
+      FROM novel_chapters c2
+      INNER JOIN posts post2 ON post2.id = c2.post_id
+      WHERE c2.project_id = p.id
+        AND ${getPublishedNovelVisibilityClause('c2', 'post2')}
+      ORDER BY c2.volume_number DESC, c2.chapter_number DESC, post2.published_at DESC
+      LIMIT 1
+    ), 0) AS last_chapter_number,
+    COALESCE((
+      SELECT c2.volume_number
+      FROM novel_chapters c2
+      INNER JOIN posts post2 ON post2.id = c2.post_id
+      WHERE c2.project_id = p.id
+        AND ${getPublishedNovelVisibilityClause('c2', 'post2')}
+      ORDER BY c2.volume_number DESC, c2.chapter_number DESC, post2.published_at DESC
+      LIMIT 1
+    ), 1) AS last_volume_number,
+    MAX(post.published_at) AS latest_published_at,
+    (
+      SELECT c2.title
+      FROM novel_chapters c2
+      INNER JOIN posts post2 ON post2.id = c2.post_id
+      WHERE c2.project_id = p.id
+        AND ${getPublishedNovelVisibilityClause('c2', 'post2')}
+      ORDER BY c2.volume_number DESC, c2.chapter_number DESC, post2.published_at DESC
+      LIMIT 1
+    ) AS latest_chapter_title,
+    (
+      SELECT post2.cover
+      FROM novel_chapters c2
+      INNER JOIN posts post2 ON post2.id = c2.post_id
+      WHERE c2.project_id = p.id
+        AND ${getPublishedNovelVisibilityClause('c2', 'post2')}
+      ORDER BY c2.volume_number ASC, c2.chapter_number ASC, post2.published_at ASC
+      LIMIT 1
+    ) AS cover_image
+  FROM novel_projects p
+  INNER JOIN novel_chapters c ON c.project_id = p.id
+  INNER JOIN posts post ON post.id = c.post_id
+  WHERE ${getPublishedNovelVisibilityClause('c', 'post')}
+`;
+
 export async function getNovelProjects(db: D1Database) {
   const result = await withNovelSchema(db, () => db.prepare(`
       ${PROJECT_QUERY}
@@ -294,6 +402,27 @@ export async function getNovelProjectById(db: D1Database, id: string) {
     `).bind(id).first<NovelProjectQueryRow>());
 
   return result ? mapNovelProjectRow(result) : null;
+}
+
+export async function getPublishedNovelProjects(db: D1Database) {
+  const result = await withNovelSchema(db, () => db.prepare(`
+      ${PUBLISHED_PROJECT_STATS_QUERY}
+      GROUP BY p.id
+      ORDER BY latest_published_at DESC, p.updated_at DESC, p.created_at DESC
+    `).all<PublishedNovelProjectQueryRow>());
+
+  return (result.results ?? []).map(mapPublishedNovelProjectRow);
+}
+
+export async function getPublishedNovelProjectBySlug(db: D1Database, slug: string) {
+  const result = await withNovelSchema(db, () => db.prepare(`
+      ${PUBLISHED_PROJECT_STATS_QUERY}
+      AND p.slug = ?
+      GROUP BY p.id
+      LIMIT 1
+    `).bind(slug).first<PublishedNovelProjectQueryRow>());
+
+  return result ? mapPublishedNovelProjectRow(result) : null;
 }
 
 export async function createNovelProject(db: D1Database, input: UpsertNovelProjectInput) {
@@ -491,4 +620,56 @@ export async function createNovelChapter(db: D1Database, input: CreateNovelChapt
     `).bind(id).first<NovelChapterRow>());
 
   return row ? mapNovelChapterRow(row) : null;
+}
+
+export async function getPublishedNovelChapterSummariesByProjectId(db: D1Database, projectId: string) {
+  const result = await withNovelSchema(db, () => db.prepare(`
+      SELECT
+        c.*,
+        post.published_at AS post_published_at,
+        post.cover AS post_cover
+      FROM novel_chapters c
+      INNER JOIN posts post ON post.id = c.post_id
+      WHERE c.project_id = ?
+        AND ${getPublishedNovelVisibilityClause('c', 'post')}
+      ORDER BY c.volume_number ASC, c.chapter_number ASC, post.published_at ASC
+    `)
+    .bind(projectId)
+    .all<PublishedNovelChapterSummaryQueryRow>());
+
+  return (result.results ?? []).map(mapPublishedNovelChapterSummaryRow);
+}
+
+export async function getPublishedNovelChapterByPosition(
+  db: D1Database,
+  projectId: string,
+  volumeNumber: number,
+  chapterNumber: number,
+) {
+  const row = await withNovelSchema(db, () => db.prepare(`
+      SELECT
+        c.*,
+        post.slug AS current_post_slug,
+        post.title AS post_title,
+        post.description AS post_description,
+        post.content AS post_content,
+        post.tags AS post_tags,
+        post.cover AS post_cover,
+        post.featured AS post_featured,
+        post.status AS post_status,
+        post.published_at AS post_published_at,
+        post.created_at AS post_created_at,
+        post.updated_at AS post_updated_at
+      FROM novel_chapters c
+      INNER JOIN posts post ON post.id = c.post_id
+      WHERE c.project_id = ?
+        AND c.volume_number = ?
+        AND c.chapter_number = ?
+        AND ${getPublishedNovelVisibilityClause('c', 'post')}
+      LIMIT 1
+    `)
+    .bind(projectId, Math.max(1, Math.round(volumeNumber)), Math.max(1, Math.round(chapterNumber)))
+    .first<PublishedNovelChapterQueryRow>());
+
+  return row ? mapPublishedNovelChapterRow(row) : null;
 }

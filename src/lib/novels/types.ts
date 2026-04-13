@@ -1,4 +1,4 @@
-import type { PostStatus } from '../posts/types';
+import type { BlogPost, PostStatus } from '../posts/types';
 
 export type NovelProjectStatus = 'planning' | 'serializing' | 'paused' | 'completed';
 
@@ -28,6 +28,12 @@ export type NovelProjectQueryRow = NovelProjectRow & {
   last_volume_number?: unknown;
 };
 
+export type PublishedNovelProjectQueryRow = NovelProjectQueryRow & {
+  latest_published_at?: string | null;
+  latest_chapter_title?: string | null;
+  cover_image?: string | null;
+};
+
 export type NovelProject = {
   id: string;
   slug: string;
@@ -49,6 +55,12 @@ export type NovelProject = {
   lastVolumeNumber: number;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type PublishedNovelProject = NovelProject & {
+  latestPublishedAt: Date | null;
+  latestChapterTitle?: string;
+  cover?: string;
 };
 
 export type UpsertNovelProjectInput = {
@@ -129,6 +141,11 @@ export type NovelChapterRow = {
   updated_at: string;
 };
 
+export type PublishedNovelChapterSummaryQueryRow = NovelChapterRow & {
+  post_published_at: string | null;
+  post_cover: string | null;
+};
+
 export type NovelChapter = {
   id: string;
   projectId: string;
@@ -144,6 +161,27 @@ export type NovelChapter = {
   status: PostStatus;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type PublishedNovelChapterSummary = NovelChapter & {
+  publishedAt: Date | null;
+  cover?: string;
+};
+
+export type PublishedNovelChapterQueryRow = PublishedNovelChapterSummaryQueryRow & {
+  current_post_slug: string;
+  post_title: string;
+  post_description: string;
+  post_content: string;
+  post_tags: string;
+  post_featured: number;
+  post_status: PostStatus;
+  post_created_at: string;
+  post_updated_at: string;
+};
+
+export type PublishedNovelChapter = PublishedNovelChapterSummary & {
+  post: BlogPost;
 };
 
 export type CreateNovelChapterInput = {
