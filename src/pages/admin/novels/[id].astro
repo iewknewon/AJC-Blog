@@ -36,6 +36,7 @@ const error = Astro.url.searchParams.get('error');
 const pageData = serializeInlineJson({
   projectId: project.id,
   researchApiUrl: `/api/admin/novels/${project.id}/research`,
+  outlineApiUrl: `/api/admin/novels/${project.id}/outline`,
   generateApiUrl: `/api/admin/novels/${project.id}/generate`,
   sources: sources.map((source) => ({
     title: source.title,
@@ -90,6 +91,7 @@ const pageData = serializeInlineJson({
         <div class="hero-actions">
           <button id="novel-load-models" class="button" type="button">获取模型列表</button>
           <button id="novel-research-button" class="button" type="button">检索参考作品</button>
+          <button id="novel-outline-button" class="button" type="button">生成分卷骨架</button>
         </div>
 
         <label class="admin-field">
@@ -216,6 +218,7 @@ const pageData = serializeInlineJson({
     const modelSelect = document.querySelector('#novel-ai-model');
     const loadModelsButton = document.querySelector('#novel-load-models');
     const researchButton = document.querySelector('#novel-research-button');
+    const outlineButton = document.querySelector('#novel-outline-button');
     const generateButton = document.querySelector('#generate-novel-chapter');
     const statusBody = document.querySelector('#novel-status-body');
     const streamOutput = document.querySelector('#novel-stream-output');
@@ -512,6 +515,45 @@ const pageData = serializeInlineJson({
         setStatus(error instanceof Error ? error.message : '检索参考资料失败。', true);
       } finally {
         researchButton.disabled = false;
+      }
+    });
+
+    outlineButton?.addEventListener('click', async () => {
+      outlineButton.disabled = true;
+      setStatus('正在生成分卷与分章节骨架...');
+
+      try {
+        const response = await fetch(PAGE_DATA.outlineApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            baseUrl: baseUrlInput?.value?.trim() || '',
+            apiKey: apiKeyInput?.value?.trim() || '',
+            model: modelSelect?.value?.trim() || '',
+            targetVolumes: 3,
+            chaptersPerVolume: 8,
+            project: gatherProjectSnapshot(),
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '生成分卷骨架失败。');
+        }
+
+        const outlineField = projectForm?.elements?.namedItem('outline');
+
+        if (outlineField && 'value' in outlineField) {
+          outlineField.value = data.outline || '';
+        }
+
+        setStatus(data.message || '分卷骨架生成完成。');
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '生成分卷骨架失败。', true);
+      } finally {
+        outlineButton.disabled = false;
       }
     });
 

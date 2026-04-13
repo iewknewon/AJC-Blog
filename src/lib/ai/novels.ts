@@ -46,6 +46,11 @@ function getLengthInstruction(lengthPreset: NovelLengthPreset = 'standard') {
   }
 }
 
+function stripFencedMarkdown(text: string) {
+  const fencedMatch = text.match(/```markdown\s*([\s\S]*?)\s*```/i) ?? text.match(/```\s*([\s\S]*?)\s*```/i);
+  return fencedMatch?.[1]?.trim() || text.trim();
+}
+
 function buildSourceDigest(sources: NovelReferenceSource[]) {
   if (!sources.length) {
     return '暂无外部参考来源。';
@@ -167,6 +172,52 @@ export function buildNovelSystemPrompt() {
   ].join('\n');
 }
 
+export function buildNovelOutlinePrompt(input: {
+  project: NovelProject;
+  targetVolumes?: number;
+  chaptersPerVolume?: number;
+}) {
+  const targetVolumes = Math.max(1, Math.min(8, Math.round(input.targetVolumes ?? 3)));
+  const chaptersPerVolume = Math.max(3, Math.min(20, Math.round(input.chaptersPerVolume ?? 8)));
+  const { project } = input;
+
+  return [
+    '请为下面这个长篇小说项目生成“分卷 + 分章节”的连载大纲。',
+    '只返回 Markdown，不要输出解释。',
+    '格式要求：',
+    '- 第一行是 `# 系列规划`',
+    `- 共输出 ${targetVolumes} 卷`,
+    `- 每卷规划约 ${chaptersPerVolume} 章`,
+    '- 每一卷都要包含：卷名、卷目标、核心冲突、阶段高潮、结尾悬念',
+    '- 每一章至少写：章名 + 一句话剧情推进',
+    '- 如果有参考作品，只能借鉴节奏和世界观兼容方式，不要照搬原著剧情',
+    '',
+    `项目标题：${project.title}`,
+    `核心设定：${project.premise}`,
+    `题材方向：${project.genre || '未指定'}`,
+    `写作目标：${project.writingGoals || '长篇稳定连载'}`,
+    `参考作品：${project.referenceTitle || '无'}`,
+    '',
+    '参考作品公开梗概：',
+    project.referenceSummary || '无',
+    '',
+    '参考约束：',
+    project.referenceNotes || '无',
+    '',
+    '世界观 / 规则库：',
+    project.worldBible || '无',
+    '',
+    '人物卡与关系：',
+    project.characterBible || '无',
+    '',
+    '当前已有大纲：',
+    project.outline || '无',
+    '',
+    '文风要求：',
+    project.styleGuide || '无',
+  ].join('\n');
+}
+
 export function buildNovelChapterPrompt(input: NovelGenerationContext) {
   const { project } = input;
   const titleHint = String(input.chapterTitleHint ?? '').trim();
@@ -217,6 +268,29 @@ export function buildNovelChapterPrompt(input: NovelGenerationContext) {
   ].filter(Boolean);
 
   return sections.join('\n');
+}
+
+export async function generateNovelOutline(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  input: {
+    project: NovelProject;
+    targetVolumes?: number;
+    chaptersPerVolume?: number;
+  },
+) {
+  const rawText = await generateCompatibleText(baseUrl, apiKey, model, {
+    temperature: 0.55,
+    systemPrompt: [
+      '你是专业的中文长篇小说策划编辑。',
+      '你的任务是把一个小说创意扩展成可持续连载的分卷 / 分章大纲。',
+      '只返回 Markdown，不要输出解释，不要写成提示词。',
+    ].join('\n'),
+    userPrompt: buildNovelOutlinePrompt(input),
+  });
+
+  return stripFencedMarkdown(rawText);
 }
 
 export async function generateNovelMemoryUpdate(
