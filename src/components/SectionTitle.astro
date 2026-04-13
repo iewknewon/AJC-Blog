@@ -2,12 +2,14 @@
 interface Props {
   title: string;
   description?: string;
+  kicker?: string;
 }
 
-const { title, description } = Astro.props;
+const { title, description, kicker } = Astro.props;
 ---
 
-<div>
+<div class="section-heading">
+  {kicker ? <span class="section-kicker">{kicker}</span> : null}
   <h2 class="section-title">{title}</h2>
   {description && <p class="section-description">{description}</p>}
 </div>

@@ -1,14 +1,25 @@
 <button class="theme-toggle" type="button" aria-label="切换主题">
-  切换主题
+  <span class="theme-toggle-dot" aria-hidden="true"></span>
+  <span class="theme-toggle-label">切换主题</span>
 </button>
 
 <script is:inline>
   const button = document.querySelector('.theme-toggle');
+  const label = button?.querySelector('.theme-toggle-label');
+
+  const syncThemeLabel = (theme) => {
+    if (label) {
+      label.textContent = theme === 'dark' ? '切到浅色' : '切到深色';
+    }
+  };
 
   const applyTheme = (theme) => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('theme', theme);
+    syncThemeLabel(theme);
   };
+
+  syncThemeLabel(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
 
   button?.addEventListener('click', () => {
     const currentTheme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';

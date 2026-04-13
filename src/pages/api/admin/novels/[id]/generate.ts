@@ -67,6 +67,8 @@ function createSseEvent(event: string, payload: Record<string, unknown>) {
   return `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
 }
 
+const SSE_HEARTBEAT_INTERVAL_MS = 15_000;
+
 function parseLengthPreset(value: unknown): NovelLengthPreset {
   if (value === 'tight' || value === 'expanded') {
     return value;
@@ -188,14 +190,42 @@ export async function POST(context) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      let lastStatusMessage = '正在准备续写任务...';
       const send = (event: string, eventPayload: Record<string, unknown>) => {
+        if (event === 'status' && typeof eventPayload.message === 'string') {
+          lastStatusMessage = eventPayload.message;
+        }
+
         controller.enqueue(encoder.encode(createSseEvent(event, eventPayload)));
       };
 
       let rawText = '';
       let closed = false;
+      let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+      const startHeartbeat = () => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+        }
+
+        heartbeatTimer = setInterval(() => {
+          if (closed) {
+            return;
+          }
+
+          send('heartbeat', {
+            message: `${lastStatusMessage}（连接正常，仍在处理中...）`,
+            timestamp: Date.now(),
+          });
+        }, SSE_HEARTBEAT_INTERVAL_MS);
+      };
 
       const close = () => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+
         if (!closed) {
           closed = true;
           controller.close();
@@ -203,6 +233,7 @@ export async function POST(context) {
       };
 
       try {
+        startHeartbeat();
         let sources = await getNovelReferenceSources(db, id);
         let effectiveChapterBrief = chapterBrief;
         let effectiveChapterTitleHint = chapterTitleHint;

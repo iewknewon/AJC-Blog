@@ -2,6 +2,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import AdminPostList from '../../../components/admin/AdminPostList.astro';
 import { isAdminAuthenticated } from '../../../lib/auth/guards';
+import { getNovelChapterPostIds } from '../../../lib/novels/repository';
 import { getAdminPosts } from '../../../lib/posts/repository';
 
 const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
@@ -11,18 +12,23 @@ if (!authenticated) {
 }
 
 const db = Astro.locals.runtime.env.DB;
-const posts = await getAdminPosts(db);
+const [posts, novelChapterPostIds] = await Promise.all([
+  getAdminPosts(db),
+  getNovelChapterPostIds(db),
+]);
+const chapterPostIdSet = new Set(novelChapterPostIds);
+const standalonePosts = posts.filter((post) => !chapterPostIdSet.has(post.id));
 ---
 
-<AdminLayout title="文章管理" description="查看全部文章，继续编辑草稿或更新已发布内容。">
+<AdminLayout title="文章管理" description="这里只管理普通博客文章；小说章节已经单独归到小说工作台。">
   <section class="section" style="padding-top: 0;">
     <div class="archive-toolbar" style="margin-bottom: 1rem;">
       <div>
-        <h2 class="section-title">全部文章</h2>
-        <p class="section-description">支持创建、编辑和快速查看已发布文章。</p>
+        <h2 class="section-title">普通文章</h2>
+        <p class="section-description">支持创建、编辑和快速查看已发布文章。小说章节不会再出现在这里。</p>
       </div>
       <a class="button button-primary" href="/admin/posts/new">新建文章</a>
     </div>
-    <AdminPostList posts={posts} />
+    <AdminPostList posts={standalonePosts} />
   </section>
 </AdminLayout>

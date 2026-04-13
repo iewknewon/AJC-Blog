@@ -605,6 +605,50 @@ export async function getNovelChaptersByProjectId(db: D1Database, projectId: str
   return (result.results ?? []).map(mapNovelChapterRow);
 }
 
+export async function getNovelChapterById(db: D1Database, chapterId: string) {
+  await pruneOrphanedNovelChapters(db);
+
+  const row = await withNovelSchema(db, () => db.prepare(`
+      SELECT *
+      FROM novel_chapters
+      WHERE id = ?
+      LIMIT 1
+    `)
+    .bind(chapterId)
+    .first<NovelChapterRow>());
+
+  return row ? mapNovelChapterRow(row) : null;
+}
+
+export async function getNovelChapterByPostId(db: D1Database, postId: string) {
+  await pruneOrphanedNovelChapters(db);
+
+  const row = await withNovelSchema(db, () => db.prepare(`
+      SELECT *
+      FROM novel_chapters
+      WHERE post_id = ?
+      LIMIT 1
+    `)
+    .bind(postId)
+    .first<NovelChapterRow>());
+
+  return row ? mapNovelChapterRow(row) : null;
+}
+
+export async function getNovelChapterPostIds(db: D1Database) {
+  await pruneOrphanedNovelChapters(db);
+
+  const result = await withNovelSchema(db, () => db.prepare(`
+      SELECT DISTINCT post_id
+      FROM novel_chapters
+      WHERE post_id IS NOT NULL AND post_id != ''
+    `).all<{ post_id: string | null }>());
+
+  return (result.results ?? [])
+    .map((row) => row.post_id)
+    .filter((postId): postId is string => typeof postId === 'string' && postId.length > 0);
+}
+
 export async function createNovelChapter(db: D1Database, input: CreateNovelChapterInput) {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();

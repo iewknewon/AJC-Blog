@@ -1,19 +1,51 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
 import { siteConfig } from '../data/site';
 ---
 
 <BaseLayout title={`关于 | ${siteConfig.title}`} description="关于 AJC、技术方向和这个博客的定位。" pathname="/about">
   <section class="section">
     <div class="container">
-      <div class="content-card">
-        <p class="eyebrow">关于我</p>
-        <h1>{siteConfig.hero.title}</h1>
-        <p class="page-intro">{siteConfig.about.summary}</p>
-        <div class="article-content">
-          {siteConfig.about.paragraphs.map((paragraph) => (
-            <p>{paragraph}</p>
-          ))}
+      <PageHero
+        kicker="About"
+        title={siteConfig.hero.title}
+        description={siteConfig.about.summary}
+        actions={[
+          { href: '/archive', label: '浏览文章', primary: true },
+          { href: '/projects', label: '查看项目' },
+        ]}
+        stats={[
+          { label: '站点定位', value: '长期写作与作品沉淀' },
+          { label: '技术基底', value: 'Astro + Cloudflare' },
+        ]}
+      />
+      <div class="about-grid">
+        <div class="content-card about-prose-card">
+          <h2 class="section-title">这个站点在做什么</h2>
+          <div class="article-content">
+            {siteConfig.about.paragraphs.map((paragraph) => (
+              <p>{paragraph}</p>
+            ))}
+          </div>
+        </div>
+        <div class="about-sidebar">
+          <div class="content-card about-note-card">
+            <h2 class="section-title">当前关注</h2>
+            <div class="about-points">
+              <p class="about-point">把文章、项目和连载整合到一个真正长期可更新的个人站里。</p>
+              <p class="about-point">让后台适合持续创作，前台适合稳定阅读和内容沉淀。</p>
+              <p class="about-point">围绕轻量部署、可维护结构和更成熟的阅读体验持续迭代。</p>
+            </div>
+          </div>
+          <div class="content-card about-note-card">
+            <h2 class="section-title">当前技术栈</h2>
+            <div class="tech-list">
+              {siteConfig.techStack.map((item) => (
+                <span class="tech-item">{item}</span>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

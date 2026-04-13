@@ -1,0 +1,65 @@
+---
+import AdminLayout from '../../../../../layouts/AdminLayout.astro';
+import AdminPostForm from '../../../../../components/admin/AdminPostForm.astro';
+import { isAdminAuthenticated } from '../../../../../lib/auth/guards';
+import { getNovelChapterById, getNovelProjectById } from '../../../../../lib/novels/repository';
+import { getPostById } from '../../../../../lib/posts/repository';
+import { getNovelChapterUrl } from '../../../../../utils/novels';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const { id, chapterId } = Astro.params;
+
+if (!id || !chapterId) {
+  return Astro.redirect('/admin/novels');
+}
+
+const db = Astro.locals.runtime.env.DB;
+const [project, chapter] = await Promise.all([
+  getNovelProjectById(db, id),
+  getNovelChapterById(db, chapterId),
+]);
+
+if (!project || !chapter || chapter.projectId !== project.id || !chapter.postId) {
+  return Astro.redirect(project ? `/admin/novels/${project.id}` : '/admin/novels');
+}
+
+const post = await getPostById(db, chapter.postId);
+
+if (!post) {
+  return Astro.redirect(`/admin/novels/${project.id}`);
+}
+
+const error = Astro.url.searchParams.get('error');
+const previewHref = post.status === 'published'
+  ? getNovelChapterUrl(project.slug, chapter.volumeNumber, chapter.chapterNumber)
+  : undefined;
+---
+
+<AdminLayout title={`编辑章节：第 ${chapter.volumeNumber} 卷 第 ${chapter.chapterNumber} 章`} description={`当前正在编辑《${project.title}》中的章节正文，管理入口已经从普通文章区分离。`}>
+  <section class="section" style="padding-top: 0;">
+    <div class="content-card" style="margin-bottom: 1.25rem;">
+      <p class="eyebrow">Novel Chapter</p>
+      <h2 class="section-title" style="margin-bottom: 0.5rem;">《{project.title}》 · 第 {chapter.volumeNumber} 卷 第 {chapter.chapterNumber} 章</h2>
+      <p class="section-description">这里专门管理小说章节正文。它底层仍复用文章存储，但不会再混进普通博客文章管理。</p>
+    </div>
+
+    <AdminPostForm
+      action={`/api/admin/novels/${project.id}/chapters/${chapter.id}`}
+      submitLabel="保存章节更新"
+      post={post}
+      error={error ? '章节表单校验失败，请检查后重试。' : undefined}
+      backHref={`/admin/novels/${project.id}`}
+      backLabel="返回小说工作台"
+      previewHref={previewHref}
+      previewLabel="预览小说前台"
+      exportHref={`/admin/novels/${project.id}/chapters/${chapter.id}/wechat`}
+      deleteLabel="删除这一章"
+      deleteConfirmMessage="确认删除这一章吗？这会同时删除绑定的正文内容，且不可恢复。"
+    />
+  </section>
+</AdminLayout>

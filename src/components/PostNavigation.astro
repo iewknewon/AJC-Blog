@@ -11,23 +11,25 @@ const { previous, next } = Astro.props;
 
 <div class="post-nav">
   {previous ? (
-    <a class="content-card" href={`/blog/${previous.slug}/`}>
+    <a class="content-card post-nav-card" href={`/blog/${previous.slug}/`}>
       <p class="meta">上一篇</p>
       <h3>{previous.title}</h3>
+      <p class="muted">继续顺着时间线阅读上一篇内容。</p>
     </a>
   ) : (
-    <div class="empty-state">
+    <div class="empty-state post-nav-card">
       <p>已经是最早的一篇文章了。</p>
     </div>
   )}
 
   {next ? (
-    <a class="content-card" href={`/blog/${next.slug}/`}>
+    <a class="content-card post-nav-card" href={`/blog/${next.slug}/`}>
       <p class="meta">下一篇</p>
       <h3>{next.title}</h3>
+      <p class="muted">继续查看后续更新的相关文章。</p>
     </a>
   ) : (
-    <div class="empty-state">
+    <div class="empty-state post-nav-card">
       <p>已经是最新的一篇文章了。</p>
     </div>
   )}

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
 import PostCard from '../../components/PostCard.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { siteConfig } from '../../data/site';
@@ -18,10 +19,20 @@ const posts = await getPostsByTag(db, tag);
 <BaseLayout title={`${tag} | 标签 | ${siteConfig.title}`} description={`查看标签 ${tag} 下的全部文章。`} pathname={`/tags/${encodeURIComponent(tag)}/`}>
   <section class="section">
     <div class="container">
-      <h1 class="page-title">标签：{tag}</h1>
-      <p class="page-intro">这里收录了所有与“{tag}”相关的文章。</p>
+      <PageHero
+        kicker="Topic"
+        title={`标签：${tag}`}
+        description={`这里收录了所有与“${tag}”相关的文章。`}
+        actions={[
+          { href: '/tags', label: '返回标签总览' },
+          { href: '/search', label: '继续搜索', primary: true },
+        ]}
+        stats={[
+          { label: '相关文章', value: `${posts.length} 篇` },
+        ]}
+      />
       {posts.length > 0 ? (
-        <div class="post-list" style="margin-top: 2rem;">
+        <div class="post-list page-card-grid">
           {posts.map((post) => (
             <PostCard post={post} />
           ))}

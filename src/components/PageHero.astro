@@ -1,0 +1,61 @@
+---
+interface HeroAction {
+  href: string;
+  label: string;
+  primary?: boolean;
+  external?: boolean;
+}
+
+interface HeroStat {
+  label: string;
+  value: string;
+}
+
+interface Props {
+  kicker?: string;
+  title: string;
+  description: string;
+  actions?: HeroAction[];
+  stats?: HeroStat[];
+}
+
+const {
+  kicker,
+  title,
+  description,
+  actions = [],
+  stats = [],
+} = Astro.props;
+---
+
+<div class:list={['page-hero-card content-card', stats.length > 0 && 'has-stats']}>
+  <div class="page-hero-main">
+    {kicker ? <p class="eyebrow">{kicker}</p> : null}
+    <h1 class="page-title">{title}</h1>
+    <p class="page-intro">{description}</p>
+    {actions.length ? (
+      <div class="hero-actions page-hero-actions">
+        {actions.map((action) => (
+          <a
+            class:list={['button', action.primary && 'button-primary']}
+            href={action.href}
+            target={action.external ? '_blank' : undefined}
+            rel={action.external ? 'noreferrer' : undefined}
+          >
+            {action.label}
+          </a>
+        ))}
+      </div>
+    ) : null}
+  </div>
+  {stats.length ? (
+    <div class="page-hero-stats">
+      {stats.map((stat) => (
+        <div class="page-hero-stat">
+          <span class="page-hero-stat-label">{stat.label}</span>
+          <strong>{stat.value}</strong>
+        </div>
+      ))}
+    </div>
+  ) : null}
+</div>

@@ -2,6 +2,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import AdminPostForm from '../../../components/admin/AdminPostForm.astro';
 import { isAdminAuthenticated } from '../../../lib/auth/guards';
+import { getNovelChapterByPostId } from '../../../lib/novels/repository';
 import { getPostById } from '../../../lib/posts/repository';
 
 const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
@@ -21,6 +22,12 @@ const post = await getPostById(db, id);
 
 if (!post) {
   return Astro.redirect('/admin/posts');
+}
+
+const chapter = await getNovelChapterByPostId(db, post.id);
+
+if (chapter) {
+  return Astro.redirect(`/admin/novels/${chapter.projectId}/chapters/${chapter.id}`);
 }
 
 const error = Astro.url.searchParams.get('error');

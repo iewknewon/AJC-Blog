@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
 import { siteConfig } from '../data/site';
 import { serializeInlineJson } from '../lib/utils/inline-json';
 import { formatDate } from '../utils/format';
@@ -21,16 +22,29 @@ const searchIndex = renderedPosts.map((post) => ({
 <BaseLayout title={`搜索 | ${siteConfig.title}`} description="按标题、摘要、标签和正文搜索文章。" pathname="/search">
   <section class="section">
     <div class="container">
-      <h1 class="page-title">搜索文章</h1>
-      <p class="page-intro">支持按标题、摘要、标签和正文关键词快速查找内容。</p>
-      <form class="search-form" action="/search" method="get">
-        <input id="search-input" class="search-input" type="search" name="q" placeholder="例如：Astro、Cloudflare、部署" />
-        <button class="button button-primary" type="submit">搜索</button>
-      </form>
-      <p id="search-summary" class="muted" style="margin-top: 1rem;">输入关键词开始搜索。</p>
-      <div id="search-results" class="post-list" style="margin-top: 1.5rem;"></div>
+      <PageHero
+        kicker="Search"
+        title="搜索文章"
+        description="按标题、摘要、标签和正文关键词快速检索内容，适合回看以前的实践记录。"
+        actions={[
+          { href: '/archive', label: '浏览归档' },
+          { href: '/tags', label: '按标签查看' },
+        ]}
+        stats={[
+          { label: '收录范围', value: `${posts.length} 篇文章` },
+          { label: '检索字段', value: '标题 / 摘要 / 标签 / 正文' },
+        ]}
+      />
+      <div class="content-card search-shell">
+        <form class="search-form search-form-panel" action="/search" method="get">
+          <input id="search-input" class="search-input" type="search" name="q" placeholder="例如：Astro、Cloudflare、部署" />
+          <button class="button button-primary" type="submit">搜索</button>
+        </form>
+        <p id="search-summary" class="muted search-summary">输入关键词开始搜索。</p>
+      </div>
+      <div id="search-results" class="post-list search-results-grid"></div>
       <noscript>
-        <div style="margin-top: 1.5rem;">
+        <div class="search-results-grid">
           <div class="empty-state">搜索功能需要启用浏览器 JavaScript。</div>
         </div>
       </noscript>
@@ -54,27 +68,52 @@ const searchIndex = renderedPosts.map((post) => ({
 
     const createCard = (post) => {
       const article = document.createElement('article');
-      article.className = 'card';
+      article.className = 'card post-card search-result-card';
+
+      const coverLink = document.createElement('a');
+      coverLink.className = 'post-card-cover-link is-placeholder';
+      coverLink.href = `/blog/${post.slug}/`;
+
+      const cover = document.createElement('div');
+      cover.className = 'post-card-cover post-card-cover-placeholder';
+
+      const coverLabel = document.createElement('span');
+      coverLabel.textContent = post.tags[0] ?? 'Search';
+      cover.append(coverLabel);
+      coverLink.append(cover);
+
+      const body = document.createElement('div');
+      body.className = 'post-card-body search-result-card-body';
+
+      const top = document.createElement('div');
+      top.className = 'post-card-top';
 
       const meta = document.createElement('p');
-      meta.className = 'meta';
+      meta.className = 'meta post-card-meta';
       meta.textContent = post.date;
 
+      const readmore = document.createElement('span');
+      readmore.className = 'post-card-readmore';
+      readmore.textContent = '查看文章';
+
       const heading = document.createElement('h3');
+      heading.className = 'post-card-title';
       const link = document.createElement('a');
       link.href = `/blog/${post.slug}/`;
       link.textContent = post.title;
       heading.append(link);
 
       const description = document.createElement('p');
-      description.className = 'muted';
+      description.className = 'muted post-card-description';
       description.textContent = post.description;
 
       const tags = document.createElement('div');
-      tags.className = 'tags';
+      tags.className = 'tags post-card-tags';
       post.tags.forEach((tag) => tags.append(createTag(tag)));
 
-      article.append(meta, heading, description, tags);
+      top.append(meta, readmore);
+      body.append(top, heading, description, tags);
+      article.append(coverLink, body);
       return article;
     };
 

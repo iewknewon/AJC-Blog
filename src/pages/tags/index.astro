@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import SectionTitle from '../../components/SectionTitle.astro';
+import PageHero from '../../components/PageHero.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { siteConfig } from '../../data/site';
 import { getAllTags } from '../../utils/posts';
@@ -12,9 +12,20 @@ const tags = await getAllTags(db);
 <BaseLayout title={`标签 | ${siteConfig.title}`} description="浏览博客中的所有标签。" pathname="/tags">
   <section class="section">
     <div class="container">
-      <SectionTitle title="全部标签" description="通过标签快速找到你感兴趣的内容主题。" />
+      <PageHero
+        kicker="Topics"
+        title="全部标签"
+        description="通过标签快速找到你感兴趣的内容主题，适合按问题域和方向回看文章。"
+        actions={[
+          { href: '/search', label: '搜索文章', primary: true },
+          { href: '/archive', label: '浏览归档' },
+        ]}
+        stats={[
+          { label: '主题数量', value: `${tags.length} 个` },
+        ]}
+      />
       {tags.length > 0 ? (
-        <div class="grid three">
+        <div class="grid three tag-grid showcase-grid">
           {tags.map((tag) => (
             <a class="tag-card" href={`/tags/${encodeURIComponent(tag.name)}/`}>
               <h3>{tag.name}</h3>

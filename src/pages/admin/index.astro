@@ -2,6 +2,7 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { ensureAnalyticsSchema, getAnalyticsSummary } from '../../lib/analytics/repository';
 import { isAdminAuthenticated } from '../../lib/auth/guards';
+import { getNovelChapterPostIds, getNovelProjects } from '../../lib/novels/repository';
 import { getAdminPosts } from '../../lib/posts/repository';
 
 const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
@@ -11,7 +12,15 @@ if (!authenticated) {
 }
 
 const db = Astro.locals.runtime.env.DB;
-const posts = await getAdminPosts(db);
+const [posts, novelChapterPostIds, novelProjects] = await Promise.all([
+  getAdminPosts(db),
+  getNovelChapterPostIds(db),
+  getNovelProjects(db),
+]);
+const chapterPostIdSet = new Set(novelChapterPostIds);
+const standalonePosts = posts.filter((post) => !chapterPostIdSet.has(post.id));
+const novelProjectCount = novelProjects.length;
+const novelChapterCount = novelProjects.reduce((total, project) => total + project.chaptersCount, 0);
 
 let analyticsUnavailable = false;
 let analyticsSummary = {
@@ -29,27 +38,46 @@ try {
   console.error('Failed to load admin overview analytics summary', error);
 }
 
-const draftCount = posts.filter((post) => post.status === 'draft').length;
-const publishedCount = posts.filter((post) => post.status === 'published').length;
+const draftCount = standalonePosts.filter((post) => post.status === 'draft').length;
+const publishedCount = standalonePosts.filter((post) => post.status === 'published').length;
 ---
 
-<AdminLayout title="后台概览" description="集中管理文章、小说连载、AI 写作和站点访问情况。">
+<AdminLayout title="后台概览" description="集中管理博客文章、小说连载、AI 写作和站点访问情况。">
   <section class="grid four">
     <article class="content-card">
-      <h3>文章总数</h3>
-      <p class="admin-stat-value">{posts.length}</p>
+      <h3>博客文章</h3>
+      <p class="admin-stat-value">{standalonePosts.length}</p>
     </article>
     <article class="content-card">
-      <h3>草稿数</h3>
+      <h3>文章草稿</h3>
       <p class="admin-stat-value">{draftCount}</p>
     </article>
     <article class="content-card">
-      <h3>已发布</h3>
+      <h3>小说项目</h3>
+      <p class="admin-stat-value">{novelProjectCount}</p>
+    </article>
+    <article class="content-card">
+      <h3>已写章节</h3>
+      <p class="admin-stat-value">{novelChapterCount}</p>
+    </article>
+  </section>
+
+  <section class="grid four" style="padding-top: 1.25rem;">
+    <article class="content-card">
+      <h3>文章已发布</h3>
       <p class="admin-stat-value">{publishedCount}</p>
     </article>
     <article class="content-card">
       <h3>累计访问</h3>
       <p class="admin-stat-value">{analyticsSummary.totalViews}</p>
+    </article>
+    <article class="content-card">
+      <h3>独立访客</h3>
+      <p class="admin-stat-value">{analyticsSummary.uniqueVisitors}</p>
+    </article>
+    <article class="content-card">
+      <h3>文章访问</h3>
+      <p class="admin-stat-value">{analyticsSummary.articleViews}</p>
     </article>
   </section>
 

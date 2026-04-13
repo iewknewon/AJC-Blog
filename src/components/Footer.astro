@@ -3,12 +3,23 @@ import { navigation, siteConfig } from '../data/site';
 ---
 
 <footer class="site-footer">
-  <div class="container footer-inner">
-    <p>{siteConfig.footer}</p>
-    <nav class="nav">
-      {navigation.map((item) => (
-        <a class="nav-link" href={item.href}>{item.label}</a>
-      ))}
-    </nav>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-copy">
+        <a class="brand brand-footer" href="/">
+          <span class="brand-mark">AJC</span>
+          <span class="brand-copy">
+            <strong>{siteConfig.title}</strong>
+            <span>长期写作与作品沉淀</span>
+          </span>
+        </a>
+        <p class="footer-note">{siteConfig.footer}</p>
+      </div>
+      <nav class="nav footer-nav">
+        {navigation.map((item) => (
+          <a class="nav-link" href={item.href}>{item.label}</a>
+        ))}
+      </nav>
+    </div>
   </div>
 </footer>

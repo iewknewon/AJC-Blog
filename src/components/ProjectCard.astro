@@ -8,17 +8,27 @@ interface Props {
 const { project } = Astro.props;
 ---
 
-<article class="card">
-  <h3>
+<article class="card project-card">
+  <div class="project-card-head">
+    <span class="section-kicker">Featured Build</span>
+  </div>
+  <h3 class="project-card-title">
     <a href={`/projects/${project.slug}/`}>{project.title}</a>
   </h3>
-  <p class="muted">{project.description}</p>
-  <div class="tech-list">
+  <p class="muted project-card-description">{project.description}</p>
+  <div class="tech-list project-card-tech">
     {project.techStack.map((item) => (
       <span class="tech-item">{item}</span>
     ))}
   </div>
-  <div class="hero-actions" style="margin-top: 1rem;">
+  {project.highlights.length ? (
+    <div class="project-card-highlights">
+      {project.highlights.slice(0, 3).map((item) => (
+        <p class="project-card-highlight">{item}</p>
+      ))}
+    </div>
+  ) : null}
+  <div class="hero-actions project-card-actions" style="margin-top: 1rem;">
     <a class="button button-primary" href={`/projects/${project.slug}/`}>查看详情</a>
     {project.demoUrl && (
       <a class="button" href={project.demoUrl} target="_blank" rel="noreferrer">在线演示</a>

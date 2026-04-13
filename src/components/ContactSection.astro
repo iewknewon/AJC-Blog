@@ -5,14 +5,18 @@ import { siteConfig } from '../data/site';
 
 <section class="section">
   <div class="container">
-    <SectionTitle title="联系方式" description="如果你想交流技术、项目或写作相关内容，可以通过下面的方式联系我。" />
-    <div class="grid two">
-      <div class="contact-card">
+    <SectionTitle kicker="Stay Connected" title="联系方式" description="如果你想交流技术、项目或写作相关内容，可以通过下面的方式联系我。" />
+    <div class="grid two contact-grid">
+      <div class="contact-card contact-card-primary">
+        <span class="section-kicker">Direct</span>
         <h3>邮箱</h3>
+        <p class="contact-copy">适合写作、合作、项目讨论和传递需要较完整上下文的问题。</p>
         <p><a href={`mailto:${siteConfig.contact.email}`}>{siteConfig.contact.email}</a></p>
       </div>
       <div class="contact-card">
+        <span class="section-kicker">Open Profile</span>
         <h3>GitHub</h3>
+        <p class="contact-copy">查看站点源码、项目迭代和更多作品，也可以直接从这里了解当前的开发方向。</p>
         <p><a href={siteConfig.contact.github} target="_blank" rel="noreferrer">查看 GitHub 主页</a></p>
       </div>
     </div>

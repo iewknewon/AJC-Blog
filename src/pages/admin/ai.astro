@@ -172,7 +172,46 @@ if (!authenticated) {
     <div id="ai-status" class="content-card">
       <h2 class="section-title">生成状态</h2>
       <p class="section-description">生成过程中会先流式输出正文，再自动补封面和插图，最后直接保存到博客后台。</p>
-      <div id="ai-status-body" class="muted">等待开始生成...</div>
+      <div class="admin-progress-shell">
+        <div class="admin-progress-header">
+          <div class="hero-actions" style="margin: 0;">
+            <span id="ai-run-badge" class="admin-run-badge is-idle">待命</span>
+            <strong id="ai-run-phase" class="admin-progress-phase">等待开始</strong>
+          </div>
+          <div id="ai-status-body" class="admin-status-text">等待开始生成...</div>
+        </div>
+
+        <div class="admin-progress-meta">
+          <article class="admin-progress-metric">
+            <span class="admin-progress-metric-label">运行模式</span>
+            <strong id="ai-run-mode">未开始</strong>
+          </article>
+          <article class="admin-progress-metric">
+            <span class="admin-progress-metric-label">当前阶段</span>
+            <strong id="ai-run-step">等待开始</strong>
+          </article>
+          <article class="admin-progress-metric">
+            <span class="admin-progress-metric-label">当前产出</span>
+            <strong id="ai-run-output">0 字 · 0 条资料 · 0 张图</strong>
+          </article>
+        </div>
+
+        <div class="admin-progress-steps">
+          <div class="admin-progress-step is-pending" data-ai-step="research">资料准备</div>
+          <div class="admin-progress-step is-pending" data-ai-step="write">正文写作</div>
+          <div class="admin-progress-step is-pending" data-ai-step="assets">配图整理</div>
+          <div class="admin-progress-step is-pending" data-ai-step="save">保存文章</div>
+          <div class="admin-progress-step is-pending" data-ai-step="done">完成</div>
+        </div>
+
+        <div class="admin-progress-log-shell">
+          <div class="admin-progress-log-title">运行日志</div>
+          <div id="ai-progress-log" class="admin-progress-log">
+            <div class="admin-progress-log-empty">还没有运行记录。</div>
+          </div>
+        </div>
+      </div>
+      <div id="ai-result-summary" class="admin-status-summary">等待开始生成后，这里会总结本次写作结果。</div>
       <div id="ai-result-actions" class="hero-actions" style="margin-top: 1rem;"></div>
     </div>
   </section>
@@ -233,6 +272,7 @@ if (!authenticated) {
     const form = document.querySelector('#ai-writer-form');
     const statusBody = document.querySelector('#ai-status-body');
     const resultActions = document.querySelector('#ai-result-actions');
+    const resultSummary = document.querySelector('#ai-result-summary');
     const researchOutput = document.querySelector('#ai-research-output');
     const assetOutput = document.querySelector('#ai-assets-output');
     const streamOutput = document.querySelector('#ai-stream-output');
@@ -240,6 +280,13 @@ if (!authenticated) {
     const presetSelect = document.querySelector('#ai-preset');
     const applyPresetButton = document.querySelector('#apply-ai-preset');
     const presetSummary = document.querySelector('#ai-preset-summary');
+    const runBadge = document.querySelector('#ai-run-badge');
+    const runPhaseValue = document.querySelector('#ai-run-phase');
+    const runModeValue = document.querySelector('#ai-run-mode');
+    const runStepValue = document.querySelector('#ai-run-step');
+    const runOutputValue = document.querySelector('#ai-run-output');
+    const runLog = document.querySelector('#ai-progress-log');
+    const runStepNodes = Array.from(document.querySelectorAll('[data-ai-step]'));
 
     const STORAGE_KEYS = {
       baseUrl: 'ajc.ai.baseUrl',
@@ -254,6 +301,43 @@ if (!authenticated) {
       autoCoverEnabled: 'ajc.ai.autoCoverEnabled',
       autoIllustrationsEnabled: 'ajc.ai.autoIllustrationsEnabled',
       illustrationCount: 'ajc.ai.illustrationCount',
+    };
+    const AI_STEP_ORDER = ['research', 'write', 'assets', 'save', 'done'];
+    const AI_STEP_LABELS = {
+      research: '资料准备',
+      write: '正文写作',
+      assets: '配图整理',
+      save: '保存文章',
+      done: '完成',
+    };
+    const BUTTON_LABELS = {
+      loadModels: {
+        idle: '获取模型列表',
+        busy: '获取中...',
+      },
+      clearConfig: {
+        idle: '清空本地配置',
+        busy: '清空中...',
+      },
+      applyPreset: {
+        idle: '写入提示词文本框',
+        busy: '写入中...',
+      },
+      generate: {
+        idle: '开始 AI 写作',
+        busy: '写作中...',
+      },
+    };
+    const runState = {
+      mode: '未开始',
+      phase: '等待开始',
+      step: 'research',
+      output: '0 字 · 0 条资料 · 0 张图',
+      badge: 'idle',
+      lastLogMessage: '',
+      charCount: 0,
+      researchCount: 0,
+      assetCount: 0,
     };
 
     const readNamedField = (name) => form?.elements?.namedItem(name);
@@ -339,9 +423,275 @@ if (!authenticated) {
       }
     };
 
+    const formatTime = () => new Intl.DateTimeFormat('zh-CN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(new Date());
+
+    const setResultSummary = (message, tone = 'muted') => {
+      if (!resultSummary) {
+        return;
+      }
+
+      resultSummary.textContent = message;
+      resultSummary.className = `admin-status-summary is-${tone}`;
+    };
+
+    const setButtonBusy = (button, busy, labels) => {
+      if (!button || !labels) {
+        return;
+      }
+
+      button.disabled = busy;
+      button.classList.toggle('is-busy', busy);
+      button.setAttribute('aria-busy', busy ? 'true' : 'false');
+      button.textContent = busy ? labels.busy : labels.idle;
+    };
+
+    const setRunBadge = (badge = 'idle') => {
+      runState.badge = badge;
+
+      if (!runBadge) {
+        return;
+      }
+
+      runBadge.className = `admin-run-badge is-${badge}`;
+      runBadge.textContent = badge === 'running'
+        ? '进行中'
+        : badge === 'success'
+          ? '已完成'
+          : badge === 'error'
+            ? '失败'
+            : '待命';
+    };
+
+    const renderRunSteps = (activeStep = 'research', state = 'idle') => {
+      const activeIndex = AI_STEP_ORDER.indexOf(activeStep);
+
+      runStepNodes.forEach((node) => {
+        const step = node.dataset.aiStep;
+        const stepIndex = AI_STEP_ORDER.indexOf(step);
+
+        node.classList.remove('is-pending', 'is-active', 'is-done', 'is-error');
+
+        if (state === 'idle') {
+          node.classList.add('is-pending');
+          return;
+        }
+
+        if (state === 'success') {
+          node.classList.add(stepIndex <= activeIndex ? 'is-done' : 'is-pending');
+          return;
+        }
+
+        if (state === 'error') {
+          if (stepIndex < activeIndex) {
+            node.classList.add('is-done');
+          } else if (stepIndex === activeIndex) {
+            node.classList.add('is-error');
+          } else {
+            node.classList.add('is-pending');
+          }
+
+          return;
+        }
+
+        if (stepIndex < activeIndex) {
+          node.classList.add('is-done');
+        } else if (stepIndex === activeIndex) {
+          node.classList.add('is-active');
+        } else {
+          node.classList.add('is-pending');
+        }
+      });
+    };
+
+    const appendRunLog = (message, tone = 'info') => {
+      const normalized = String(message ?? '').trim();
+
+      if (!runLog || !normalized || normalized === runState.lastLogMessage) {
+        return;
+      }
+
+      runState.lastLogMessage = normalized;
+
+      const emptyState = runLog.querySelector('.admin-progress-log-empty');
+      emptyState?.remove();
+
+      const entry = document.createElement('article');
+      entry.className = `admin-progress-log-entry is-${tone}`;
+
+      const time = document.createElement('span');
+      time.className = 'admin-progress-log-time';
+      time.textContent = formatTime();
+      entry.append(time);
+
+      const text = document.createElement('span');
+      text.className = 'admin-progress-log-text';
+      text.textContent = normalized;
+      entry.append(text);
+
+      runLog.prepend(entry);
+
+      while (runLog.children.length > 10) {
+        runLog.removeChild(runLog.lastElementChild);
+      }
+    };
+
+    const updateRunOutput = () => {
+      runState.output = `${runState.charCount} 字 · ${runState.researchCount} 条资料 · ${runState.assetCount} 张图`;
+
+      if (runOutputValue) {
+        runOutputValue.textContent = runState.output;
+      }
+    };
+
+    const summarizeCurrentOutput = () => `${runState.charCount} 字正文、${runState.researchCount} 条资料、${runState.assetCount} 张图`;
+
+    const buildKickoffSummary = (payload, presetLabel = '') => {
+      const parts = [
+        `主题「${payload.topic || '未命名主题'}」`,
+        presetLabel ? `模式「${presetLabel}」` : '',
+        payload.webSearchEnabled ? '已开启联网检索' : '未开启联网检索',
+      ].filter(Boolean);
+
+      if (payload.autoCoverEnabled || payload.autoIllustrationsEnabled) {
+        const assetTargets = [];
+
+        if (payload.autoCoverEnabled) {
+          assetTargets.push('封面');
+        }
+
+        if (payload.autoIllustrationsEnabled) {
+          assetTargets.push('正文配图');
+        }
+
+        parts.push(`将自动整理${assetTargets.join('和')}`);
+      } else {
+        parts.push('本次仅生成正文内容');
+      }
+
+      parts.push(payload.status === 'published' ? '完成后会直接发布' : '完成后会先保存为草稿');
+      return `任务已启动：${parts.join('，')}。`;
+    };
+
+    const buildSuccessSummary = (post) => {
+      const title = post?.title ? `《${post.title}》` : '文章';
+      const statusLabel = post?.status === 'published' ? '已直接发布' : '已保存为草稿';
+      return `${title}${statusLabel}，本次共产出 ${summarizeCurrentOutput()}。`;
+    };
+
+    const buildErrorSummary = (message, hasRawText = false) => {
+      if (!hasRawText) {
+        return message;
+      }
+
+      return `${message} 当前仍保留 ${summarizeCurrentOutput()}，可以继续手动整理后再发布。`;
+    };
+
+    const setRunMeta = ({ mode, phase, step, badge, logMessage, tone } = {}) => {
+      if (mode) {
+        runState.mode = mode;
+      }
+
+      if (phase) {
+        runState.phase = phase;
+      }
+
+      if (step) {
+        runState.step = step;
+      }
+
+      if (runModeValue) {
+        runModeValue.textContent = runState.mode;
+      }
+
+      if (runPhaseValue) {
+        runPhaseValue.textContent = runState.phase;
+      }
+
+      if (runStepValue) {
+        runStepValue.textContent = AI_STEP_LABELS[runState.step] || runState.step;
+      }
+
+      if (badge) {
+        setRunBadge(badge);
+      }
+
+      if (step) {
+        renderRunSteps(step, badge === 'success' ? 'success' : badge === 'error' ? 'error' : 'running');
+      }
+
+      if (logMessage) {
+        appendRunLog(logMessage, tone || (badge === 'error' ? 'error' : badge === 'success' ? 'success' : 'info'));
+      }
+    };
+
+    const resetRunFeedback = (detail = '已收到写作请求，准备启动...') => {
+      runState.lastLogMessage = '';
+      runState.charCount = 0;
+      runState.researchCount = 0;
+      runState.assetCount = 0;
+      updateRunOutput();
+
+      if (runLog) {
+        runLog.innerHTML = '<div class="admin-progress-log-empty">还没有运行记录。</div>';
+      }
+
+      setRunMeta({
+        mode: 'AI 写作',
+        phase: '准备启动',
+        step: 'research',
+        badge: 'running',
+        logMessage: detail,
+      });
+      setResultSummary('本次任务已启动，等待 AI 返回正文、资料和配图结果。');
+    };
+
+    const inferStepFromStatus = (message) => {
+      const normalized = String(message ?? '');
+
+      if (/联网|资料|检索|参考/.test(normalized)) {
+        return 'research';
+      }
+
+      if (/正文|写作|流式|草稿/.test(normalized)) {
+        return 'write';
+      }
+
+      if (/封面|配图|插图|图片/.test(normalized)) {
+        return 'assets';
+      }
+
+      if (/保存|草稿|发布|落库|创建/.test(normalized)) {
+        return 'save';
+      }
+
+      return runState.step || 'research';
+    };
+
+    const updateCharCountFromText = (text) => {
+      runState.charCount = Array.from(String(text ?? '').replace(/\s+/g, '')).length;
+      updateRunOutput();
+    };
+
+    let latestStatusMessage = statusBody?.textContent?.trim() || '等待开始生成...';
+
     const setStatus = (message, isError = false) => {
+      latestStatusMessage = String(message ?? '').trim() || latestStatusMessage;
       statusBody.textContent = message;
       statusBody.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+    };
+
+    const setHeartbeatStatus = (message) => {
+      if (!statusBody || statusBody.classList.contains('is-error')) {
+        return;
+      }
+
+      statusBody.textContent = String(message ?? '').trim() || `${latestStatusMessage}（连接正常，仍在处理中...）`;
+      statusBody.className = 'admin-status-text';
     };
 
     const setNamedFieldValue = (name, value) => {
@@ -395,6 +745,15 @@ if (!authenticated) {
       updatePresetSummary(preset.id);
       saveStoredConfig(buildStoredConfigSnapshot());
       setStatus(`已将「${preset.label}」预设写入提示词。`);
+      setRunMeta({
+        mode: `AI 写作 · ${preset.label}`,
+        phase: '预设已写入提示词',
+        step: 'research',
+        badge: 'success',
+        logMessage: `已应用写作模式：${preset.label}`,
+        tone: 'success',
+      });
+      setResultSummary(`当前已选择「${preset.label}」模式，提交后会按这套约束开始写作。`);
     };
 
     const setResultActions = (post) => {
@@ -425,6 +784,7 @@ if (!authenticated) {
       const current = streamOutput.textContent === EMPTY_STREAM_TEXT ? '' : streamOutput.textContent;
       streamOutput.textContent = `${current}${chunk}`;
       streamOutput.scrollTop = streamOutput.scrollHeight;
+      updateCharCountFromText(streamOutput.textContent);
     };
 
     const resetResearchOutput = (enabled = false) => {
@@ -443,6 +803,9 @@ if (!authenticated) {
       if (!researchOutput) {
         return;
       }
+
+      runState.researchCount = Array.isArray(sources) ? sources.length : 0;
+      updateRunOutput();
 
       researchOutput.innerHTML = '';
 
@@ -584,6 +947,9 @@ if (!authenticated) {
         return;
       }
 
+      runState.assetCount = (cover?.url ? 1 : 0) + (Array.isArray(illustrations) ? illustrations.length : 0);
+      updateRunOutput();
+
       assetOutput.innerHTML = '';
 
       const summary = document.createElement('div');
@@ -657,6 +1023,16 @@ if (!authenticated) {
       assetOutput.append(grid);
     };
 
+    setRunMeta({
+      mode: runState.mode,
+      phase: runState.phase,
+      step: runState.step,
+      badge: runState.badge,
+    });
+    renderRunSteps('research', 'idle');
+    updateRunOutput();
+    setResultSummary('等待开始生成后，这里会总结本次写作结果。');
+
     const readEventStream = async (response, handlers) => {
       if (!response.body) {
         throw new Error('服务端没有返回可读取的流式内容。');
@@ -665,35 +1041,69 @@ if (!authenticated) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let hasTerminalEvent = false;
 
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
+      const processEventText = (eventText) => {
+        if (!eventText.trim() || eventText.trim().startsWith(':')) {
+          return;
         }
 
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split(/\r?\n\r?\n/);
-        buffer = events.pop() ?? '';
+        const lines = eventText.split(/\r?\n/);
+        const eventLine = lines.find((line) => line.startsWith('event:'));
+        const dataLines = lines
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).trimStart())
+          .filter(Boolean);
 
-        events.forEach((eventText) => {
-          const lines = eventText.split(/\r?\n/);
-          const eventLine = lines.find((line) => line.startsWith('event:'));
-          const dataLines = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim());
+        if (!eventLine || !dataLines.length) {
+          return;
+        }
 
-          if (!eventLine || !dataLines.length) {
-            return;
+        const eventName = eventLine.slice(6).trim();
+        const payload = JSON.parse(dataLines.join('\n'));
+
+        if (eventName === 'done' || eventName === 'error') {
+          hasTerminalEvent = true;
+        }
+
+        const handler = handlers[eventName];
+        if (handler) {
+          handler(payload);
+        }
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
           }
 
-          const eventName = eventLine.slice(6).trim();
-          const payload = JSON.parse(dataLines.join('\n'));
-          const handler = handlers[eventName];
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split(/\r?\n\r?\n/);
+          buffer = events.pop() ?? '';
 
-          if (handler) {
-            handler(payload);
+          for (const eventText of events) {
+            processEventText(eventText);
           }
-        });
+        }
+
+        buffer += decoder.decode();
+
+        if (buffer.trim()) {
+          processEventText(buffer);
+        }
+      } finally {
+        try {
+          reader.releaseLock();
+        } catch {
+          // Ignore stream cleanup failures.
+        }
+      }
+
+      if (!hasTerminalEvent) {
+        throw new Error('流式连接意外中断，服务端没有返回完成信号，请重试。');
       }
     };
 
@@ -774,44 +1184,59 @@ if (!authenticated) {
     resetResearchOutput(readNamedCheckboxValue('webSearchEnabled'));
     resetAssetsOutput(readNamedCheckboxValue('autoCoverEnabled', true) || readNamedCheckboxValue('autoIllustrationsEnabled', true));
 
-    clearConfigButton?.addEventListener('click', () => {
-      clearStoredConfig();
-      baseUrlInput.value = '';
-      apiKeyInput.value = '';
-      modelSelect.innerHTML = '<option value="">请先加载模型</option>';
-      if (presetSelect) {
-        presetSelect.value = DEFAULT_PRESET_ID;
+    clearConfigButton?.addEventListener('click', async () => {
+      setButtonBusy(clearConfigButton, true, BUTTON_LABELS.clearConfig);
+
+      try {
+        clearStoredConfig();
+        baseUrlInput.value = '';
+        apiKeyInput.value = '';
+        modelSelect.innerHTML = '<option value="">请先加载模型</option>';
+        if (presetSelect) {
+          presetSelect.value = DEFAULT_PRESET_ID;
+        }
+
+        [
+          ['customPrompt', ''],
+          ['systemPrompt', ''],
+          ['webSearchQuery', ''],
+          ['lengthPreset', 'compact'],
+          ['illustrationCount', '2'],
+        ].forEach(([name, value]) => {
+          const field = readNamedField(name);
+          if (field && 'value' in field) {
+            field.value = value;
+          }
+        });
+
+        [
+          ['webSearchEnabled', false],
+          ['autoCoverEnabled', true],
+          ['autoIllustrationsEnabled', true],
+          ['featured', false],
+        ].forEach(([name, checked]) => {
+          const field = readNamedField(name);
+          if (field && 'checked' in field) {
+            field.checked = checked;
+          }
+        });
+
+        resetResearchOutput(false);
+        resetAssetsOutput(true);
+        updatePresetSummary(DEFAULT_PRESET_ID);
+        setStatus('本地保存的 AI 配置已清空。');
+        setRunMeta({
+          mode: '本地配置',
+          phase: '浏览器本地配置已清空',
+          step: 'research',
+          badge: 'success',
+          logMessage: '已清空当前浏览器中保存的 Base URL、API Key 和模型选择。',
+          tone: 'success',
+        });
+        setResultSummary('当前浏览器里保存的 AI 接口配置已移除，如需继续写作请重新填写。', 'success');
+      } finally {
+        setButtonBusy(clearConfigButton, false, BUTTON_LABELS.clearConfig);
       }
-
-      [
-        ['customPrompt', ''],
-        ['systemPrompt', ''],
-        ['webSearchQuery', ''],
-        ['lengthPreset', 'compact'],
-        ['illustrationCount', '2'],
-      ].forEach(([name, value]) => {
-        const field = readNamedField(name);
-        if (field && 'value' in field) {
-          field.value = value;
-        }
-      });
-
-      [
-        ['webSearchEnabled', false],
-        ['autoCoverEnabled', true],
-        ['autoIllustrationsEnabled', true],
-        ['featured', false],
-      ].forEach(([name, checked]) => {
-        const field = readNamedField(name);
-        if (field && 'checked' in field) {
-          field.checked = checked;
-        }
-      });
-
-      resetResearchOutput(false);
-      resetAssetsOutput(true);
-      updatePresetSummary(DEFAULT_PRESET_ID);
-      setStatus('本地保存的 AI 配置已清空。');
     });
 
     loadModelsButton?.addEventListener('click', async () => {
@@ -819,12 +1244,30 @@ if (!authenticated) {
       const apiKey = apiKeyInput?.value?.trim();
 
       if (!baseUrl || !apiKey) {
-        setStatus('请先填写 Base URL 和 API Key。', true);
+        const message = '请先填写 Base URL 和 API Key。';
+        setStatus(message, true);
+        setRunMeta({
+          mode: '模型探测',
+          phase: '模型配置不完整',
+          step: 'research',
+          badge: 'error',
+          logMessage: message,
+          tone: 'error',
+        });
+        setResultSummary('先补全 Base URL 与 API Key，再获取可用模型列表。', 'error');
         return;
       }
 
-      loadModelsButton.disabled = true;
+      setButtonBusy(loadModelsButton, true, BUTTON_LABELS.loadModels);
       setStatus('正在获取模型列表...');
+      setRunMeta({
+        mode: '模型探测',
+        phase: '正在拉取模型列表',
+        step: 'research',
+        badge: 'running',
+        logMessage: '正在连接模型接口并拉取可用模型列表...',
+      });
+      setResultSummary('正在验证接口配置并获取当前可用模型。');
 
       try {
         const response = await fetch('/api/admin/ai/models', {
@@ -843,11 +1286,36 @@ if (!authenticated) {
 
         fillModels(data.models || []);
         saveStoredConfig(buildStoredConfigSnapshot());
-        setStatus(`已获取 ${data.models?.length ?? 0} 个模型。`);
+        const modelCount = data.models?.length ?? 0;
+        setStatus(`已获取 ${modelCount} 个模型。`);
+        setRunMeta({
+          mode: '模型探测',
+          phase: `模型列表已返回，共 ${modelCount} 个模型`,
+          step: 'research',
+          badge: 'success',
+          logMessage: `模型列表获取完成，共返回 ${modelCount} 个模型。`,
+          tone: 'success',
+        });
+        setResultSummary(
+          modelCount
+            ? `模型列表加载完成，共 ${modelCount} 个模型，现在可以直接开始 AI 写作。`
+            : '接口已响应，但没有返回可用模型，请检查供应商侧的模型权限或账号状态。',
+          modelCount ? 'success' : 'muted',
+        );
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : '获取模型列表失败。', true);
+        const message = error instanceof Error ? error.message : '获取模型列表失败。';
+        setStatus(message, true);
+        setRunMeta({
+          mode: '模型探测',
+          phase: '模型列表获取失败',
+          step: 'research',
+          badge: 'error',
+          logMessage: message,
+          tone: 'error',
+        });
+        setResultSummary(message, 'error');
       } finally {
-        loadModelsButton.disabled = false;
+        setButtonBusy(loadModelsButton, false, BUTTON_LABELS.loadModels);
       }
     });
 
@@ -859,7 +1327,17 @@ if (!authenticated) {
       const model = modelSelect?.value?.trim();
 
       if (!baseUrl || !apiKey || !model) {
-        setStatus('请先填写模型配置并加载可用模型。', true);
+        const message = '请先填写模型配置并加载可用模型。';
+        setStatus(message, true);
+        setRunMeta({
+          mode: 'AI 写作',
+          phase: '模型配置不完整',
+          step: 'research',
+          badge: 'error',
+          logMessage: message,
+          tone: 'error',
+        });
+        setResultSummary('先补全 Base URL、API Key，并成功获取模型后再开始写作。', 'error');
         return;
       }
 
@@ -885,14 +1363,25 @@ if (!authenticated) {
         status: String(formData.get('status') ?? 'draft'),
         featured: formData.get('featured') === 'on',
       };
+      const selectedPreset = readPreset(payload.presetId);
+      const modeLabel = selectedPreset ? `AI 写作 · ${selectedPreset.label}` : 'AI 写作';
 
       saveStoredConfig(buildStoredConfigSnapshot());
 
-      generateButton.disabled = true;
+      setButtonBusy(generateButton, true, BUTTON_LABELS.generate);
       resultActions.innerHTML = '';
       streamOutput.textContent = EMPTY_STREAM_TEXT;
+      updateCharCountFromText('');
       resetResearchOutput(payload.webSearchEnabled);
       resetAssetsOutput(payload.autoCoverEnabled || payload.autoIllustrationsEnabled);
+      resetRunFeedback(`已收到「${payload.topic}」的写作请求，正在启动模型与流式输出。`);
+      setRunMeta({
+        mode: modeLabel,
+        phase: payload.webSearchEnabled ? '准备联网检索' : '准备生成正文',
+        step: 'research',
+        badge: 'running',
+      });
+      setResultSummary(buildKickoffSummary(payload, selectedPreset?.label || ''));
       setStatus('正在启动 AI 写作...');
 
       try {
@@ -912,43 +1401,122 @@ if (!authenticated) {
 
         await readEventStream(response, {
           status: (data) => {
-            setStatus(data.message || 'AI 正在写作...');
+            const message = data.message || 'AI 正在写作...';
+            setStatus(message);
+            setRunMeta({
+              mode: modeLabel,
+              phase: message,
+              step: inferStepFromStatus(message),
+              badge: 'running',
+              logMessage: message,
+            });
+          },
+          heartbeat: (data) => {
+            setHeartbeatStatus(data.message);
           },
           research: (data) => {
             renderResearchOutput(data);
-            if (data.message) {
-              setStatus(data.message);
-            }
+            const message = data.message || (runState.researchCount ? `已整理 ${runState.researchCount} 条资料。` : '联网检索阶段已结束。');
+            setStatus(message);
+            setRunMeta({
+              mode: modeLabel,
+              phase: message,
+              step: 'research',
+              badge: 'running',
+              logMessage: message,
+            });
+            setResultSummary(
+              runState.researchCount
+                ? `资料整理完成，已拿到 ${runState.researchCount} 条参考资料，接下来继续生成正文。`
+                : '联网检索阶段已结束，本次将按当前已有信息继续生成正文。',
+            );
           },
           assets: (data) => {
             renderAssetsOutput(data);
-            if (data.message) {
-              setStatus(data.message);
-            }
+            const message = data.message || (runState.assetCount ? `已整理 ${runState.assetCount} 张配图。` : '配图阶段已结束。');
+            setStatus(message);
+            setRunMeta({
+              mode: modeLabel,
+              phase: message,
+              step: 'assets',
+              badge: 'running',
+              logMessage: message,
+              tone: runState.assetCount ? 'success' : 'info',
+            });
+            setResultSummary(
+              runState.assetCount
+                ? `配图整理完成，当前累计 ${summarizeCurrentOutput()}。`
+                : `配图阶段已结束，当前累计 ${summarizeCurrentOutput()}。`,
+            );
           },
           content: (data) => {
+            const hadContent = runState.charCount > 0;
             appendStreamOutput(data.chunk || '');
+
+            if (!hadContent && runState.charCount > 0) {
+              setRunMeta({
+                mode: modeLabel,
+                phase: '正在流式生成文章正文...',
+                step: 'write',
+                badge: 'running',
+                logMessage: '正文已开始流式输出，页面会持续刷新最新内容。',
+              });
+              setResultSummary(`正文已开始输出，当前累计 ${summarizeCurrentOutput()}。`);
+            }
           },
           done: (data) => {
             if (data.rawText) {
               streamOutput.textContent = data.rawText;
+              updateCharCountFromText(data.rawText);
             }
 
-            setStatus(data.message || 'AI 写作完成。');
+            const message = data.message || 'AI 写作完成。';
+            setStatus(message);
+            setRunMeta({
+              mode: modeLabel,
+              phase: message,
+              step: 'done',
+              badge: 'success',
+              logMessage: message,
+              tone: 'success',
+            });
+            setResultSummary(buildSuccessSummary(data.post || null), 'success');
             setResultActions(data.post || null);
           },
           error: (data) => {
             if (data.rawText) {
               streamOutput.textContent = data.rawText;
+              updateCharCountFromText(data.rawText);
             }
 
-            setStatus(data.message || 'AI 写作失败，请稍后再试。', true);
+            const message = data.message || 'AI 写作失败，请稍后再试。';
+            const errorStep = data.fieldErrors ? 'save' : inferStepFromStatus(message);
+            setStatus(message, true);
+            setRunMeta({
+              mode: modeLabel,
+              phase: message,
+              step: errorStep,
+              badge: 'error',
+              logMessage: message,
+              tone: 'error',
+            });
+            setResultSummary(buildErrorSummary(message, Boolean(data.rawText)), 'error');
           },
         });
       } catch (error) {
-        setStatus(error instanceof Error ? error.message : 'AI 写作失败，请稍后再试。', true);
+        const message = error instanceof Error ? error.message : 'AI 写作失败，请稍后再试。';
+        setStatus(message, true);
+        setRunMeta({
+          mode: modeLabel,
+          phase: message,
+          step: inferStepFromStatus(message),
+          badge: 'error',
+          logMessage: message,
+          tone: 'error',
+        });
+        setResultSummary(buildErrorSummary(message), 'error');
       } finally {
-        generateButton.disabled = false;
+        setButtonBusy(generateButton, false, BUTTON_LABELS.generate);
       }
     });
 
@@ -961,8 +1529,14 @@ if (!authenticated) {
       saveStoredConfig(buildStoredConfigSnapshot());
     });
 
-    applyPresetButton?.addEventListener('click', () => {
-      applySelectedPreset();
+    applyPresetButton?.addEventListener('click', async () => {
+      setButtonBusy(applyPresetButton, true, BUTTON_LABELS.applyPreset);
+
+      try {
+        applySelectedPreset();
+      } finally {
+        setButtonBusy(applyPresetButton, false, BUTTON_LABELS.applyPreset);
+      }
     });
 
     baseUrlInput?.addEventListener('change', () => {

@@ -5,9 +5,10 @@ import { siteConfig } from '../data/site';
 
 <section class="section">
   <div class="container">
-    <SectionTitle title="技术栈" description="当前博客第一版聚焦于轻量、清晰和长期维护。" />
-    <div class="content-card">
-      <div class="tech-list">
+    <SectionTitle kicker="Foundation" title="技术栈" description="当前博客第一版聚焦于轻量、清晰和长期维护。" />
+    <div class="content-card tech-stack-card">
+      <p class="tech-stack-intro">前台阅读、后台写作、部署与连载管理都围绕这套轻量技术栈来做。</p>
+      <div class="tech-list tech-cloud">
         {siteConfig.techStack.map((item) => (
           <span class="tech-item">{item}</span>
         ))}

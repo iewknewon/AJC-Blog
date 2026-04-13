@@ -6,19 +6,29 @@ const currentPath = Astro.url.pathname;
 ---
 
 <header class="site-header">
-  <div class="container header-inner">
-    <a class="brand" href="/">{siteConfig.title}</a>
-    <nav class="nav">
-      {navigation.map((item) => {
-        const isActive = item.href === '/' ? currentPath === '/' : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+  <div class="container">
+    <div class="header-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">AJC</span>
+        <span class="brand-copy">
+          <strong>{siteConfig.title}</strong>
+          <span>写作、项目与连载档案</span>
+        </span>
+      </a>
+      <div class="header-actions">
+        <nav class="nav">
+          {navigation.map((item) => {
+            const isActive = item.href === '/' ? currentPath === '/' : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
 
-        return (
-          <a class:list={["nav-link", isActive && 'is-active']} href={item.href}>
-            {item.label}
-          </a>
-        );
-      })}
-    </nav>
-    <ThemeToggle />
+            return (
+              <a class:list={["nav-link", isActive && 'is-active']} href={item.href}>
+                {item.label}
+              </a>
+            );
+          })}
+        </nav>
+        <ThemeToggle />
+      </div>
+    </div>
   </div>
 </header>

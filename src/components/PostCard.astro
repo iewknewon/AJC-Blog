@@ -15,14 +15,23 @@ const displayDate = post.publishedAt ?? post.updatedAt;
     <a class="post-card-cover-link" href={`/blog/${post.slug}/`} aria-label={`阅读《${post.title}》`}>
       <img class="post-card-cover" src={post.cover} alt={`${post.title} 封面图`} loading="lazy" decoding="async" />
     </a>
-  ) : null}
+  ) : (
+    <a class="post-card-cover-link is-placeholder" href={`/blog/${post.slug}/`} aria-label={`阅读《${post.title}》`}>
+      <div class="post-card-cover post-card-cover-placeholder">
+        <span>{post.tags[0] ?? 'Article'}</span>
+      </div>
+    </a>
+  )}
   <div class="post-card-body">
-    <p class="meta">{formatDate(displayDate)}</p>
-    <h3>
+    <div class="post-card-top">
+      <p class="meta post-card-meta">{formatDate(displayDate)}</p>
+      <span class="post-card-readmore">阅读全文</span>
+    </div>
+    <h3 class="post-card-title">
       <a href={`/blog/${post.slug}/`}>{post.title}</a>
     </h3>
-    <p class="muted">{post.description}</p>
-    <div class="tags">
+    <p class="muted post-card-description">{post.description}</p>
+    <div class="tags post-card-tags">
       {post.tags.map((tag) => (
         <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>{tag}</a>
       ))}

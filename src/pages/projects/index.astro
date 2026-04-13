@@ -1,18 +1,32 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import SectionTitle from '../../components/SectionTitle.astro';
+import PageHero from '../../components/PageHero.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { projects } from '../../data/projects';
 import { siteConfig } from '../../data/site';
+
+const featuredCount = projects.filter((project) => project.featured).length;
 ---
 
 <BaseLayout title={`项目 | ${siteConfig.title}`} description="浏览 AJC 的项目实践与作品沉淀。" pathname="/projects">
   <section class="section">
     <div class="container">
-      <SectionTitle title="项目作品" description="这里集中展示 AJC 的项目实践、技术方向与持续迭代中的作品。" />
+      <PageHero
+        kicker="Projects"
+        title="项目作品"
+        description="这里集中展示 AJC 的项目实践、技术方向与持续迭代中的作品。"
+        actions={[
+          { href: '/archive', label: '看相关文章' },
+          { href: '/contact', label: '联系我' },
+        ]}
+        stats={[
+          { label: '公开项目', value: `${projects.length} 个` },
+          { label: '精选项目', value: `${featuredCount} 个` },
+        ]}
+      />
       {projects.length > 0 ? (
-        <div class="grid three">
+        <div class="grid three showcase-grid">
           {projects.map((project) => (
             <ProjectCard project={project} />
           ))}

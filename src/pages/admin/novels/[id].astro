@@ -9,6 +9,7 @@ import {
   getNovelReferenceSources,
 } from '../../../lib/novels/repository';
 import { getNextNovelChapterPosition } from '../../../lib/ai/novels';
+import { getNovelChapterUrl } from '../../../utils/novels';
 
 const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
 
@@ -172,7 +173,45 @@ const pageData = serializeInlineJson({
     <div class="content-card">
       <h2 class="section-title">生成状态</h2>
       <p class="section-description">会先整理参考资料，再流式输出章节正文，最后自动把章节写入博客文章并更新连续记忆。</p>
-      <div id="novel-status-body" class="muted">等待开始续写...</div>
+      <div class="novel-progress-shell">
+        <div class="novel-progress-header">
+          <div class="hero-actions" style="margin: 0;">
+            <span id="novel-run-badge" class="admin-run-badge is-idle">待命</span>
+            <strong id="novel-run-phase" class="novel-progress-phase">等待开始</strong>
+          </div>
+          <div id="novel-status-body" class="admin-status-text">等待开始续写...</div>
+        </div>
+
+        <div class="novel-progress-meta">
+          <article class="novel-progress-metric">
+            <span class="novel-progress-metric-label">运行模式</span>
+            <strong id="novel-run-mode">未开始</strong>
+          </article>
+          <article class="novel-progress-metric">
+            <span class="novel-progress-metric-label">当前进度</span>
+            <strong id="novel-run-progress">0 / 0</strong>
+          </article>
+          <article class="novel-progress-metric">
+            <span class="novel-progress-metric-label">当前目标</span>
+            <strong id="novel-run-target">未开始</strong>
+          </article>
+        </div>
+
+        <div class="novel-progress-steps">
+          <div class="novel-progress-step is-pending" data-novel-step="research">资料准备</div>
+          <div class="novel-progress-step is-pending" data-novel-step="plan">任务规划</div>
+          <div class="novel-progress-step is-pending" data-novel-step="write">正文写作</div>
+          <div class="novel-progress-step is-pending" data-novel-step="save">保存与记忆</div>
+          <div class="novel-progress-step is-pending" data-novel-step="done">完成</div>
+        </div>
+
+        <div class="novel-progress-log-shell">
+          <div class="novel-progress-log-title">运行日志</div>
+          <div id="novel-progress-log" class="novel-progress-log">
+            <div class="novel-progress-log-empty">还没有运行记录。</div>
+          </div>
+        </div>
+      </div>
       <div id="novel-result-actions" class="hero-actions" style="margin-top: 1rem;"></div>
     </div>
   </section>
@@ -198,8 +237,8 @@ const pageData = serializeInlineJson({
                 <p class="admin-insight-meta">{chapter.summary || chapter.description}</p>
               </div>
               <div class="hero-actions" style="margin-top: 0;">
-                {chapter.postId ? <a class="button" href={`/admin/posts/${chapter.postId}`}>编辑文章</a> : null}
-                {chapter.status === 'published' && chapter.postSlug ? <a class="button" href={`/blog/${chapter.postSlug}/`} target="_blank" rel="noreferrer">查看前台</a> : null}
+                {chapter.postId ? <a class="button" href={`/admin/novels/${project.id}/chapters/${chapter.id}`}>编辑章节</a> : null}
+                {chapter.status === 'published' ? <a class="button" href={getNovelChapterUrl(project.slug, chapter.volumeNumber, chapter.chapterNumber)} target="_blank" rel="noreferrer">查看前台</a> : null}
               </div>
             </article>
           ))}
@@ -249,6 +288,13 @@ const pageData = serializeInlineJson({
     const projectStatusValue = document.querySelector('#novel-project-status');
     const projectChaptersCountValue = document.querySelector('#novel-project-chapters-count');
     const projectNextChapterValue = document.querySelector('#novel-project-next-chapter');
+    const runBadge = document.querySelector('#novel-run-badge');
+    const runPhaseValue = document.querySelector('#novel-run-phase');
+    const runModeValue = document.querySelector('#novel-run-mode');
+    const runProgressValue = document.querySelector('#novel-run-progress');
+    const runTargetValue = document.querySelector('#novel-run-target');
+    const runLog = document.querySelector('#novel-progress-log');
+    const runStepNodes = Array.from(document.querySelectorAll('[data-novel-step]'));
 
     const PROJECT_STATUS_LABELS = {
       planning: '筹备中',
@@ -256,10 +302,257 @@ const pageData = serializeInlineJson({
       paused: '已暂停',
       completed: '已完结',
     };
+    const RUN_STEP_ORDER = ['research', 'plan', 'write', 'save', 'done'];
+    const RUN_STEP_LABELS = {
+      research: '资料准备',
+      plan: '任务规划',
+      write: '正文写作',
+      save: '保存与记忆',
+      done: '完成',
+    };
+    const BUTTON_LABELS = {
+      manual: {
+        idle: '按当前任务写这一章',
+        busy: '写作中...',
+      },
+      auto: {
+        idle: '一键自动续写下一章',
+        busy: '自动续写中...',
+      },
+      batch: {
+        idle: '自动连续写多章',
+        busy: '连续写作中...',
+      },
+    };
+    const runState = {
+      mode: '未开始',
+      progress: '0 / 0',
+      target: '未开始',
+      badge: 'idle',
+      phase: '等待开始',
+      lastLogMessage: '',
+    };
+
+    const formatTime = () => new Intl.DateTimeFormat('zh-CN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(new Date());
+
+    const setRunBadge = (badge = 'idle') => {
+      runState.badge = badge;
+
+      if (!runBadge) {
+        return;
+      }
+
+      runBadge.className = `admin-run-badge is-${badge}`;
+      runBadge.textContent = badge === 'running'
+        ? '进行中'
+        : badge === 'success'
+          ? '已完成'
+          : badge === 'error'
+            ? '失败'
+            : '待命';
+    };
+
+    const renderRunSteps = (activeStep = 'research', state = 'idle') => {
+      const activeIndex = RUN_STEP_ORDER.indexOf(activeStep);
+
+      runStepNodes.forEach((node) => {
+        const step = node.dataset.novelStep;
+        const stepIndex = RUN_STEP_ORDER.indexOf(step);
+
+        node.classList.remove('is-pending', 'is-active', 'is-done', 'is-error');
+
+        if (state === 'idle') {
+          node.classList.add('is-pending');
+          return;
+        }
+
+        if (state === 'success') {
+          node.classList.add(stepIndex <= activeIndex ? 'is-done' : 'is-pending');
+          return;
+        }
+
+        if (state === 'error') {
+          if (stepIndex < activeIndex) {
+            node.classList.add('is-done');
+          } else if (stepIndex === activeIndex) {
+            node.classList.add('is-error');
+          } else {
+            node.classList.add('is-pending');
+          }
+
+          return;
+        }
+
+        if (stepIndex < activeIndex) {
+          node.classList.add('is-done');
+        } else if (stepIndex === activeIndex) {
+          node.classList.add('is-active');
+        } else {
+          node.classList.add('is-pending');
+        }
+      });
+    };
+
+    const appendRunLog = (message, tone = 'info') => {
+      const normalized = String(message ?? '').trim();
+
+      if (!runLog || !normalized || normalized === runState.lastLogMessage) {
+        return;
+      }
+
+      runState.lastLogMessage = normalized;
+
+      const emptyState = runLog.querySelector('.novel-progress-log-empty');
+      emptyState?.remove();
+
+      const entry = document.createElement('article');
+      entry.className = `novel-progress-log-entry is-${tone}`;
+
+      const time = document.createElement('span');
+      time.className = 'novel-progress-log-time';
+      time.textContent = formatTime();
+      entry.append(time);
+
+      const text = document.createElement('span');
+      text.className = 'novel-progress-log-text';
+      text.textContent = normalized;
+      entry.append(text);
+
+      runLog.prepend(entry);
+
+      while (runLog.children.length > 10) {
+        runLog.removeChild(runLog.lastElementChild);
+      }
+    };
+
+    const setRunMeta = ({ mode, progress, target, phase, badge, step, logMessage, tone } = {}) => {
+      if (mode) {
+        runState.mode = mode;
+      }
+
+      if (progress) {
+        runState.progress = progress;
+      }
+
+      if (target) {
+        runState.target = target;
+      }
+
+      if (phase) {
+        runState.phase = phase;
+      }
+
+      if (runModeValue) {
+        runModeValue.textContent = runState.mode;
+      }
+
+      if (runProgressValue) {
+        runProgressValue.textContent = runState.progress;
+      }
+
+      if (runTargetValue) {
+        runTargetValue.textContent = runState.target;
+      }
+
+      if (runPhaseValue) {
+        runPhaseValue.textContent = runState.phase;
+      }
+
+      if (badge) {
+        setRunBadge(badge);
+      }
+
+      if (step) {
+        renderRunSteps(step, badge === 'success' ? 'success' : badge === 'error' ? 'error' : 'running');
+      }
+
+      if (logMessage) {
+        appendRunLog(logMessage, tone || (badge === 'error' ? 'error' : badge === 'success' ? 'success' : 'info'));
+      }
+    };
+
+    const resetRunFeedback = ({ mode, progress, target, detail }) => {
+      runState.lastLogMessage = '';
+
+      if (runLog) {
+        runLog.innerHTML = '<div class="novel-progress-log-empty">还没有运行记录。</div>';
+      }
+
+      setRunMeta({
+        mode,
+        progress,
+        target,
+        phase: '准备启动',
+        badge: 'running',
+      });
+      renderRunSteps('research', 'running');
+      setStatus(detail || '已收到写作请求，准备启动...', false);
+      appendRunLog(detail || '已收到写作请求，准备启动...');
+    };
+
+    const inferStepFromStatus = (message) => {
+      const normalized = String(message ?? '');
+
+      if (/参考作品|参考资料|公开资料|检索/.test(normalized)) {
+        return 'research';
+      }
+
+      if (/任务卡|规划/.test(normalized)) {
+        return 'plan';
+      }
+
+      if (/流式写作|续写|写这一章|正在写/.test(normalized)) {
+        return 'write';
+      }
+
+      if (/写入博客|整理章节记忆|保存|回写|落库/.test(normalized)) {
+        return 'save';
+      }
+
+      return 'write';
+    };
+
+    const getTargetLabelFromValues = (volumeNumber, chapterNumber) => `第 ${volumeNumber} 卷 第 ${chapterNumber} 章`;
+
+    let latestStatusMessage = statusBody?.textContent?.trim() || '等待开始生成...';
 
     const setStatus = (message, isError = false) => {
+      latestStatusMessage = String(message ?? '').trim() || latestStatusMessage;
       statusBody.textContent = message;
       statusBody.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+    };
+
+    const setHeartbeatStatus = (message) => {
+      if (!statusBody || statusBody.classList.contains('is-error')) {
+        return;
+      }
+
+      statusBody.textContent = String(message ?? '').trim() || `${latestStatusMessage}（连接正常，仍在处理中...）`;
+      statusBody.className = 'admin-status-text';
+    };
+
+    const setGenerationButtonsDisabled = (disabled, activeButtonKey = null) => {
+      const buttonMappings = [
+        ['manual', generateButton],
+        ['auto', autoGenerateButton],
+        ['batch', batchGenerateButton],
+      ];
+
+      buttonMappings.forEach(([key, button]) => {
+        if (!button) {
+          return;
+        }
+
+        button.disabled = disabled;
+        button.textContent = disabled && activeButtonKey === key
+          ? BUTTON_LABELS[key].busy
+          : BUTTON_LABELS[key].idle;
+      });
     };
 
     const loadStoredConfig = () => {
@@ -503,12 +796,6 @@ const pageData = serializeInlineJson({
       }
     };
 
-    const setGenerationButtonsDisabled = (disabled) => {
-      generateButton.disabled = disabled;
-      autoGenerateButton.disabled = disabled;
-      batchGenerateButton.disabled = disabled;
-    };
-
     const setResultActions = (post) => {
       resultActions.innerHTML = '';
 
@@ -548,39 +835,81 @@ const pageData = serializeInlineJson({
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let hasTerminalEvent = false;
 
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
+      const processEventText = (eventText) => {
+        if (!eventText.trim() || eventText.trim().startsWith(':')) {
+          return;
         }
 
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split(/\r?\n\r?\n/);
-        buffer = events.pop() ?? '';
+        const lines = eventText.split(/\r?\n/);
+        const eventLine = lines.find((line) => line.startsWith('event:'));
+        const dataLines = lines
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).trimStart())
+          .filter(Boolean);
 
-        events.forEach((eventText) => {
-          const lines = eventText.split(/\r?\n/);
-          const eventLine = lines.find((line) => line.startsWith('event:'));
-          const dataLines = lines.filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim());
+        if (!eventLine || !dataLines.length) {
+          return;
+        }
 
-          if (!eventLine || !dataLines.length) {
-            return;
+        const eventName = eventLine.slice(6).trim();
+        const payload = JSON.parse(dataLines.join('\n'));
+
+        if (eventName === 'done' || eventName === 'error') {
+          hasTerminalEvent = true;
+        }
+
+        const handler = handlers[eventName];
+        if (handler) {
+          handler(payload);
+        }
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
           }
 
-          const eventName = eventLine.slice(6).trim();
-          const payload = JSON.parse(dataLines.join('\n'));
-          const handler = handlers[eventName];
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split(/\r?\n\r?\n/);
+          buffer = events.pop() ?? '';
 
-          if (handler) {
-            handler(payload);
+          for (const eventText of events) {
+            processEventText(eventText);
           }
-        });
+        }
+
+        buffer += decoder.decode();
+
+        if (buffer.trim()) {
+          processEventText(buffer);
+        }
+      } finally {
+        try {
+          reader.releaseLock();
+        } catch {
+          // Ignore stream cleanup failures.
+        }
+      }
+
+      if (!hasTerminalEvent) {
+        throw new Error('流式连接意外中断，服务端没有返回完成信号，请重试。');
       }
     };
 
     restoreStoredConfig();
+    setRunMeta({
+      mode: runState.mode,
+      progress: runState.progress,
+      target: runState.target,
+      phase: runState.phase,
+      badge: runState.badge,
+    });
+    renderRunSteps('research', 'idle');
     renderResearchOutput({
       query: '',
       sources: PAGE_DATA.sources || [],
@@ -848,6 +1177,9 @@ const pageData = serializeInlineJson({
         await readEventStream(response, {
           status: (data) => {
             setStatus(data.message || 'AI 正在续写...');
+          },
+          heartbeat: (data) => {
+            setHeartbeatStatus(data.message);
           },
           research: (data) => {
             const referenceSummaryField = projectForm?.elements?.namedItem('referenceSummary');

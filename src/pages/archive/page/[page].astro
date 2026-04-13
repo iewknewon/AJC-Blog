@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PageHero from '../../../components/PageHero.astro';
 import PostCard from '../../../components/PostCard.astro';
 import { siteConfig } from '../../../data/site';
 import { getPublishedPosts, paginatePosts } from '../../../utils/posts';
@@ -17,13 +18,20 @@ const pagination = paginatePosts(posts, currentPage);
 >
   <section class="section">
     <div class="container">
-      <h1 class="page-title">文章归档</h1>
-      <p class="page-intro">按发布时间倒序浏览所有已发布文章。</p>
-      <div class="archive-toolbar">
-        <p class="muted">共 {pagination.totalItems} 篇文章，当前第 {pagination.currentPage} / {pagination.totalPages} 页</p>
-        <a class="button" href="/search">搜索文章</a>
-      </div>
-      <div class="archive-list" style="margin-top: 2rem;">
+      <PageHero
+        kicker="Archive"
+        title="文章归档"
+        description="按时间倒序浏览站点内已经公开发布的文章，适合系统回看和连续阅读。"
+        actions={[
+          { href: '/search', label: '搜索文章', primary: true },
+          { href: '/tags', label: '浏览标签' },
+        ]}
+        stats={[
+          { label: '已发布文章', value: `${pagination.totalItems} 篇` },
+          { label: '当前页码', value: `${pagination.currentPage} / ${pagination.totalPages}` },
+        ]}
+      />
+      <div class="archive-list page-card-grid">
         {pagination.items.map((post) => (
           <PostCard post={post} />
         ))}

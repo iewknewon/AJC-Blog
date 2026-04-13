@@ -6,9 +6,30 @@ interface Props {
   submitLabel: string;
   post?: Partial<BlogPost>;
   error?: string;
+  backHref?: string;
+  backLabel?: string;
+  previewHref?: string;
+  previewLabel?: string;
+  exportHref?: string;
+  exportLabel?: string;
+  deleteLabel?: string;
+  deleteConfirmMessage?: string;
 }
 
-const { action, submitLabel, post, error } = Astro.props;
+const {
+  action,
+  submitLabel,
+  post,
+  error,
+  backHref = '/admin/posts',
+  backLabel = '返回列表',
+  previewHref = post?.slug ? `/blog/${post.slug}/` : undefined,
+  previewLabel = '预览前台',
+  exportHref = post?.id ? `/admin/posts/${post.id}/wechat` : undefined,
+  exportLabel = '公众号导出',
+  deleteLabel = '删除文章',
+  deleteConfirmMessage = '确认删除这篇文章吗？此操作不可恢复。',
+} = Astro.props;
 const tags = post?.tags?.join(', ') ?? '';
 const status = (post?.status ?? 'draft') as PostStatus;
 ---
@@ -80,16 +101,16 @@ const status = (post?.status ?? 'draft') as PostStatus;
 
     <div class="hero-actions">
       <button class="button button-primary" type="submit">{submitLabel}</button>
-      <a class="button" href="/admin/posts">返回列表</a>
-      {post?.slug ? <a class="button" href={`/blog/${post.slug}/`} target="_blank" rel="noreferrer">预览前台</a> : null}
-      {post?.id ? <a class="button" href={`/admin/posts/${post.id}/wechat`}>公众号导出</a> : null}
+      <a class="button" href={backHref}>{backLabel}</a>
+      {previewHref ? <a class="button" href={previewHref} target="_blank" rel="noreferrer">{previewLabel}</a> : null}
+      {exportHref ? <a class="button" href={exportHref}>{exportLabel}</a> : null}
     </div>
   </form>
 
   {post?.id ? (
-    <form class="inline-form" action={action} method="post" onsubmit="return confirm('确认删除这篇文章吗？此操作不可恢复。')">
+    <form class="inline-form" action={action} method="post" onsubmit={`return confirm(${JSON.stringify(deleteConfirmMessage)})`}>
       <input type="hidden" name="intent" value="delete" />
-      <button class="button button-danger" type="submit">删除文章</button>
+      <button class="button button-danger" type="submit">{deleteLabel}</button>
     </form>
   ) : null}
 </div>

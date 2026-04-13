@@ -1,24 +1,36 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
 import { siteConfig } from '../data/site';
 ---
 
 <BaseLayout title={`联系 | ${siteConfig.title}`} description="通过邮箱和 GitHub 与 AJC 取得联系。" pathname="/contact">
   <section class="section">
     <div class="container">
-      <div class="content-card">
-        <p class="eyebrow">联系方式</p>
-        <h1>联系我</h1>
-        <p class="page-intro">如果你想交流项目、写作或技术内容，欢迎通过下面的方式联系我。</p>
-        <div class="grid two" style="margin-top: 2rem;">
-          <div class="contact-card">
-            <h3>邮箱</h3>
-            <p><a href={`mailto:${siteConfig.contact.email}`}>{siteConfig.contact.email}</a></p>
-          </div>
-          <div class="contact-card">
-            <h3>GitHub</h3>
-            <p><a href={siteConfig.contact.github} target="_blank" rel="noreferrer">查看 GitHub 主页</a></p>
-          </div>
+      <PageHero
+        kicker="Contact"
+        title="联系我"
+        description="如果你想交流项目、写作、部署经验或合作内容，可以直接从这里联系我。"
+        actions={[
+          { href: `mailto:${siteConfig.contact.email}`, label: '发送邮件', primary: true },
+          { href: siteConfig.contact.github, label: '查看 GitHub', external: true },
+        ]}
+        stats={[
+          { label: '适合话题', value: '技术 / 写作 / 项目合作' },
+        ]}
+      />
+      <div class="grid two contact-grid page-contact-grid">
+        <div class="contact-card contact-card-primary">
+          <span class="section-kicker">Direct</span>
+          <h3>邮箱</h3>
+          <p class="contact-copy">适合传递完整上下文、讨论合作意向，或者直接交流站点和写作相关问题。</p>
+          <p><a class="contact-link" href={`mailto:${siteConfig.contact.email}`}>{siteConfig.contact.email}</a></p>
+        </div>
+        <div class="contact-card">
+          <span class="section-kicker">Open Profile</span>
+          <h3>GitHub</h3>
+          <p class="contact-copy">可以从这里查看项目仓库、功能迭代记录，以及当前站点正在推进的方向。</p>
+          <p><a class="contact-link" href={siteConfig.contact.github} target="_blank" rel="noreferrer">查看 GitHub 主页</a></p>
         </div>
       </div>
     </div>

@@ -52,6 +52,8 @@ type AssetCoverPayload = {
   mode: 'auto' | 'manual';
 };
 
+const SSE_HEARTBEAT_INTERVAL_MS = 15_000;
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -229,14 +231,42 @@ export async function POST(context) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      let lastStatusMessage = '正在准备生成任务...';
       const send = (event: string, eventPayload: Record<string, unknown>) => {
+        if (event === 'status' && typeof eventPayload.message === 'string') {
+          lastStatusMessage = eventPayload.message;
+        }
+
         controller.enqueue(encoder.encode(createSseEvent(event, eventPayload)));
       };
 
       let rawText = '';
       let closed = false;
+      let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+      const startHeartbeat = () => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+        }
+
+        heartbeatTimer = setInterval(() => {
+          if (closed) {
+            return;
+          }
+
+          send('heartbeat', {
+            message: `${lastStatusMessage}（连接正常，仍在处理中...）`,
+            timestamp: Date.now(),
+          });
+        }, SSE_HEARTBEAT_INTERVAL_MS);
+      };
 
       const close = () => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+
         if (!closed) {
           closed = true;
           controller.close();
@@ -244,6 +274,7 @@ export async function POST(context) {
       };
 
       try {
+        startHeartbeat();
         let webResearch: Awaited<ReturnType<typeof collectWebResearch>> | null = null;
 
         if (webSearchEnabled) {

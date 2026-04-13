@@ -4,14 +4,46 @@ import { siteConfig } from '../data/site';
 
 <section class="section">
   <div class="container">
-    <div class="hero">
-      <div class="eyebrow">{siteConfig.hero.eyebrow}</div>
-      <h1>{siteConfig.hero.title}</h1>
-      <p>{siteConfig.hero.subtitle}</p>
-      <div class="hero-actions">
-        <a class="button button-primary" href={siteConfig.hero.ctaPrimary.href}>{siteConfig.hero.ctaPrimary.label}</a>
-        <a class="button" href={siteConfig.hero.ctaSecondary.href}>{siteConfig.hero.ctaSecondary.label}</a>
+    <div class="hero hero-featured">
+      <div class="hero-copy">
+        <div class="eyebrow">{siteConfig.hero.eyebrow}</div>
+        <h1>{siteConfig.hero.title}</h1>
+        <p class="hero-lead">{siteConfig.hero.subtitle}</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href={siteConfig.hero.ctaPrimary.href}>{siteConfig.hero.ctaPrimary.label}</a>
+          <a class="button" href={siteConfig.hero.ctaSecondary.href}>{siteConfig.hero.ctaSecondary.label}</a>
+        </div>
+        <div class="hero-strip">
+          <span class="hero-strip-item">技术写作</span>
+          <span class="hero-strip-item">项目复盘</span>
+          <span class="hero-strip-item">小说连载</span>
+          <span class="hero-strip-item">AI 创作工作台</span>
+        </div>
       </div>
+      <aside class="hero-panel">
+        <div class="hero-panel-card">
+          <span class="hero-panel-label">内容主轴</span>
+          <h2>把博客、连载和创作流程放进同一个站点。</h2>
+          <p>前台适合阅读，后台适合持续生产，整体保持轻量、稳定、长期可维护。</p>
+        </div>
+        <div class="hero-panel-metrics">
+          <article class="hero-metric">
+            <span>站点基底</span>
+            <strong>Astro + Cloudflare</strong>
+          </article>
+          <article class="hero-metric">
+            <span>内容模式</span>
+            <strong>文章 / 项目 / 连载</strong>
+          </article>
+          <article class="hero-metric">
+            <span>创作方式</span>
+            <strong>人工主导 + AI 辅助</strong>
+          </article>
+        </div>
+        <div class="hero-panel-note">
+          <span>适合持续更新的个人站，而不是一次性展示页。</span>
+        </div>
+      </aside>
     </div>
   </div>
 </section>

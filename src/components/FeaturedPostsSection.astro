@@ -14,7 +14,7 @@ const { posts } = Astro.props;
 <section class="section">
   <div class="container">
     <div class="archive-toolbar">
-      <SectionTitle title="推荐文章" description="优先阅读这些文章，可以快速了解这个博客的内容方向。" />
+      <SectionTitle kicker="Editorial Picks" title="推荐文章" description="优先阅读这些文章，可以快速了解这个博客的内容方向。" />
       <a class="button" href="/archive">查看全部文章</a>
     </div>
     {posts.length > 0 ? (
