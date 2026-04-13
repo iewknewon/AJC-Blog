@@ -20,6 +20,13 @@ export type NovelStoryBible = {
   styleGuide: string;
 };
 
+export type NovelNextChapterPlan = {
+  chapterTitleHint: string;
+  chapterBrief: string;
+  progressionChecklist: string;
+  endingHook: string;
+};
+
 type NovelGenerationContext = {
   project: NovelProject;
   chapters: NovelChapter[];
@@ -270,6 +277,62 @@ export function buildNovelStoryBiblePrompt(input: {
   ].join('\n');
 }
 
+export function buildNovelNextChapterPlanPrompt(input: {
+  project: NovelProject;
+  chapters: NovelChapter[];
+  sources: NovelReferenceSource[];
+  volumeNumber: number;
+  chapterNumber: number;
+}) {
+  const { project } = input;
+
+  return [
+    '请根据下面这个长篇小说项目的既有大纲和连续记忆，生成“下一章任务卡”。',
+    '你必须只返回 JSON，不要输出解释。',
+    '格式如下：',
+    '{"chapterTitleHint":"","chapterBrief":"","progressionChecklist":"","endingHook":""}',
+    '要求：',
+    '- chapterTitleHint：给出一个适合作为网文章节标题的中文章名。',
+    '- chapterBrief：用一段中文写清楚本章要推进的事件、冲突、角色关系变化和节奏要求，适合直接塞进续写输入框。',
+    '- progressionChecklist：用项目符号列出本章必须完成的 3 到 5 个推进点。',
+    '- endingHook：写一句这一章结尾应该留下的悬念或钩子。',
+    '- 不能脱离当前大纲和连续记忆乱开新线。',
+    '',
+    `项目标题：${project.title}`,
+    `核心设定：${project.premise}`,
+    `题材方向：${project.genre || '未指定'}`,
+    `参考作品：${project.referenceTitle || '无'}`,
+    `当前要规划：第 ${input.volumeNumber} 卷 第 ${input.chapterNumber} 章`,
+    '',
+    '参考作品公开梗概：',
+    project.referenceSummary || '无',
+    '',
+    '参考约束：',
+    project.referenceNotes || '无',
+    '',
+    '写作目标：',
+    project.writingGoals || '无',
+    '',
+    '世界观 / 规则库：',
+    project.worldBible || '无',
+    '',
+    '人物卡与关系：',
+    project.characterBible || '无',
+    '',
+    '长线大纲：',
+    project.outline || '无',
+    '',
+    '连续性记忆：',
+    project.continuityNotes || '无',
+    '',
+    '最近章节回顾：',
+    buildRecentChapterDigest(input.chapters),
+    '',
+    '补充公开来源：',
+    buildSourceDigest(input.sources),
+  ].join('\n');
+}
+
 export function buildNovelChapterPrompt(input: NovelGenerationContext) {
   const { project } = input;
   const titleHint = String(input.chapterTitleHint ?? '').trim();
@@ -370,6 +433,38 @@ export async function generateNovelStoryBible(
     worldBible: String(parsed.worldBible ?? '').trim() || input.project.worldBible,
     characterBible: String(parsed.characterBible ?? '').trim() || input.project.characterBible,
     styleGuide: String(parsed.styleGuide ?? '').trim() || input.project.styleGuide,
+  };
+}
+
+export async function generateNovelNextChapterPlan(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  input: {
+    project: NovelProject;
+    chapters: NovelChapter[];
+    sources: NovelReferenceSource[];
+    volumeNumber: number;
+    chapterNumber: number;
+  },
+) {
+  const rawText = await generateCompatibleText(baseUrl, apiKey, model, {
+    temperature: 0.5,
+    systemPrompt: [
+      '你是专业的中文长篇小说连载编辑。',
+      '你的任务是根据现有大纲和记忆，为下一章生成可直接执行的任务卡。',
+      '你必须只返回 JSON，不要输出解释。',
+    ].join('\n'),
+    userPrompt: buildNovelNextChapterPlanPrompt(input),
+  });
+
+  const parsed = JSON.parse(extractJsonBlock(rawText)) as Partial<NovelNextChapterPlan>;
+
+  return {
+    chapterTitleHint: String(parsed.chapterTitleHint ?? '').trim() || `第${input.chapterNumber}章`,
+    chapterBrief: String(parsed.chapterBrief ?? '').trim() || `请继续推进第 ${input.chapterNumber} 章的主线冲突，并在结尾保留下一章动力。`,
+    progressionChecklist: String(parsed.progressionChecklist ?? '').trim(),
+    endingHook: String(parsed.endingHook ?? '').trim(),
   };
 }
 

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildNovelChapterPrompt,
+  buildNovelNextChapterPlanPrompt,
   buildNovelOutlinePrompt,
   buildNovelPostTags,
   buildNovelResearchQuery,
@@ -139,6 +140,56 @@ test('buildNovelStoryBiblePrompt 会要求输出人物卡和世界观', () => {
   assert.match(prompt, /characterBible/);
   assert.match(prompt, /worldBible/);
   assert.match(prompt, /styleGuide/);
+});
+
+test('buildNovelNextChapterPlanPrompt 会要求输出下一章任务卡', () => {
+  const prompt = buildNovelNextChapterPlanPrompt({
+    project: {
+      id: 'novel-1',
+      slug: 'token-emperor',
+      title: '斗破苍穹番外篇之 Token 大帝',
+      premise: '主角误入区块链异火秘境',
+      genre: '玄幻',
+      writingGoals: '长篇连载',
+      referenceTitle: '斗破苍穹',
+      referenceSummary: '斗气大陆与异火体系仍然有效。',
+      referenceNotes: '萧炎已经成帝，旧主角不能被随意削弱。',
+      worldBible: '斗气大陆依旧由各方势力割据。',
+      characterBible: '主角林策，拥有链纹斗气。',
+      outline: '第一卷寻找失落异火。',
+      styleGuide: '快节奏，章节结尾留悬念。',
+      continuityNotes: '林策已经暴露了体内的异火气息。',
+      status: 'serializing',
+      chaptersCount: 1,
+      lastChapterNumber: 1,
+      lastVolumeNumber: 1,
+      createdAt: new Date('2026-04-13T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-13T00:00:00.000Z'),
+    },
+    chapters: [
+      {
+        id: 'chapter-1',
+        projectId: 'novel-1',
+        volumeNumber: 1,
+        chapterNumber: 1,
+        title: '异火初现',
+        description: '主角首次感知异火召唤。',
+        brief: '',
+        summary: '林策在黑角域边缘感知到失控异火，并被追杀。',
+        continuityDelta: '',
+        status: 'draft',
+        createdAt: new Date('2026-04-13T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-13T00:00:00.000Z'),
+      },
+    ],
+    sources: [],
+    volumeNumber: 1,
+    chapterNumber: 2,
+  });
+
+  assert.match(prompt, /下一章任务卡/);
+  assert.match(prompt, /chapterTitleHint/);
+  assert.match(prompt, /endingHook/);
 });
 
 test('mergeNovelContinuityNotes 会追加新章节记忆', () => {

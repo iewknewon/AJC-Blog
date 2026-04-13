@@ -38,6 +38,7 @@ const pageData = serializeInlineJson({
   researchApiUrl: `/api/admin/novels/${project.id}/research`,
   bibleApiUrl: `/api/admin/novels/${project.id}/bible`,
   outlineApiUrl: `/api/admin/novels/${project.id}/outline`,
+  planNextApiUrl: `/api/admin/novels/${project.id}/plan-next`,
   generateApiUrl: `/api/admin/novels/${project.id}/generate`,
   sources: sources.map((source) => ({
     title: source.title,
@@ -94,6 +95,7 @@ const pageData = serializeInlineJson({
           <button id="novel-research-button" class="button" type="button">检索参考作品</button>
           <button id="novel-bible-button" class="button" type="button">生成人物与设定卡</button>
           <button id="novel-outline-button" class="button" type="button">生成分卷骨架</button>
+          <button id="novel-plan-next-button" class="button" type="button">生成下一章任务卡</button>
         </div>
 
         <label class="admin-field">
@@ -126,6 +128,8 @@ const pageData = serializeInlineJson({
           <span>本章任务说明</span>
           <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="chapterBrief" placeholder="写清楚这章要推进什么、谁要出场、冲突和钩子是什么。" required></textarea>
         </label>
+
+        <div id="novel-plan-output" class="ai-preset-summary" hidden></div>
 
         <div class="grid two">
           <label class="admin-field">
@@ -222,11 +226,13 @@ const pageData = serializeInlineJson({
     const researchButton = document.querySelector('#novel-research-button');
     const bibleButton = document.querySelector('#novel-bible-button');
     const outlineButton = document.querySelector('#novel-outline-button');
+    const planNextButton = document.querySelector('#novel-plan-next-button');
     const generateButton = document.querySelector('#generate-novel-chapter');
     const statusBody = document.querySelector('#novel-status-body');
     const streamOutput = document.querySelector('#novel-stream-output');
     const resultActions = document.querySelector('#novel-result-actions');
     const researchOutput = document.querySelector('#novel-research-output');
+    const planOutput = document.querySelector('#novel-plan-output');
 
     const setStatus = (message, isError = false) => {
       statusBody.textContent = message;
@@ -356,6 +362,43 @@ const pageData = serializeInlineJson({
         item.append(snippet);
         researchOutput.append(item);
       });
+    };
+
+    const renderPlanOutput = (plan) => {
+      if (!planOutput) {
+        return;
+      }
+
+      planOutput.hidden = false;
+      planOutput.innerHTML = '';
+
+      const title = document.createElement('div');
+      title.className = 'ai-preset-title';
+      title.textContent = plan.chapterTitleHint || '下一章任务卡';
+      planOutput.append(title);
+
+      if (plan.chapterBrief) {
+        const brief = document.createElement('p');
+        brief.className = 'ai-preset-copy';
+        brief.textContent = plan.chapterBrief;
+        planOutput.append(brief);
+      }
+
+      if (plan.progressionChecklist) {
+        const checklist = document.createElement('pre');
+        checklist.className = 'ai-stream-output';
+        checklist.style.minHeight = 'unset';
+        checklist.style.maxHeight = '260px';
+        checklist.textContent = plan.progressionChecklist;
+        planOutput.append(checklist);
+      }
+
+      if (plan.endingHook) {
+        const hook = document.createElement('p');
+        hook.className = 'ai-preset-copy';
+        hook.textContent = `结尾钩子：${plan.endingHook}`;
+        planOutput.append(hook);
+      }
     };
 
     const setResultActions = (post) => {
@@ -601,6 +644,58 @@ const pageData = serializeInlineJson({
         setStatus(error instanceof Error ? error.message : '生成分卷骨架失败。', true);
       } finally {
         outlineButton.disabled = false;
+      }
+    });
+
+    planNextButton?.addEventListener('click', async () => {
+      planNextButton.disabled = true;
+      setStatus('正在生成下一章任务卡...');
+
+      try {
+        const volumeNumber = Number(generateForm?.elements?.namedItem('volumeNumber')?.value ?? 1);
+        const chapterNumber = Number(generateForm?.elements?.namedItem('chapterNumber')?.value ?? 1);
+        const response = await fetch(PAGE_DATA.planNextApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            baseUrl: baseUrlInput?.value?.trim() || '',
+            apiKey: apiKeyInput?.value?.trim() || '',
+            model: modelSelect?.value?.trim() || '',
+            volumeNumber,
+            chapterNumber,
+            project: gatherProjectSnapshot(),
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '生成下一章任务卡失败。');
+        }
+
+        const titleField = generateForm?.elements?.namedItem('chapterTitleHint');
+        const briefField = generateForm?.elements?.namedItem('chapterBrief');
+
+        if (titleField && 'value' in titleField) {
+          titleField.value = data.chapterTitleHint || '';
+        }
+
+        if (briefField && 'value' in briefField) {
+          const combinedBrief = [
+            data.chapterBrief || '',
+            data.progressionChecklist ? `\n\n推进清单：\n${data.progressionChecklist}` : '',
+            data.endingHook ? `\n\n结尾钩子：${data.endingHook}` : '',
+          ].join('').trim();
+          briefField.value = combinedBrief;
+        }
+
+        renderPlanOutput(data);
+        setStatus(data.message || '下一章任务卡生成完成。');
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '生成下一章任务卡失败。', true);
+      } finally {
+        planNextButton.disabled = false;
       }
     });
 
