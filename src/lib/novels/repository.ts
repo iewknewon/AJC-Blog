@@ -149,6 +149,18 @@ async function withNovelSchema<T>(db: D1Database, action: () => Promise<T>) {
   }
 }
 
+async function pruneOrphanedNovelChapters(db: D1Database) {
+  await withNovelSchema(db, () => db.prepare(`
+      DELETE FROM novel_chapters
+      WHERE post_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM posts
+          WHERE posts.id = novel_chapters.post_id
+        )
+    `).run());
+}
+
 export function normalizeNovelProjectInput(input: UpsertNovelProjectInput): NormalizedNovelProjectInput {
   return {
     slug: normalizeText(input.slug),
@@ -329,8 +341,7 @@ const PROJECT_QUERY = `
 
 function getPublishedNovelVisibilityClause(chapterAlias: string, postAlias: string) {
   return `
-    ${chapterAlias}.status = 'published'
-    AND ${chapterAlias}.post_id IS NOT NULL
+    ${chapterAlias}.post_id IS NOT NULL
     AND ${postAlias}.status = 'published'
     AND ${postAlias}.published_at IS NOT NULL
   `;
@@ -384,6 +395,8 @@ const PUBLISHED_PROJECT_STATS_QUERY = `
 `;
 
 export async function getNovelProjects(db: D1Database) {
+  await pruneOrphanedNovelChapters(db);
+
   const result = await withNovelSchema(db, () => db.prepare(`
       ${PROJECT_QUERY}
       GROUP BY p.id
@@ -394,6 +407,8 @@ export async function getNovelProjects(db: D1Database) {
 }
 
 export async function getNovelProjectById(db: D1Database, id: string) {
+  await pruneOrphanedNovelChapters(db);
+
   const result = await withNovelSchema(db, () => db.prepare(`
       ${PROJECT_QUERY}
       WHERE p.id = ?
@@ -405,6 +420,8 @@ export async function getNovelProjectById(db: D1Database, id: string) {
 }
 
 export async function getNovelProjectBySlug(db: D1Database, slug: string) {
+  await pruneOrphanedNovelChapters(db);
+
   const result = await withNovelSchema(db, () => db.prepare(`
       ${PROJECT_QUERY}
       WHERE p.slug = ?
@@ -416,6 +433,8 @@ export async function getNovelProjectBySlug(db: D1Database, slug: string) {
 }
 
 export async function getPublishedNovelProjects(db: D1Database) {
+  await pruneOrphanedNovelChapters(db);
+
   const result = await withNovelSchema(db, () => db.prepare(`
       ${PUBLISHED_PROJECT_STATS_QUERY}
       GROUP BY p.id
@@ -426,6 +445,8 @@ export async function getPublishedNovelProjects(db: D1Database) {
 }
 
 export async function getPublishedNovelProjectBySlug(db: D1Database, slug: string) {
+  await pruneOrphanedNovelChapters(db);
+
   const result = await withNovelSchema(db, () => db.prepare(`
       ${PUBLISHED_PROJECT_STATS_QUERY}
       AND p.slug = ?
@@ -570,6 +591,8 @@ export async function replaceNovelReferenceSources(
 }
 
 export async function getNovelChaptersByProjectId(db: D1Database, projectId: string) {
+  await pruneOrphanedNovelChapters(db);
+
   const result = await withNovelSchema(db, () => db.prepare(`
       SELECT *
       FROM novel_chapters
@@ -683,4 +706,78 @@ export async function getPublishedNovelChapterByPosition(
     .first<PublishedNovelChapterQueryRow>());
 
   return row ? mapPublishedNovelChapterRow(row) : null;
+}
+
+export async function getPublishedNovelPostIds(db: D1Database) {
+  const result = await withNovelSchema(db, () => db.prepare(`
+      SELECT DISTINCT c.post_id
+      FROM novel_chapters c
+      INNER JOIN posts post ON post.id = c.post_id
+      WHERE ${getPublishedNovelVisibilityClause('c', 'post')}
+    `).all<{ post_id: string | null }>());
+
+  return (result.results ?? [])
+    .map((row) => row.post_id)
+    .filter((postId): postId is string => typeof postId === 'string' && postId.length > 0);
+}
+
+export async function getPublishedNovelChapterRouteByPostSlug(db: D1Database, postSlug: string) {
+  const row = await withNovelSchema(db, () => db.prepare(`
+      SELECT
+        p.slug AS project_slug,
+        c.volume_number,
+        c.chapter_number
+      FROM novel_chapters c
+      INNER JOIN novel_projects p ON p.id = c.project_id
+      INNER JOIN posts post ON post.id = c.post_id
+      WHERE post.slug = ?
+        AND ${getPublishedNovelVisibilityClause('c', 'post')}
+      LIMIT 1
+    `)
+    .bind(postSlug)
+    .first<{
+      project_slug: string;
+      volume_number: number;
+      chapter_number: number;
+    }>());
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    projectSlug: row.project_slug,
+    volumeNumber: row.volume_number,
+    chapterNumber: row.chapter_number,
+  };
+}
+
+export async function syncNovelChapterByPost(
+  db: D1Database,
+  post: Pick<BlogPost, 'id' | 'slug' | 'status'>,
+) {
+  await withNovelSchema(db, () => db.prepare(`
+      UPDATE novel_chapters
+      SET
+        post_slug = ?,
+        status = ?,
+        updated_at = ?
+      WHERE post_id = ?
+    `)
+    .bind(
+      post.slug,
+      post.status,
+      new Date().toISOString(),
+      post.id,
+    )
+    .run());
+}
+
+export async function deleteNovelChapterByPostId(db: D1Database, postId: string) {
+  await withNovelSchema(db, () => db.prepare(`
+      DELETE FROM novel_chapters
+      WHERE post_id = ?
+    `)
+    .bind(postId)
+    .run());
 }

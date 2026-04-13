@@ -2,11 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  deleteNovelChapterByPostId,
   getPublishedNovelChapterByPosition,
+  getPublishedNovelChapterRouteByPostSlug,
+  getPublishedNovelPostIds,
   mapPublishedNovelChapterRow,
   mapPublishedNovelProjectRow,
   mapNovelProjectRow,
   normalizeNovelProjectInput,
+  syncNovelChapterByPost,
   toNovelProjectInput,
 } from './repository';
 
@@ -213,4 +217,141 @@ test('getPublishedNovelChapterByPosition 会按卷章查询公开章节', async 
   assert.deepEqual(boundValues, ['novel-1', 1, 3]);
   assert.equal(chapter?.post.slug, 'token-emperor-v1-c3');
   assert.equal(chapter?.title, '第三章');
+});
+test('getPublishedNovelPostIds returns published novel post ids', async () => {
+  let batchCalls = 0;
+
+  const db = {
+    async batch() {
+      batchCalls += 1;
+      return [];
+    },
+    prepare() {
+      return {
+        async all() {
+          return {
+            results: [
+              { post_id: 'post-1' },
+              { post_id: 'post-2' },
+              { post_id: null },
+            ],
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+
+  const result = await getPublishedNovelPostIds(db);
+
+  assert.equal(batchCalls, 1);
+  assert.deepEqual(result, ['post-1', 'post-2']);
+});
+
+test('getPublishedNovelChapterRouteByPostSlug returns front route info', async () => {
+  let batchCalls = 0;
+  let boundValue = '';
+
+  const db = {
+    async batch() {
+      batchCalls += 1;
+      return [];
+    },
+    prepare() {
+      return {
+        bind(value: string) {
+          boundValue = value;
+
+          return {
+            async first() {
+              return {
+                project_slug: 'token-emperor',
+                volume_number: 2,
+                chapter_number: 9,
+              };
+            },
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+
+  const route = await getPublishedNovelChapterRouteByPostSlug(db, 'token-emperor-v2-c9');
+
+  assert.equal(batchCalls, 1);
+  assert.equal(boundValue, 'token-emperor-v2-c9');
+  assert.deepEqual(route, {
+    projectSlug: 'token-emperor',
+    volumeNumber: 2,
+    chapterNumber: 9,
+  });
+});
+
+test('syncNovelChapterByPost updates linked chapter snapshot', async () => {
+  let batchCalls = 0;
+  const calls: Array<{ sql: string; values: unknown[] }> = [];
+
+  const db = {
+    async batch() {
+      batchCalls += 1;
+      return [];
+    },
+    prepare(sql: string) {
+      return {
+        bind(...values: unknown[]) {
+          calls.push({ sql, values });
+
+          return {
+            async run() {
+              return { success: true };
+            },
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+
+  await syncNovelChapterByPost(db, {
+    id: 'post-9',
+    slug: 'token-emperor-v2-c9',
+    status: 'published',
+  });
+
+  assert.equal(batchCalls, 1);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /UPDATE novel_chapters/);
+  assert.equal(calls[0].values[0], 'token-emperor-v2-c9');
+  assert.equal(calls[0].values[1], 'published');
+  assert.equal(calls[0].values[3], 'post-9');
+});
+
+test('deleteNovelChapterByPostId removes linked chapter rows', async () => {
+  let batchCalls = 0;
+  const calls: Array<{ sql: string; values: unknown[] }> = [];
+
+  const db = {
+    async batch() {
+      batchCalls += 1;
+      return [];
+    },
+    prepare(sql: string) {
+      return {
+        bind(...values: unknown[]) {
+          calls.push({ sql, values });
+
+          return {
+            async run() {
+              return { success: true };
+            },
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+
+  await deleteNovelChapterByPostId(db, 'post-3');
+
+  assert.equal(batchCalls, 1);
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /DELETE FROM novel_chapters/);
+  assert.deepEqual(calls[0].values, ['post-3']);
 });

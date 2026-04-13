@@ -3,7 +3,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
 import PostNavigation from '../../components/PostNavigation.astro';
 import { siteConfig } from '../../data/site';
+import { getPublishedNovelChapterRouteByPostSlug } from '../../lib/novels/repository';
 import { formatDate, getReadingTime } from '../../utils/format';
+import { getNovelChapterUrl } from '../../utils/novels';
 import { getAdjacentPosts, getPublishedPostBySlug, getPublishedPosts, renderPost } from '../../utils/posts';
 
 const { slug } = Astro.params;
@@ -13,6 +15,18 @@ if (!slug) {
 }
 
 const db = Astro.locals.runtime.env.DB;
+const novelChapterRoute = await getPublishedNovelChapterRouteByPostSlug(db, slug);
+
+if (novelChapterRoute) {
+  return Astro.redirect(
+    getNovelChapterUrl(
+      novelChapterRoute.projectSlug,
+      novelChapterRoute.volumeNumber,
+      novelChapterRoute.chapterNumber,
+    ),
+  );
+}
+
 const post = await getPublishedPostBySlug(db, slug);
 
 if (!post) {

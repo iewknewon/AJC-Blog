@@ -20,6 +20,9 @@ function createDbMock(postExists = true) {
   const deletedIds: string[] = [];
 
   const db = {
+    async batch() {
+      return [];
+    },
     prepare(sql: string) {
       return {
         bind(...values: unknown[]) {

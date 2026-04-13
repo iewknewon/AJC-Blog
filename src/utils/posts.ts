@@ -1,4 +1,5 @@
 import { renderMarkdown, type MarkdownHeading } from '../lib/posts/markdown';
+import { getPublishedNovelPostIds } from '../lib/novels/repository';
 import {
   getPublishedPostBySlug as getPublishedPostBySlugFromRepository,
   getPublishedPosts as getPublishedPostsFromRepository,
@@ -26,8 +27,23 @@ export type RenderedPost = BlogPost & {
   plainText: string;
 };
 
+export function excludePostsByIds(posts: BlogPost[], excludedIds: Iterable<string>) {
+  const idSet = new Set(excludedIds);
+
+  if (!idSet.size) {
+    return posts;
+  }
+
+  return posts.filter((post) => !idSet.has(post.id));
+}
+
 export async function getPublishedPosts(db: D1Database) {
-  return getPublishedPostsFromRepository(db);
+  const [posts, novelPostIds] = await Promise.all([
+    getPublishedPostsFromRepository(db),
+    getPublishedNovelPostIds(db),
+  ]);
+
+  return excludePostsByIds(posts, novelPostIds);
 }
 
 export async function getPublishedPostBySlug(db: D1Database, slug: string) {
