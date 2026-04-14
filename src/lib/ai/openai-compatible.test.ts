@@ -67,6 +67,9 @@ test('buildWriterPrompt includes web research and compact length guidance', () =
     lengthPreset: 'compact',
     webResearch: {
       query: 'Astro Cloudflare Pages deploy',
+      summary: '官方文档和实战资料都强调要确认仓库连接、构建输出目录以及环境变量绑定。',
+      strategy: 'native',
+      strategyLabel: '模型原生联网',
       sources: [
         {
           title: 'Deploy your Astro site to Cloudflare Pages',
@@ -79,6 +82,8 @@ test('buildWriterPrompt includes web research and compact length guidance', () =
   });
 
   assert.match(prompt, /Astro Cloudflare Pages deploy/);
+  assert.match(prompt, /模型原生联网/);
+  assert.match(prompt, /资料总览/);
   assert.match(prompt, /Deploy your Astro site to Cloudflare Pages/);
   assert.match(prompt, /GitHub repository/);
   assert.match(prompt, /700/);

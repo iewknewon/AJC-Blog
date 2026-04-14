@@ -8,7 +8,7 @@ import {
   injectInlineIllustrations,
   type AppliedInlineIllustration,
 } from '../../../../lib/ai/post-assets';
-import { collectWebResearch } from '../../../../lib/ai/web-search';
+import { collectWebResearch, type WebSearchMode } from '../../../../lib/ai/web-search';
 import { validatePostInput } from '../../../../lib/admin/validation';
 import { requireAdminApiAuth } from '../../../../lib/auth/guards';
 import {
@@ -33,6 +33,7 @@ type GeneratePayload = {
   lengthPreset?: string;
   webSearchEnabled?: boolean;
   webSearchQuery?: string;
+  webSearchMode?: string;
   cover?: string;
   autoCoverEnabled?: boolean;
   autoIllustrationsEnabled?: boolean;
@@ -49,6 +50,8 @@ type AssetCoverPayload = {
   creator?: string;
   license?: string;
   sourceUrl?: string;
+  providerLabel?: string;
+  selectionReason?: string;
   mode: 'auto' | 'manual';
 };
 
@@ -97,6 +100,14 @@ function parseIllustrationCount(value: unknown) {
   return Math.min(4, Math.max(1, Math.round(parsed)));
 }
 
+function parseWebSearchMode(value: unknown): WebSearchMode {
+  if (value === 'auto' || value === 'native' || value === 'local') {
+    return value;
+  }
+
+  return 'auto';
+}
+
 function quoteYamlString(value: string) {
   return JSON.stringify(value);
 }
@@ -132,16 +143,18 @@ function toCoverPayload(
   manualCoverUrl: string,
 ): AssetCoverPayload | null {
   if (autoCover) {
-    return {
-      url: autoCover.coverUrl,
-      previewUrl: autoCover.previewUrl,
-      title: autoCover.title,
-      query: autoCover.query,
-      creator: autoCover.creator,
-      license: autoCover.license,
-      sourceUrl: autoCover.sourceUrl,
-      mode: 'auto',
-    };
+      return {
+        url: autoCover.coverUrl,
+        previewUrl: autoCover.previewUrl,
+        title: autoCover.title,
+        query: autoCover.query,
+        creator: autoCover.creator,
+        license: autoCover.license,
+        sourceUrl: autoCover.sourceUrl,
+        providerLabel: autoCover.providerLabel,
+        selectionReason: autoCover.selectionReason,
+        mode: 'auto',
+      };
   }
 
   if (!finalCoverUrl || finalCoverUrl !== manualCoverUrl) {
@@ -214,6 +227,7 @@ export async function POST(context) {
   const lengthPreset = parseLengthPreset(payload.lengthPreset);
   const webSearchEnabled = Boolean(payload.webSearchEnabled);
   const webSearchQuery = String(payload.webSearchQuery ?? '').trim();
+  const webSearchMode = parseWebSearchMode(payload.webSearchMode);
   const autoCoverEnabled = payload.autoCoverEnabled !== false;
   const autoIllustrationsEnabled = payload.autoIllustrationsEnabled !== false;
   const illustrationCount = parseIllustrationCount(payload.illustrationCount);
@@ -282,16 +296,27 @@ export async function POST(context) {
           send('status', { message: `正在联网检索参考资料：${query}` });
 
           try {
-            webResearch = await collectWebResearch(query);
+            webResearch = await collectWebResearch(query, {
+              baseUrl,
+              apiKey,
+              model,
+              mode: webSearchMode,
+            });
             send('research', {
-              query,
+              query: webResearch.query,
+              summary: webResearch.summary,
+              strategy: webResearch.strategy,
+              strategyLabel: webResearch.strategyLabel,
+              provider: webResearch.provider,
+              fallbackReason: webResearch.fallbackReason,
               sources: webResearch.sources.map((source) => ({
                 title: source.title,
                 url: source.url,
                 snippet: source.snippet,
+                excerpt: source.excerpt,
               })),
               message: webResearch.sources.length
-                ? `已整理 ${webResearch.sources.length} 条参考资料，开始写作。`
+                ? `已通过${webResearch.strategyLabel}整理 ${webResearch.sources.length} 条参考资料，开始写作。`
                 : '没有检索到可靠资料，这次会继续按普通模式写作。',
             });
           } catch (error) {
@@ -358,6 +383,17 @@ export async function POST(context) {
                 },
                 {
                   preferredQueries: visualPlan.coverQueries,
+                  rerankConfig: {
+                    baseUrl,
+                    apiKey,
+                    model,
+                    objective: [
+                      `文章标题：${generated.title}`,
+                      `文章摘要：${generated.description}`,
+                      `文章标签：${generated.tags.join(', ')}`,
+                      '请从候选图片中挑出最适合作为技术博客封面的结果，要求主题贴合、画面具体、横版友好。',
+                    ].join('\n'),
+                  },
                 },
               );
 
@@ -371,6 +407,20 @@ export async function POST(context) {
                 visualPlan.illustrations.slice(0, illustrationCount).map(async (item) => {
                   const suggestion = await suggestImageForQuery(item.query, {
                     queryMode: 'ai',
+                    rerankConfig: {
+                      baseUrl,
+                      apiKey,
+                      model,
+                      objective: [
+                        `文章标题：${generated.title}`,
+                        `文章摘要：${generated.description}`,
+                        `当前小节：${item.heading}`,
+                        `插图说明：${item.alt}`,
+                        item.caption ? `配图文案：${item.caption}` : '',
+                        `目标检索词：${item.query}`,
+                        '请挑选最适合作为正文说明性插图的图片，优先选择结构清晰、场景具体、适合博客阅读的结果。',
+                      ].filter(Boolean).join('\n'),
+                    },
                   });
 
                   if (!suggestion) {
@@ -384,6 +434,8 @@ export async function POST(context) {
                     creator: suggestion.creator,
                     license: suggestion.license,
                     sourceUrl: suggestion.sourceUrl,
+                    providerLabel: suggestion.providerLabel,
+                    selectionReason: suggestion.selectionReason,
                   } satisfies AppliedInlineIllustration;
                 }),
               );

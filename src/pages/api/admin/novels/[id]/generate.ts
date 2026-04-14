@@ -246,6 +246,10 @@ export async function POST(context) {
             const research = await collectWebResearch(query, {
               searchLimit: 6,
               pageFetchLimit: 4,
+              baseUrl,
+              apiKey,
+              model,
+              mode: 'auto',
             });
 
             sources = await replaceNovelReferenceSources(
@@ -271,6 +275,11 @@ export async function POST(context) {
 
             send('research', {
               query,
+              summary: research.summary,
+              strategy: research.strategy,
+              strategyLabel: research.strategyLabel,
+              provider: research.provider,
+              fallbackReason: research.fallbackReason,
               sources: sources.map((source) => ({
                 title: source.title,
                 url: source.url,
@@ -280,7 +289,7 @@ export async function POST(context) {
               referenceSummary: project.referenceSummary ?? '',
               referenceNotes: project.referenceNotes ?? '',
               message: sources.length
-                ? `已载入 ${sources.length} 条参考资料，并自动整理成续写参考包。`
+                ? `已通过${research.strategyLabel}载入 ${sources.length} 条参考资料，并自动整理成续写参考包。`
                 : '这次没有检索到足够稳定的参考资料，继续按照当前项目设定写作。',
             });
           } catch (error) {

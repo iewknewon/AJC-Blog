@@ -324,12 +324,18 @@ function getLengthInstruction(lengthPreset?: PostLengthPreset) {
 }
 
 function appendWebResearchSections(sections: string[], webResearch?: WebResearchContext | null) {
-  if (!webResearch?.sources?.length) {
+  if (!webResearch?.sources?.length && !webResearch?.summary) {
     return;
+  }
+
+  if (webResearch.summary) {
+    sections.push('以下是本次联网检索整理出的资料总览，请先理解这些信息，再开始写作：');
+    sections.push(`- 资料总览：${trimPromptText(webResearch.summary, 500)}`);
   }
 
   sections.push('以下是本次联网检索得到的参考资料，请优先依据这些资料写作，不要虚构未检索到的事实：');
   sections.push(`- 联网检索词：${webResearch.query}`);
+  sections.push(`- 检索方式：${webResearch.strategyLabel}`);
 
   webResearch.sources.slice(0, 4).forEach((source, index) => {
     sections.push(`资料 ${index + 1}：`);

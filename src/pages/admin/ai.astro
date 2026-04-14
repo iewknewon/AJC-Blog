@@ -138,7 +138,16 @@ if (!authenticated) {
             <input class="search-input admin-input-rect" type="text" name="webSearchQuery" placeholder="留空时默认使用文章主题进行检索" />
           </label>
 
-          <p class="muted" style="margin: 0.75rem 0 0;">自动配图会结合标题、摘要、标签和正文内容生成检索词，再从开放图片源里匹配。</p>
+          <label class="admin-field" style="margin-top: 0.25rem;">
+            <span>联网方式</span>
+            <select class="search-input admin-input-rect" name="webSearchMode">
+              <option value="auto" selected>智能优先（推荐）</option>
+              <option value="native">模型原生联网优先</option>
+              <option value="local">本地检索</option>
+            </select>
+          </label>
+
+          <p class="muted" style="margin: 0.75rem 0 0;">智能优先会先尝试模型原生联网；不支持或失败时，再回退到当前内置检索。自动配图仍会结合标题、摘要、标签和正文内容生成检索词，再从开放图片源里匹配。</p>
         </div>
 
         <label class="admin-field">
@@ -297,6 +306,7 @@ if (!authenticated) {
       systemPrompt: 'ajc.ai.systemPrompt',
       webSearchEnabled: 'ajc.ai.webSearchEnabled',
       webSearchQuery: 'ajc.ai.webSearchQuery',
+      webSearchMode: 'ajc.ai.webSearchMode',
       lengthPreset: 'ajc.ai.lengthPreset',
       autoCoverEnabled: 'ajc.ai.autoCoverEnabled',
       autoIllustrationsEnabled: 'ajc.ai.autoIllustrationsEnabled',
@@ -356,6 +366,7 @@ if (!authenticated) {
       systemPrompt: readNamedFieldValue('systemPrompt'),
       webSearchEnabled: readNamedCheckboxValue('webSearchEnabled'),
       webSearchQuery: readNamedFieldValue('webSearchQuery'),
+      webSearchMode: readNamedFieldValue('webSearchMode', 'auto'),
       lengthPreset: readNamedFieldValue('lengthPreset', 'compact'),
       autoCoverEnabled: readNamedCheckboxValue('autoCoverEnabled', true),
       autoIllustrationsEnabled: readNamedCheckboxValue('autoIllustrationsEnabled', true),
@@ -373,6 +384,7 @@ if (!authenticated) {
           systemPrompt: localStorage.getItem(STORAGE_KEYS.systemPrompt) || '',
           webSearchEnabled: localStorage.getItem(STORAGE_KEYS.webSearchEnabled) === '1',
           webSearchQuery: localStorage.getItem(STORAGE_KEYS.webSearchQuery) || '',
+          webSearchMode: localStorage.getItem(STORAGE_KEYS.webSearchMode) || 'auto',
           lengthPreset: localStorage.getItem(STORAGE_KEYS.lengthPreset) || 'compact',
           autoCoverEnabled: localStorage.getItem(STORAGE_KEYS.autoCoverEnabled) !== '0',
           autoIllustrationsEnabled: localStorage.getItem(STORAGE_KEYS.autoIllustrationsEnabled) !== '0',
@@ -388,6 +400,7 @@ if (!authenticated) {
           systemPrompt: '',
           webSearchEnabled: false,
           webSearchQuery: '',
+          webSearchMode: 'auto',
           lengthPreset: 'compact',
           autoCoverEnabled: true,
           autoIllustrationsEnabled: true,
@@ -406,6 +419,7 @@ if (!authenticated) {
         localStorage.setItem(STORAGE_KEYS.systemPrompt, snapshot.systemPrompt || '');
         localStorage.setItem(STORAGE_KEYS.webSearchEnabled, snapshot.webSearchEnabled ? '1' : '0');
         localStorage.setItem(STORAGE_KEYS.webSearchQuery, snapshot.webSearchQuery || '');
+        localStorage.setItem(STORAGE_KEYS.webSearchMode, snapshot.webSearchMode || 'auto');
         localStorage.setItem(STORAGE_KEYS.lengthPreset, snapshot.lengthPreset || 'compact');
         localStorage.setItem(STORAGE_KEYS.autoCoverEnabled, snapshot.autoCoverEnabled ? '1' : '0');
         localStorage.setItem(STORAGE_KEYS.autoIllustrationsEnabled, snapshot.autoIllustrationsEnabled ? '1' : '0');
@@ -549,6 +563,13 @@ if (!authenticated) {
     };
 
     const summarizeCurrentOutput = () => `${runState.charCount} 字正文、${runState.researchCount} 条资料、${runState.assetCount} 张图`;
+    const getWebSearchModeLabel = (mode) => (
+      mode === 'native'
+        ? '模型原生联网优先'
+        : mode === 'local'
+          ? '本地检索'
+          : '智能优先'
+    );
 
     const buildKickoffSummary = (payload, presetLabel = '') => {
       const parts = [
@@ -556,6 +577,10 @@ if (!authenticated) {
         presetLabel ? `模式「${presetLabel}」` : '',
         payload.webSearchEnabled ? '已开启联网检索' : '未开启联网检索',
       ].filter(Boolean);
+
+      if (payload.webSearchEnabled) {
+        parts.push(`联网方式「${getWebSearchModeLabel(payload.webSearchMode)}」`);
+      }
 
       if (payload.autoCoverEnabled || payload.autoIllustrationsEnabled) {
         const assetTargets = [];
@@ -799,7 +824,7 @@ if (!authenticated) {
       researchOutput.append(placeholder);
     };
 
-    const renderResearchOutput = ({ query, sources, message }) => {
+    const renderResearchOutput = ({ query, sources, message, summary, strategyLabel, provider, fallbackReason }) => {
       if (!researchOutput) {
         return;
       }
@@ -819,6 +844,37 @@ if (!authenticated) {
         queryNode.className = 'ai-research-query';
         queryNode.textContent = `检索词：${query}`;
         researchOutput.append(queryNode);
+      }
+
+      if (strategyLabel) {
+        const strategyNode = document.createElement('div');
+        strategyNode.className = 'ai-research-query';
+        strategyNode.textContent = provider ? `检索方式：${strategyLabel} · ${provider}` : `检索方式：${strategyLabel}`;
+        researchOutput.append(strategyNode);
+      }
+
+      if (fallbackReason) {
+        const fallbackNode = document.createElement('div');
+        fallbackNode.className = 'ai-research-query';
+        fallbackNode.textContent = `回退说明：${fallbackReason}`;
+        researchOutput.append(fallbackNode);
+      }
+
+      if (summary) {
+        const summaryNode = document.createElement('article');
+        summaryNode.className = 'ai-research-item';
+
+        const title = document.createElement('h3');
+        title.className = 'ai-research-item-title';
+        title.textContent = '资料总览';
+        summaryNode.append(title);
+
+        const snippet = document.createElement('p');
+        snippet.className = 'ai-research-item-snippet';
+        snippet.textContent = summary;
+        summaryNode.append(snippet);
+
+        researchOutput.append(summaryNode);
       }
 
       if (!Array.isArray(sources) || !sources.length) {
@@ -849,6 +905,13 @@ if (!authenticated) {
           snippet.className = 'ai-research-item-snippet';
           snippet.textContent = source.snippet;
           item.append(snippet);
+        }
+
+        if (source.excerpt) {
+          const excerpt = document.createElement('p');
+          excerpt.className = 'ai-research-item-snippet';
+          excerpt.textContent = source.excerpt;
+          item.append(excerpt);
         }
 
         researchOutput.append(item);
@@ -892,7 +955,7 @@ if (!authenticated) {
       container.append(link);
     };
 
-    const renderAssetCard = ({ label, title, imageUrl, previewUrl, query, creator, license, sourceUrl, caption }) => {
+    const renderAssetCard = ({ label, title, imageUrl, previewUrl, query, creator, license, sourceUrl, caption, providerLabel, selectionReason }) => {
       const card = document.createElement('article');
       card.className = 'ai-asset-card';
 
@@ -919,8 +982,10 @@ if (!authenticated) {
       body.append(heading);
 
       appendAssetMeta(body, query ? `检索词：${query}` : '');
+      appendAssetMeta(body, providerLabel ? `图库：${providerLabel}` : '');
       appendAssetMeta(body, creator ? `作者：${creator}` : '');
       appendAssetMeta(body, license ? `许可：${license}` : '');
+      appendAssetMeta(body, selectionReason ? `匹配理由：${selectionReason}` : '');
 
       if (caption) {
         const captionNode = document.createElement('p');
@@ -993,6 +1058,8 @@ if (!authenticated) {
           creator: cover.creator,
           license: cover.license,
           sourceUrl: cover.sourceUrl,
+          providerLabel: cover.providerLabel,
+          selectionReason: cover.selectionReason,
         }));
       }
 
@@ -1008,6 +1075,8 @@ if (!authenticated) {
             license: item.license,
             sourceUrl: item.sourceUrl,
             caption: item.caption,
+            providerLabel: item.providerLabel,
+            selectionReason: item.selectionReason,
           }));
         });
       }
@@ -1153,6 +1222,7 @@ if (!authenticated) {
         ['customPrompt', stored.customPrompt],
         ['systemPrompt', stored.systemPrompt],
         ['webSearchQuery', stored.webSearchQuery],
+        ['webSearchMode', stored.webSearchMode],
         ['lengthPreset', stored.lengthPreset],
         ['illustrationCount', stored.illustrationCount],
       ].forEach(([name, value]) => {
@@ -1200,6 +1270,7 @@ if (!authenticated) {
           ['customPrompt', ''],
           ['systemPrompt', ''],
           ['webSearchQuery', ''],
+          ['webSearchMode', 'auto'],
           ['lengthPreset', 'compact'],
           ['illustrationCount', '2'],
         ].forEach(([name, value]) => {
@@ -1356,6 +1427,7 @@ if (!authenticated) {
         lengthPreset: String(formData.get('lengthPreset') ?? 'compact'),
         webSearchEnabled: formData.get('webSearchEnabled') === 'on',
         webSearchQuery: String(formData.get('webSearchQuery') ?? ''),
+        webSearchMode: String(formData.get('webSearchMode') ?? 'auto'),
         cover: String(formData.get('cover') ?? ''),
         autoCoverEnabled: formData.get('autoCoverEnabled') === 'on',
         autoIllustrationsEnabled: formData.get('autoIllustrationsEnabled') === 'on',
@@ -1427,7 +1499,7 @@ if (!authenticated) {
             });
             setResultSummary(
               runState.researchCount
-                ? `资料整理完成，已拿到 ${runState.researchCount} 条参考资料，接下来继续生成正文。`
+                ? `资料整理完成，已通过${data.strategyLabel || '当前检索链路'}拿到 ${runState.researchCount} 条参考资料，接下来继续生成正文。`
                 : '联网检索阶段已结束，本次将按当前已有信息继续生成正文。',
             );
           },

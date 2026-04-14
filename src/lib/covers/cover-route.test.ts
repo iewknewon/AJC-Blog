@@ -21,11 +21,29 @@ test('POST 会返回自动匹配到的封面建议', async () => {
   const originalFetch = globalThis.fetch;
   const fetchCalls: string[] = [];
 
-  globalThis.fetch = async (input) => {
+  globalThis.fetch = async (input, init) => {
     const url = String(input);
     fetchCalls.push(url);
 
     if (url === 'https://api.example.com/v1/chat/completions') {
+      const bodyText = String(init?.body ?? '');
+
+      if (bodyText.includes('筛选目标') || bodyText.includes('候选列表')) {
+        return new Response(JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: '{"selected":[{"id":"c1","reason":"机房服务器画面更贴近部署主题，适合作为封面。"},{"id":"c2","reason":"控制台工作区可作为备选。"}]}',
+              },
+            },
+          ],
+        }), {
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        });
+      }
+
       return new Response(JSON.stringify({
         choices: [
           {
@@ -89,6 +107,18 @@ test('POST 会返回自动匹配到的封面建议', async () => {
       });
     }
 
+    if (url.startsWith('https://commons.wikimedia.org/w/api.php')) {
+      return new Response(JSON.stringify({
+        query: {
+          pages: {},
+        },
+      }), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      });
+    }
+
     return new Response('not found', { status: 404 });
   };
 
@@ -130,6 +160,7 @@ test('POST 会返回自动匹配到的封面建议', async () => {
         coverUrl?: string;
         query?: string;
         queryMode?: string;
+        selectionReason?: string;
       };
     };
 
@@ -137,6 +168,7 @@ test('POST 会返回自动匹配到的封面建议', async () => {
     assert.equal(payload.suggestion?.coverUrl, 'https://example.com/thumb/server.jpg');
     assert.equal(payload.suggestion?.query, 'server rack deployment');
     assert.equal(payload.suggestion?.queryMode, 'ai');
+    assert.match(String(payload.suggestion?.selectionReason ?? ''), /部署主题/);
     assert.equal(payload.suggestions?.length, 3);
     assert.match(payload.message ?? '', /整篇内容/);
   } finally {

@@ -158,6 +158,7 @@ const status = (post?.status ?? 'draft') as PostStatus;
       previewTitle.textContent = suggestion.title || '已匹配到封面';
 
       const metaParts = [
+        suggestion.providerLabel ? `图库：${suggestion.providerLabel}` : '',
         suggestion.creator ? `作者：${suggestion.creator}` : '',
         suggestion.license ? `许可证：${suggestion.license}` : '',
         suggestion.queryMode === 'ai' ? '匹配方式：整篇内容理解' : '匹配方式：关键词检索',
@@ -177,7 +178,9 @@ const status = (post?.status ?? 'draft') as PostStatus;
         previewLinks.append(link);
       }
 
-      setStatus('已自动填入封面地址。发布前建议再确认一下图片来源和许可证。');
+      setStatus(suggestion.selectionReason
+        ? `已自动填入封面地址。AI 选择理由：${suggestion.selectionReason}`
+        : '已自动填入封面地址。发布前建议再确认一下图片来源和许可证。');
     };
 
     const renderCandidates = (suggestions = []) => {
@@ -215,11 +218,19 @@ const status = (post?.status ?? 'draft') as PostStatus;
         const meta = document.createElement('p');
         meta.className = 'admin-cover-candidate-meta';
         meta.textContent = [
+          suggestion.providerLabel ? `图库：${suggestion.providerLabel}` : '',
           suggestion.queryMode === 'ai' ? '整篇内容理解' : '关键词检索',
           suggestion.creator ? `作者：${suggestion.creator}` : '',
           suggestion.license ? `许可证：${suggestion.license}` : '',
         ].filter(Boolean).join(' · ');
         body.append(meta);
+
+        if (suggestion.selectionReason) {
+          const reason = document.createElement('p');
+          reason.className = 'admin-cover-candidate-meta';
+          reason.textContent = `选择理由：${suggestion.selectionReason}`;
+          body.append(reason);
+        }
 
         const actions = document.createElement('div');
         actions.className = 'admin-cover-candidate-actions';

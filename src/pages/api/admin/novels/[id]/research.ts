@@ -101,9 +101,16 @@ export async function POST(context) {
     return json({ message: '请先填写参考作品或项目标题。' }, 400);
   }
 
+  const baseUrl = String(payload.baseUrl ?? '').trim();
+  const apiKey = String(payload.apiKey ?? '').trim();
+  const model = String(payload.model ?? '').trim();
   const research = await collectWebResearch(query, {
     searchLimit: 6,
     pageFetchLimit: 4,
+    baseUrl,
+    apiKey,
+    model,
+    mode: 'auto',
   });
 
   const sources = await replaceNovelReferenceSources(
@@ -117,10 +124,6 @@ export async function POST(context) {
     })),
   );
 
-  const baseUrl = String(payload.baseUrl ?? '').trim();
-  const apiKey = String(payload.apiKey ?? '').trim();
-  const model = String(payload.model ?? '').trim();
-
   const pack = sources.length && baseUrl && apiKey && model
     ? await generateNovelReferencePack(baseUrl, apiKey, model, project, sources)
     : buildFallbackPack(sources);
@@ -133,6 +136,11 @@ export async function POST(context) {
 
   return json({
     query,
+    summary: research.summary,
+    strategy: research.strategy,
+    strategyLabel: research.strategyLabel,
+    provider: research.provider,
+    fallbackReason: research.fallbackReason,
     sources: sources.map((source) => ({
       title: source.title,
       url: source.url,
@@ -142,7 +150,7 @@ export async function POST(context) {
     referenceSummary: project.referenceSummary ?? '',
     referenceNotes: project.referenceNotes ?? '',
     message: sources.length
-      ? `已整理 ${sources.length} 条公开资料，并更新参考梗概。`
+      ? `已通过${research.strategyLabel}整理 ${sources.length} 条公开资料，并更新参考概览。`
       : '没有检索到足够稳定的公开资料，请换一个更明确的参考作品名再试。',
   });
 }

@@ -6,6 +6,8 @@ export type AppliedInlineIllustration = GeneratedVisualPlanItem & {
   creator?: string;
   license?: string;
   sourceUrl?: string;
+  providerLabel?: string;
+  selectionReason?: string;
 };
 
 type HeadingAnchor = {

@@ -65,13 +65,17 @@ test('suggestCoverFromContent 会从搜索结果中挑出最适合作为封面�
     fetchImpl,
   });
 
-  assert.equal(fetchCalls.length, 1);
+  assert.ok(fetchCalls.length >= 2);
   assert.equal(suggestion?.coverUrl, 'https://example.com/thumb/dashboard.jpg');
-  assert.equal(suggestion?.query, 'cloudflare dashboard devops pages');
+  assert.ok([
+    'cloudflare dashboard devops pages',
+    'Cloudflare 部署指南 Cloudflare Dashboard',
+  ].includes(String(suggestion?.query)));
   assert.equal(suggestion?.queryMode, 'heuristic');
   assert.equal(suggestion?.creator, 'Jane Doe');
   assert.equal(suggestion?.license, 'CC0');
   assert.equal(suggestion?.sourceUrl, 'https://example.com/dashboard');
+  assert.equal(suggestion?.providerLabel, 'Openverse');
 });
 
 test('suggestCoverFromContent 会优先使用 AI 生成的检索词', async () => {
@@ -117,9 +121,65 @@ test('suggestCoverFromContent 会优先使用 AI 生成的检索词', async () =
     preferredQueries: ['server rack deployment'],
   });
 
-  assert.equal(fetchCalls.length, 1);
+  assert.ok(fetchCalls.length >= 2);
   assert.equal(suggestion?.query, 'server rack deployment');
   assert.equal(suggestion?.queryMode, 'ai');
+});
+
+test('suggestCoverFromContent 会在 Openverse 没有结果时使用 Wikimedia Commons 候选', async () => {
+  const suggestion = await suggestCoverFromContent({
+    title: 'Server deployment guide',
+    description: 'A guide about production deployment',
+    tags: 'server, deployment',
+  }, {
+    fetchImpl: async (input) => {
+      const url = String(input);
+
+      if (url.startsWith('https://api.openverse.org/v1/images/')) {
+        return new Response(JSON.stringify({ results: [] }), {
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        });
+      }
+
+      if (url.startsWith('https://commons.wikimedia.org/w/api.php')) {
+        return new Response(JSON.stringify({
+          query: {
+            pages: {
+              1: {
+                title: 'File:Server rack deployment photo.jpg',
+                canonicalurl: 'https://commons.wikimedia.org/wiki/File:Server_rack_deployment_photo.jpg',
+                imageinfo: [
+                  {
+                    url: 'https://upload.wikimedia.org/server-rack.jpg',
+                    thumburl: 'https://upload.wikimedia.org/server-rack-thumb.jpg',
+                    width: 2200,
+                    height: 1200,
+                    extmetadata: {
+                      Artist: { value: 'Wikimedia User' },
+                      LicenseShortName: { value: 'CC BY-SA 4.0' },
+                      ImageDescription: { value: 'Server rack deployment in datacenter' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }), {
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+        });
+      }
+
+      return new Response('not found', { status: 404 });
+    },
+  });
+
+  assert.equal(suggestion?.provider, 'wikimedia');
+  assert.equal(suggestion?.providerLabel, 'Wikimedia Commons');
+  assert.equal(suggestion?.coverUrl, 'https://upload.wikimedia.org/server-rack.jpg');
 });
 
 test('suggestCoverCandidatesFromContent 会返回最多 3 张候选封面', async () => {
@@ -212,4 +272,5 @@ test('suggestImageForQuery 会为正文插图挑出最合适的图片', async ()
   assert.equal(suggestion?.query, 'deployment workflow diagram');
   assert.equal(suggestion?.queryMode, 'ai');
   assert.equal(suggestion?.creator, 'Openverse User');
+  assert.equal(suggestion?.providerLabel, 'Openverse');
 });

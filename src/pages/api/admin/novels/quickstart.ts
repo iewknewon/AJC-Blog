@@ -173,6 +173,10 @@ export async function POST(context) {
       const research = await collectWebResearch(query, {
         searchLimit: 6,
         pageFetchLimit: 4,
+        baseUrl,
+        apiKey,
+        model,
+        mode: 'auto',
       });
       sources = await replaceNovelReferenceSources(
         db,
