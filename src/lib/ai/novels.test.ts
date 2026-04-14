@@ -83,12 +83,18 @@ test('buildNovelChapterPrompt 会包含连续记忆和前文章节', () => {
     chapterNumber: 2,
     chapterBrief: '让主角在交易中首次见到反派势力，并埋下新的异火伏笔。',
     chapterTitleHint: '黑市交易',
+    chapterRole: '冲突升级',
+    titleDirection: '事件直给型',
+    endingStrategy: '轻悬念',
+    endingNote: '结尾收在主角意识到有人在暗中盯上他，不必硬切断。',
     lengthPreset: 'tight',
   });
 
   assert.match(prompt, /连续性记忆/);
   assert.match(prompt, /异火初现/);
   assert.match(prompt, /黑市交易/);
+  assert.match(prompt, /本章功能/);
+  assert.match(prompt, /结尾策略/);
 });
 
 test('buildNovelOutlinePrompt 会要求输出分卷和章节骨架', () => {
@@ -203,7 +209,10 @@ test('buildNovelNextChapterPlanPrompt 会要求输出下一章任务卡', () => 
 
   assert.match(prompt, /下一章任务卡/);
   assert.match(prompt, /chapterTitleHint/);
-  assert.match(prompt, /endingHook/);
+  assert.match(prompt, /chapterRole/);
+  assert.match(prompt, /titleDirection/);
+  assert.match(prompt, /endingStrategy/);
+  assert.match(prompt, /endingNote/);
 });
 
 test('mergeNovelContinuityNotes 会追加新章节记忆', () => {

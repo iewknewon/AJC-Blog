@@ -130,6 +130,11 @@ const pageData = serializeInlineJson({
           <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="chapterBrief" placeholder="写清楚这章要推进什么、谁要出场、冲突和钩子是什么。" required></textarea>
         </label>
 
+        <input type="hidden" name="chapterRole" value="" />
+        <input type="hidden" name="titleDirection" value="" />
+        <input type="hidden" name="endingStrategy" value="" />
+        <input type="hidden" name="endingNote" value="" />
+
         <div id="novel-plan-output" class="ai-preset-summary" hidden></div>
 
         <div class="grid two">
@@ -700,6 +705,19 @@ const pageData = serializeInlineJson({
         planOutput.append(brief);
       }
 
+      const strategyParts = [
+        plan.chapterRole ? `本章功能：${plan.chapterRole}` : '',
+        plan.titleDirection ? `标题方向：${plan.titleDirection}` : '',
+        plan.endingStrategy ? `结尾策略：${plan.endingStrategy}` : '',
+      ].filter(Boolean);
+
+      if (strategyParts.length) {
+        const strategy = document.createElement('p');
+        strategy.className = 'ai-preset-copy';
+        strategy.textContent = strategyParts.join(' · ');
+        planOutput.append(strategy);
+      }
+
       if (plan.progressionChecklist) {
         const checklist = document.createElement('pre');
         checklist.className = 'ai-stream-output';
@@ -709,10 +727,10 @@ const pageData = serializeInlineJson({
         planOutput.append(checklist);
       }
 
-      if (plan.endingHook) {
+      if (plan.endingNote) {
         const hook = document.createElement('p');
         hook.className = 'ai-preset-copy';
-        hook.textContent = `结尾钩子：${plan.endingHook}`;
+        hook.textContent = `结尾处理：${plan.endingNote}`;
         planOutput.append(hook);
       }
     };
@@ -720,16 +738,39 @@ const pageData = serializeInlineJson({
     const applyPlanToForm = (plan) => {
       const titleField = generateForm?.elements?.namedItem('chapterTitleHint');
       const briefField = generateForm?.elements?.namedItem('chapterBrief');
+      const chapterRoleField = generateForm?.elements?.namedItem('chapterRole');
+      const titleDirectionField = generateForm?.elements?.namedItem('titleDirection');
+      const endingStrategyField = generateForm?.elements?.namedItem('endingStrategy');
+      const endingNoteField = generateForm?.elements?.namedItem('endingNote');
 
       if (titleField && 'value' in titleField) {
         titleField.value = plan.chapterTitleHint || '';
+      }
+
+      if (chapterRoleField && 'value' in chapterRoleField) {
+        chapterRoleField.value = plan.chapterRole || '';
+      }
+
+      if (titleDirectionField && 'value' in titleDirectionField) {
+        titleDirectionField.value = plan.titleDirection || '';
+      }
+
+      if (endingStrategyField && 'value' in endingStrategyField) {
+        endingStrategyField.value = plan.endingStrategy || '';
+      }
+
+      if (endingNoteField && 'value' in endingNoteField) {
+        endingNoteField.value = plan.endingNote || '';
       }
 
       if (briefField && 'value' in briefField) {
         const combinedBrief = [
           plan.chapterBrief || '',
           plan.progressionChecklist ? `\n\n推进清单：\n${plan.progressionChecklist}` : '',
-          plan.endingHook ? `\n\n结尾钩子：${plan.endingHook}` : '',
+          plan.chapterRole ? `\n\n本章功能：${plan.chapterRole}` : '',
+          plan.titleDirection ? `\n\n标题方向：${plan.titleDirection}` : '',
+          plan.endingStrategy ? `\n\n结尾策略：${plan.endingStrategy}` : '',
+          plan.endingNote ? `\n\n结尾处理：${plan.endingNote}` : '',
         ].join('').trim();
         briefField.value = combinedBrief;
       }
@@ -740,6 +781,10 @@ const pageData = serializeInlineJson({
     const clearPlanFromForm = () => {
       const titleField = generateForm?.elements?.namedItem('chapterTitleHint');
       const briefField = generateForm?.elements?.namedItem('chapterBrief');
+      const chapterRoleField = generateForm?.elements?.namedItem('chapterRole');
+      const titleDirectionField = generateForm?.elements?.namedItem('titleDirection');
+      const endingStrategyField = generateForm?.elements?.namedItem('endingStrategy');
+      const endingNoteField = generateForm?.elements?.namedItem('endingNote');
 
       if (titleField && 'value' in titleField) {
         titleField.value = '';
@@ -748,6 +793,12 @@ const pageData = serializeInlineJson({
       if (briefField && 'value' in briefField) {
         briefField.value = '';
       }
+
+      [chapterRoleField, titleDirectionField, endingStrategyField, endingNoteField].forEach((field) => {
+        if (field && 'value' in field) {
+          field.value = '';
+        }
+      });
 
       if (planOutput) {
         planOutput.hidden = true;
@@ -1163,6 +1214,10 @@ const pageData = serializeInlineJson({
             chapterNumber: Number(formData.get('chapterNumber') ?? 1),
             chapterTitleHint: String(formData.get('chapterTitleHint') ?? ''),
             chapterBrief: String(formData.get('chapterBrief') ?? ''),
+            chapterRole: String(formData.get('chapterRole') ?? ''),
+            titleDirection: String(formData.get('titleDirection') ?? ''),
+            endingStrategy: String(formData.get('endingStrategy') ?? ''),
+            endingNote: String(formData.get('endingNote') ?? ''),
             lengthPreset: String(formData.get('lengthPreset') ?? 'standard'),
             status: String(formData.get('status') ?? 'draft'),
             autoPlan,

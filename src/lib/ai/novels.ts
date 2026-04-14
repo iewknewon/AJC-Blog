@@ -22,10 +22,13 @@ export type NovelStoryBible = {
 };
 
 export type NovelNextChapterPlan = {
+  chapterRole: string;
   chapterTitleHint: string;
+  titleDirection: string;
   chapterBrief: string;
   progressionChecklist: string;
-  endingHook: string;
+  endingStrategy: string;
+  endingNote: string;
 };
 
 export type NovelProjectBlueprint = {
@@ -46,6 +49,10 @@ type NovelGenerationContext = {
   chapterNumber: number;
   chapterBrief: string;
   chapterTitleHint?: string;
+  chapterRole?: string;
+  titleDirection?: string;
+  endingStrategy?: string;
+  endingNote?: string;
   lengthPreset?: NovelLengthPreset;
 };
 
@@ -365,12 +372,16 @@ export function buildNovelNextChapterPlanPrompt(input: {
     '请根据下面这个长篇小说项目的既有大纲和连续记忆，生成“下一章任务卡”。',
     '你必须只返回 JSON，不要输出解释。',
     '格式如下：',
-    '{"chapterTitleHint":"","chapterBrief":"","progressionChecklist":"","endingHook":""}',
+    '{"chapterRole":"","chapterTitleHint":"","titleDirection":"","chapterBrief":"","progressionChecklist":"","endingStrategy":"","endingNote":""}',
     '要求：',
-    '- chapterTitleHint：给出一个适合作为网文章节标题的中文章名。',
+    '- 先判断这一章在整条连载里的功能，再决定标题与结尾，不要每一章都写成同一种模式。',
+    '- chapterRole：用中文概括本章功能，例如“开篇切入 / 过渡蓄势 / 关系推进 / 冲突升级 / 爆发对决 / 反转揭示 / 余波收束 / 阶段收官”这类。',
+    '- chapterTitleHint：给出一个适合这一章功能的中文章名，允许有的章节偏事件名，有的偏地点名，有的偏人物状态，有的偏情绪或意象，不要总是同一种句式。',
+    '- titleDirection：一句话说明这一章标题应该走什么方向，例如“地点切入型”“冲突直给型”“情绪余韵型”“信息揭示型”。',
     '- chapterBrief：用一段中文写清楚本章要推进的事件、冲突、角色关系变化和节奏要求，适合直接塞进续写输入框。',
     '- progressionChecklist：用项目符号列出本章必须完成的 3 到 5 个推进点。',
-    '- endingHook：写一句这一章结尾应该留下的悬念或钩子。',
+    '- endingStrategy：写明这一章结尾该采用哪种处理方式，例如“强悬念 / 轻悬念 / 情绪余韵 / 阶段收束 / 决策转场 / 信息反转”，并且要符合本章功能。',
+    '- endingNote：用一句到两句中文写明这一章结尾具体应该怎么收，不是每章都必须硬留强悬念；有些章节可以收在情绪余韵、阶段完成或人物决定上。',
     '- 不能脱离当前大纲和连续记忆乱开新线。',
     '',
     `项目标题：${project.title}`,
@@ -411,6 +422,10 @@ export function buildNovelNextChapterPlanPrompt(input: {
 export function buildNovelChapterPrompt(input: NovelGenerationContext) {
   const { project } = input;
   const titleHint = String(input.chapterTitleHint ?? '').trim();
+  const chapterRole = String(input.chapterRole ?? '').trim();
+  const titleDirection = String(input.titleDirection ?? '').trim();
+  const endingStrategy = String(input.endingStrategy ?? '').trim();
+  const endingNote = String(input.endingNote ?? '').trim();
 
   const sections = [
     '请为下面这部正在连载的小说写出下一章，并保持前后文连续。',
@@ -419,6 +434,9 @@ export function buildNovelChapterPrompt(input: NovelGenerationContext) {
     'Markdown 正文第一行必须是一级标题。',
     '写作要求：',
     `- ${getLengthInstruction(input.lengthPreset)}`,
+    '- 不要把每一章都写成同一种模板化网文断章，应该先根据本章功能再决定写法。',
+    '- 章节标题必须服从“本章功能”和“标题方向”，可以是事件名、地点名、人物状态或情绪意象，不要固定句式。',
+    '- 结尾必须服从“结尾策略”；不是每章都要硬留强悬念，有些章节更适合收在情绪余韵、阶段完成、人物决断或信息揭示上。',
     '- 章节要像网文一样有清晰推进，结尾保留下一章动力。',
     '- 如果存在参考作品，请保持世界观兼容，但新的章节冲突和亮点必须围绕当前项目题目展开。',
     '- tags 至少包含“小说”“连载”和一个题材标签。',
@@ -430,7 +448,11 @@ export function buildNovelChapterPrompt(input: NovelGenerationContext) {
     `参考作品：${project.referenceTitle || '无'}`,
     `当前要写：第 ${input.volumeNumber} 卷 第 ${input.chapterNumber} 章`,
     titleHint ? `建议章名：${titleHint}` : '',
+    chapterRole ? `本章功能：${chapterRole}` : '',
+    titleDirection ? `标题方向：${titleDirection}` : '',
     `本章任务：${input.chapterBrief}`,
+    endingStrategy ? `结尾策略：${endingStrategy}` : '',
+    endingNote ? `结尾说明：${endingNote}` : '',
     '',
     '参考作品公开梗概：',
     project.referenceSummary || '无',
@@ -536,10 +558,13 @@ export async function generateNovelNextChapterPlan(
   const parsed = JSON.parse(extractJsonBlock(rawText)) as Partial<NovelNextChapterPlan>;
 
   return {
+    chapterRole: String(parsed.chapterRole ?? '').trim() || '主线推进',
     chapterTitleHint: String(parsed.chapterTitleHint ?? '').trim() || `第${input.chapterNumber}章`,
+    titleDirection: String(parsed.titleDirection ?? '').trim() || '事件推进型',
     chapterBrief: String(parsed.chapterBrief ?? '').trim() || `请继续推进第 ${input.chapterNumber} 章的主线冲突，并在结尾保留下一章动力。`,
     progressionChecklist: String(parsed.progressionChecklist ?? '').trim(),
-    endingHook: String(parsed.endingHook ?? '').trim(),
+    endingStrategy: String(parsed.endingStrategy ?? '').trim() || '轻悬念',
+    endingNote: String(parsed.endingNote ?? '').trim() || '结尾收在新的问题刚刚浮出水面即可，不必强行制造夸张断点。',
   };
 }
 

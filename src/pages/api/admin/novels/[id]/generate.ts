@@ -36,6 +36,10 @@ type GeneratePayload = {
   chapterNumber?: number;
   chapterBrief?: string;
   chapterTitleHint?: string;
+  chapterRole?: string;
+  titleDirection?: string;
+  endingStrategy?: string;
+  endingNote?: string;
   lengthPreset?: string;
   status?: string;
   autoPlan?: boolean;
@@ -142,6 +146,10 @@ export async function POST(context) {
   const model = String(payload.model ?? '').trim();
   const chapterBrief = String(payload.chapterBrief ?? '').trim();
   const chapterTitleHint = String(payload.chapterTitleHint ?? '').trim();
+  const chapterRole = String(payload.chapterRole ?? '').trim();
+  const titleDirection = String(payload.titleDirection ?? '').trim();
+  const endingStrategy = String(payload.endingStrategy ?? '').trim();
+  const endingNote = String(payload.endingNote ?? '').trim();
   const status = payload.status === 'published' ? 'published' : 'draft';
   const lengthPreset = parseLengthPreset(payload.lengthPreset);
   const autoPlan = payload.autoPlan === true || (!chapterBrief && !chapterTitleHint);
@@ -237,6 +245,10 @@ export async function POST(context) {
         let sources = await getNovelReferenceSources(db, id);
         let effectiveChapterBrief = chapterBrief;
         let effectiveChapterTitleHint = chapterTitleHint;
+        let effectiveChapterRole = chapterRole;
+        let effectiveTitleDirection = titleDirection;
+        let effectiveEndingStrategy = endingStrategy;
+        let effectiveEndingNote = endingNote;
 
         if (project.referenceTitle && sources.length === 0) {
           const query = buildNovelResearchQuery(project);
@@ -316,6 +328,10 @@ export async function POST(context) {
 
           effectiveChapterTitleHint = autoPlan ? plan.chapterTitleHint : (effectiveChapterTitleHint || plan.chapterTitleHint);
           effectiveChapterBrief = plan.chapterBrief;
+          effectiveChapterRole = autoPlan ? plan.chapterRole : (effectiveChapterRole || plan.chapterRole);
+          effectiveTitleDirection = autoPlan ? plan.titleDirection : (effectiveTitleDirection || plan.titleDirection);
+          effectiveEndingStrategy = autoPlan ? plan.endingStrategy : (effectiveEndingStrategy || plan.endingStrategy);
+          effectiveEndingNote = autoPlan ? plan.endingNote : (effectiveEndingNote || plan.endingNote);
 
           send('plan', {
             ...plan,
@@ -335,6 +351,10 @@ export async function POST(context) {
             chapterNumber,
             chapterBrief: effectiveChapterBrief,
             chapterTitleHint: effectiveChapterTitleHint,
+            chapterRole: effectiveChapterRole,
+            titleDirection: effectiveTitleDirection,
+            endingStrategy: effectiveEndingStrategy,
+            endingNote: effectiveEndingNote,
             lengthPreset,
           }),
           temperature: 0.85,
