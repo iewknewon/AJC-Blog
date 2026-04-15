@@ -1,0 +1,28 @@
+---
+import type { LearningSubject } from '../../data/learning/types';
+
+interface Props {
+  subject: LearningSubject;
+}
+
+const { subject } = Astro.props;
+const firstLesson = [...subject.lessons].sort((left, right) => left.order - right.order)[0];
+---
+
+<article class={`content-card learning-subject-card is-${subject.colorToken}`}>
+  <div class="learning-subject-top">
+    <span class="learning-subject-icon">{subject.icon}</span>
+    <span class="learning-subject-eyebrow">{subject.eyebrow}</span>
+  </div>
+  <h3 class="learning-subject-title">{subject.title}</h3>
+  <p class="learning-subject-description">{subject.description}</p>
+  <div class="learning-subject-path">
+    {subject.learningPath.map((item) => (
+      <p class="learning-subject-path-item">{item}</p>
+    ))}
+  </div>
+  <div class="hero-actions" style="margin-top: 1rem;">
+    <a class="button button-primary" href={`/learn/${subject.slug}`}>进入课程</a>
+    {firstLesson ? <a class="button" href={`/learn/${subject.slug}/${firstLesson.lessonSlug}`}>直接开始</a> : null}
+  </div>
+</article>

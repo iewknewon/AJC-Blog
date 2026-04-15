@@ -104,14 +104,20 @@ export async function POST(context) {
   const baseUrl = String(payload.baseUrl ?? '').trim();
   const apiKey = String(payload.apiKey ?? '').trim();
   const model = String(payload.model ?? '').trim();
-  const research = await collectWebResearch(query, {
-    searchLimit: 6,
-    pageFetchLimit: 4,
-    baseUrl,
-    apiKey,
-    model,
-    mode: 'auto',
-  });
+  let research;
+
+  try {
+    research = await collectWebResearch(query, {
+      searchLimit: 6,
+      pageFetchLimit: 4,
+      baseUrl,
+      apiKey,
+      model,
+      mode: 'auto',
+    });
+  } catch (error) {
+    return json({ message: error instanceof Error ? error.message : '检索参考资料失败。' }, 502);
+  }
 
   const sources = await replaceNovelReferenceSources(
     db,
@@ -124,9 +130,15 @@ export async function POST(context) {
     })),
   );
 
-  const pack = sources.length && baseUrl && apiKey && model
-    ? await generateNovelReferencePack(baseUrl, apiKey, model, project, sources)
-    : buildFallbackPack(sources);
+  let pack = buildFallbackPack(sources);
+
+  if (sources.length && baseUrl && apiKey && model) {
+    try {
+      pack = await generateNovelReferencePack(baseUrl, apiKey, model, project, sources);
+    } catch (error) {
+      console.error('[admin-novels-research] reference pack generation failed', error);
+    }
+  }
 
   project = await updateNovelProject(db, id, {
     ...toNovelProjectInput(project),

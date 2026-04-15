@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import LearningSubjectCard from '../../components/learning/LearningSubjectCard.astro';
+import { siteConfig } from '../../data/site';
+import { getLearningSubjects } from '../../lib/learning/content';
+
+const subjects = getLearningSubjects();
+const lessonCount = subjects.reduce((total, subject) => total + subject.lessons.length, 0);
+---
+
+<BaseLayout title={`学习中心 | ${siteConfig.title}`} description="用更通俗、更可视化的方式学习计算机网络和计算机组成原理。" pathname="/learn">
+  <section class="section">
+    <div class="container">
+      <PageHero
+        kicker="Learning Center"
+        title="公开学习中心"
+        description="第一期先把计算机网络和计算机组成原理讲明白：不是只给结论，而是通过图解、轻动画和课内追问，把抽象概念真正讲透。"
+        actions={[
+          { href: '/learn/networking', label: '从网络开始', primary: true },
+          { href: '/learn/computer-organization', label: '看组成原理' },
+        ]}
+        stats={[
+          { label: '学习专题', value: `${subjects.length} 条` },
+          { label: '首发课时', value: `${lessonCount} 节` },
+        ]}
+      />
+
+      <div class="grid two learning-subject-grid">
+        {subjects.map((subject) => (
+          <LearningSubjectCard subject={subject} />
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

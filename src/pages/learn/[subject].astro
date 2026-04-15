@@ -1,0 +1,60 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import LearningLessonCard from '../../components/learning/LearningLessonCard.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import { siteConfig } from '../../data/site';
+import { getLearningSubjectBySlug } from '../../lib/learning/content';
+
+const { subject } = Astro.params;
+const currentSubject = subject ? getLearningSubjectBySlug(subject) : null;
+
+if (!currentSubject) {
+  return Astro.redirect('/learn');
+}
+---
+
+<BaseLayout title={`${currentSubject.title} | 学习中心 | ${siteConfig.title}`} description={currentSubject.description} pathname={`/learn/${currentSubject.slug}`}>
+  <section class="section">
+    <div class="container">
+      <PageHero
+        kicker={currentSubject.eyebrow}
+        title={currentSubject.title}
+        description={currentSubject.description}
+        actions={[
+          { href: '/learn', label: '返回学习中心' },
+          { href: `/learn/${currentSubject.slug}/${currentSubject.lessons[0]?.lessonSlug ?? ''}`, label: '直接开始', primary: true },
+        ]}
+        stats={[
+          { label: '课时数量', value: `${currentSubject.lessons.length} 节` },
+          { label: '学习方式', value: '图解 + 互动 + 追问' },
+        ]}
+      />
+
+      <section class="content-card" style="margin-top: 1.75rem;">
+        <h2 class="section-title" style="font-size: 1.5rem;">学习路径</h2>
+        <div class="learning-path-list">
+          {currentSubject.learningPath.map((item, index) => (
+            <p class="learning-path-item">
+              <strong>Step {index + 1}.</strong> {item}
+            </p>
+          ))}
+        </div>
+      </section>
+
+      {currentSubject.lessons.length > 0 ? (
+        <div class="grid two learning-lesson-grid">
+          {currentSubject.lessons
+            .sort((left, right) => left.order - right.order)
+            .map((lesson) => (
+              <LearningLessonCard lesson={lesson} subjectTitle={currentSubject.title} />
+            ))}
+        </div>
+      ) : (
+        <div style="margin-top: 1.75rem;">
+          <EmptyState title="当前课程还没有课时" description="后续会继续补充更多课时内容。" />
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>

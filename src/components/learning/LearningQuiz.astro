@@ -1,0 +1,60 @@
+---
+import type { LearningQuizQuestion } from '../../data/learning/types';
+
+interface Props {
+  quiz: LearningQuizQuestion[];
+}
+
+const { quiz } = Astro.props;
+---
+
+<div class="learning-quiz-stack">
+  {quiz.map((item, index) => (
+    <article class="content-card learning-quiz-card" data-learning-quiz>
+      <p class="eyebrow">Quick Check {index + 1}</p>
+      <h3 class="learning-quiz-question">{item.question}</h3>
+      <div class="learning-quiz-options">
+        {item.options.map((option, optionIndex) => (
+          <button
+            class="learning-quiz-option"
+            type="button"
+            data-quiz-option
+            data-answer={optionIndex === item.answerIndex ? 'true' : 'false'}
+            data-explanation={item.explanation}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      <p class="learning-quiz-feedback" data-quiz-feedback hidden></p>
+    </article>
+  ))}
+</div>
+
+<script is:inline>
+  (() => {
+    const cards = Array.from(document.querySelectorAll('[data-learning-quiz]'));
+
+    cards.forEach((card) => {
+      const buttons = Array.from(card.querySelectorAll('[data-quiz-option]'));
+      const feedback = card.querySelector('[data-quiz-feedback]');
+
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const isCorrect = button.dataset.answer === 'true';
+
+          buttons.forEach((item) => {
+            item.classList.remove('is-correct', 'is-wrong');
+          });
+
+          button.classList.add(isCorrect ? 'is-correct' : 'is-wrong');
+
+          if (feedback) {
+            feedback.hidden = false;
+            feedback.textContent = `${isCorrect ? '回答正确。' : '还差一点。'} ${button.dataset.explanation || ''}`;
+          }
+        });
+      });
+    });
+  })();
+</script>

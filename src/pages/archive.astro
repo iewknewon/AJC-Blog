@@ -2,11 +2,12 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PageHero from '../components/PageHero.astro';
 import PostCard from '../components/PostCard.astro';
+import EmptyState from '../components/EmptyState.astro';
 import { siteConfig } from '../data/site';
 import { getPublishedPosts, paginatePosts } from '../utils/posts';
 
-const db = Astro.locals.runtime.env.DB;
-const posts = await getPublishedPosts(db);
+const db = Astro.locals.runtime?.env?.DB;
+const posts = db ? await getPublishedPosts(db) : [];
 const pagination = paginatePosts(posts, 1);
 ---
 
@@ -26,11 +27,15 @@ const pagination = paginatePosts(posts, 1);
           { label: '当前页码', value: `${pagination.currentPage} / ${pagination.totalPages}` },
         ]}
       />
-      <div class="archive-list page-card-grid">
-        {pagination.items.map((post) => (
-          <PostCard post={post} />
-        ))}
-      </div>
+      {pagination.items.length > 0 ? (
+        <div class="archive-list page-card-grid">
+          {pagination.items.map((post) => (
+            <PostCard post={post} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="当前还没有可浏览的文章" description={db ? '等文章发布后，这里会自动显示全部归档内容。' : '当前环境还没有连上内容数据库，归档会在数据恢复后自动展示。'} />
+      )}
       {pagination.totalPages > 1 && (
         <nav class="pagination">
           <span class="button pagination-disabled">上一页</span>

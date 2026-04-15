@@ -1,0 +1,129 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PageHero from '../../../components/PageHero.astro';
+import EmptyState from '../../../components/EmptyState.astro';
+import LearningVisual from '../../../components/learning/LearningVisual.astro';
+import LearningQuiz from '../../../components/learning/LearningQuiz.astro';
+import LearningChat from '../../../components/learning/LearningChat.astro';
+import { siteConfig } from '../../../data/site';
+import { getAdjacentLearningLessons, getLearningLesson, getRelatedLearningLessons } from '../../../lib/learning/content';
+
+const { subject, lesson } = Astro.params;
+const resolved = subject && lesson ? getLearningLesson(subject, lesson) : null;
+
+if (!resolved) {
+  return Astro.redirect('/learn');
+}
+
+const { subject: currentSubject, lesson: currentLesson } = resolved;
+const adjacent = getAdjacentLearningLessons(currentSubject, currentLesson.lessonSlug);
+const relatedLessons = getRelatedLearningLessons(currentSubject, currentLesson);
+const chatEnabled = Boolean(
+  String(Astro.locals.runtime?.env?.LEARNING_AI_BASE_URL ?? '').trim()
+  && String(Astro.locals.runtime?.env?.LEARNING_AI_API_KEY ?? '').trim()
+  && String(Astro.locals.runtime?.env?.LEARNING_AI_MODEL ?? '').trim(),
+);
+---
+
+<BaseLayout
+  title={`${currentLesson.title} | ${currentSubject.title} | ${siteConfig.title}`}
+  description={currentLesson.description}
+  pathname={`/learn/${currentSubject.slug}/${currentLesson.lessonSlug}`}
+>
+  <section class="section">
+    <div class="container">
+      <PageHero
+        kicker={`${currentSubject.shortTitle} · 第 ${currentLesson.order} 课`}
+        title={currentLesson.title}
+        description={currentLesson.heroSummary}
+        actions={[
+          { href: `/learn/${currentSubject.slug}`, label: '返回课程总览' },
+          adjacent.next ? { href: `/learn/${currentSubject.slug}/${adjacent.next.lessonSlug}`, label: '下一课', primary: true } : { href: '/learn', label: '返回学习中心', primary: true },
+        ]}
+        stats={[
+          { label: '预计时长', value: `${currentLesson.estimatedMinutes} 分钟` },
+          { label: '互动能力', value: chatEnabled ? '图解 + 课内追问' : '图解 + 静态讲解' },
+        ]}
+      />
+
+      <div class="learning-lesson-layout">
+        <article class="article-shell learning-lesson-shell">
+          <div class="content-card learning-objectives-card">
+            <h2 class="section-title" style="font-size: 1.35rem;">本课目标</h2>
+            <div class="learning-objectives-list">
+              {currentLesson.objectives.map((objective) => (
+                <p class="learning-objective-item">{objective}</p>
+              ))}
+            </div>
+          </div>
+
+          <LearningVisual kind={currentLesson.animation} />
+
+          {currentLesson.sections.map((section) => (
+            <section class="content-card learning-section-card">
+              <h2 class="section-title" style="font-size: 1.45rem;">{section.title}</h2>
+              <div class="learning-section-prose">
+                {section.paragraphs.map((paragraph) => (
+                  <p>{paragraph}</p>
+                ))}
+              </div>
+            </section>
+          ))}
+
+          <section class="content-card learning-misconception-card">
+            <h2 class="section-title" style="font-size: 1.45rem;">常见误区</h2>
+            <div class="learning-misconception-list">
+              {currentLesson.misconceptions.map((item) => (
+                <article class="learning-misconception-item">
+                  <strong>{item.myth}</strong>
+                  <p>{item.clarification}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <LearningQuiz quiz={currentLesson.quiz} />
+          <LearningChat
+            subject={currentSubject.slug}
+            lessonSlug={currentLesson.lessonSlug}
+            lessonTitle={currentLesson.title}
+            chatEnabled={chatEnabled}
+            quickPrompts={currentLesson.quickPrompts}
+          />
+        </article>
+
+        <aside class="toc learning-sidebar">
+          <div class="content-card">
+            <h3 class="toc-heading">课时导航</h3>
+            <div class="learning-sidebar-links">
+              {adjacent.previous ? <a class="button" href={`/learn/${currentSubject.slug}/${adjacent.previous.lessonSlug}`}>上一课</a> : null}
+              {adjacent.next ? <a class="button button-primary" href={`/learn/${currentSubject.slug}/${adjacent.next.lessonSlug}`}>下一课</a> : null}
+            </div>
+          </div>
+
+          <div class="content-card">
+            <h3 class="toc-heading">关键词</h3>
+            <div class="tags" style="margin-top: 0.75rem;">
+              {currentLesson.keywords.map((keyword) => (
+                <span class="tag">{keyword}</span>
+              ))}
+            </div>
+          </div>
+
+          <div class="content-card">
+            <h3 class="toc-heading">关联课时</h3>
+            {relatedLessons.length > 0 ? (
+              <div class="learning-related-list">
+                {relatedLessons.map((item) => (
+                  <a class="learning-related-link" href={`/learn/${currentSubject.slug}/${item.lessonSlug}`}>{item.title}</a>
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="暂无关联课时" description="这一节课已经是当前学习链路里的关键节点。" />
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

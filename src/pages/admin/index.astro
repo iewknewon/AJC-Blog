@@ -11,12 +11,10 @@ if (!authenticated) {
   return Astro.redirect('/admin/login');
 }
 
-const db = Astro.locals.runtime.env.DB;
-const [posts, novelChapterPostIds, novelProjects] = await Promise.all([
-  getAdminPosts(db),
-  getNovelChapterPostIds(db),
-  getNovelProjects(db),
-]);
+const db = Astro.locals.runtime?.env?.DB;
+const posts = db ? await getAdminPosts(db) : [];
+const novelChapterPostIds = db ? await getNovelChapterPostIds(db) : [];
+const novelProjects = db ? await getNovelProjects(db) : [];
 const chapterPostIdSet = new Set(novelChapterPostIds);
 const standalonePosts = posts.filter((post) => !chapterPostIdSet.has(post.id));
 const novelProjectCount = novelProjects.length;
@@ -31,8 +29,12 @@ let analyticsSummary = {
 };
 
 try {
-  await ensureAnalyticsSchema(db);
-  analyticsSummary = await getAnalyticsSummary(db);
+  if (db) {
+    await ensureAnalyticsSchema(db);
+    analyticsSummary = await getAnalyticsSummary(db);
+  } else {
+    analyticsUnavailable = true;
+  }
 } catch (error) {
   analyticsUnavailable = true;
   console.error('Failed to load admin overview analytics summary', error);

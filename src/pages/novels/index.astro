@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import EmptyState from '../../components/EmptyState.astro';
 import { siteConfig } from '../../data/site';
 import { getPublishedNovelProjects } from '../../lib/novels/repository';
 import { formatDate } from '../../utils/format';
 import { getNovelChapterLabel, getNovelChapterUrl, getNovelUrl } from '../../utils/novels';
 
-const db = Astro.locals.runtime.env.DB;
-const novels = await getPublishedNovelProjects(db);
+const db = Astro.locals.runtime?.env?.DB;
+const novels = db ? await getPublishedNovelProjects(db) : [];
 ---
 
 <BaseLayout
@@ -79,8 +80,8 @@ const novels = await getPublishedNovelProjects(db);
           ))}
         </div>
       ) : (
-        <div class="empty-state" style="margin-top: 2rem;">
-          目前还没有公开发布的小说章节，等第一章上线后，这里就会自动展示。
+        <div style="margin-top: 2rem;">
+          <EmptyState title="当前还没有可阅读的连载" description={db ? '目前还没有公开发布的小说章节，等第一章上线后，这里就会自动展示。' : '当前环境还没有连上内容数据库，连载目录会在数据恢复后自动展示。'} />
         </div>
       )}
     </div>

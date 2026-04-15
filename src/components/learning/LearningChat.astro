@@ -1,0 +1,215 @@
+---
+interface Props {
+  subject: string;
+  lessonSlug: string;
+  lessonTitle: string;
+  chatEnabled: boolean;
+  quickPrompts: string[];
+}
+
+const { subject, lessonSlug, lessonTitle, chatEnabled, quickPrompts } = Astro.props;
+const storageKey = `ajc.learn.chat.${subject}.${lessonSlug}`;
+---
+
+<div class="content-card learning-chat-shell" data-learning-chat data-subject={subject} data-lesson={lessonSlug} data-storage-key={storageKey} data-enabled={chatEnabled ? 'true' : 'false'}>
+  <div class="learning-chat-header">
+    <div>
+      <p class="eyebrow">Lesson Q&A</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">课内二次提问</h3>
+    </div>
+    <p class="muted">当前问答会基于《{lessonTitle}》这节课的内容回答，只保留当前浏览器会话内的上下文。</p>
+  </div>
+  <div class="learning-chat-suggestions">
+    {quickPrompts.map((prompt) => (
+      <button class="learning-chat-chip" type="button" data-chat-chip>{prompt}</button>
+    ))}
+  </div>
+  <div class="learning-chat-log" data-chat-log>
+    <article class="learning-chat-message is-assistant">
+      <strong>课程助教</strong>
+      <p>{chatEnabled ? '你可以继续追问这一节课里的任何概念、流程、误区或题目。' : '当前还没有启用课内问答，你仍然可以先阅读课程内容和互动图解。'}</p>
+    </article>
+  </div>
+  <form class="learning-chat-form" data-chat-form>
+    <textarea class="search-input admin-input-rect learning-chat-input" name="message" placeholder="例如：再通俗一点解释为什么需要 TCP 三次握手" rows="3" disabled={!chatEnabled}></textarea>
+    <div class="hero-actions" style="margin-top: 0.75rem;">
+      <button class="button button-primary" type="submit" data-chat-submit disabled={!chatEnabled}>发送追问</button>
+      <button class="button" type="button" data-chat-clear>清空会话</button>
+    </div>
+    <p class="muted" data-chat-status>{chatEnabled ? '回答会围绕当前课时展开。' : '若要启用问答，需要先配置学习中心专用 AI 环境变量。'}</p>
+  </form>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-chat]');
+
+    if (!root) {
+      return;
+    }
+
+    const enabled = root.dataset.enabled === 'true';
+    const subject = root.dataset.subject;
+    const lesson = root.dataset.lesson;
+    const storageKey = root.dataset.storageKey;
+    const form = root.querySelector('[data-chat-form]');
+    const log = root.querySelector('[data-chat-log]');
+    const status = root.querySelector('[data-chat-status]');
+    const textarea = form?.elements?.namedItem('message');
+    const submitButton = root.querySelector('[data-chat-submit]');
+    const clearButton = root.querySelector('[data-chat-clear]');
+    const chips = Array.from(root.querySelectorAll('[data-chat-chip]'));
+
+    const safeReadMessages = () => {
+      if (!storageKey || typeof sessionStorage === 'undefined') {
+        return [];
+      }
+
+      try {
+        const parsed = JSON.parse(sessionStorage.getItem(storageKey) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const saveMessages = (messages) => {
+      if (!storageKey || typeof sessionStorage === 'undefined') {
+        return;
+      }
+
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify(messages.slice(-12)));
+      } catch {
+        // Ignore storage failures.
+      }
+    };
+
+    const renderMessages = (messages) => {
+      if (!log) {
+        return;
+      }
+
+      log.innerHTML = '';
+      const allMessages = [
+        {
+          role: 'assistant',
+          content: enabled
+            ? '你可以继续追问这一节课里的任何概念、流程、误区或题目。'
+            : '当前还没有启用课内问答，你仍然可以先阅读课程内容和互动图解。',
+        },
+        ...messages,
+      ];
+
+      allMessages.forEach((message) => {
+        const item = document.createElement('article');
+        item.className = `learning-chat-message ${message.role === 'assistant' ? 'is-assistant' : 'is-user'}`;
+
+        const name = document.createElement('strong');
+        name.textContent = message.role === 'assistant' ? '课程助教' : '你';
+        item.append(name);
+
+        const content = document.createElement('p');
+        content.textContent = message.content;
+        item.append(content);
+        log.append(item);
+      });
+
+      log.scrollTop = log.scrollHeight;
+    };
+
+    let messages = safeReadMessages();
+    renderMessages(messages);
+
+    const sendMessage = async (text) => {
+      if (!enabled || !text.trim()) {
+        return;
+      }
+
+      messages = [...messages, { role: 'user', content: text.trim() }].slice(-12);
+      saveMessages(messages);
+      renderMessages(messages);
+
+      if (status) {
+        status.textContent = '课程助教正在整理回答...';
+      }
+
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
+
+      try {
+        const response = await fetch('/api/learn/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subject,
+            lessonSlug: lesson,
+            messages,
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '课内问答暂时不可用。');
+        }
+
+        messages = [...messages, { role: 'assistant', content: data.reply }].slice(-12);
+        saveMessages(messages);
+        renderMessages(messages);
+
+        if (status) {
+          status.textContent = data.message || '已基于当前课时内容回答。';
+        }
+      } catch (error) {
+        messages = messages.slice(0, -1);
+        saveMessages(messages);
+        renderMessages(messages);
+
+        if (status) {
+          status.textContent = error instanceof Error ? error.message : '课内问答暂时不可用。';
+        }
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = !enabled;
+        }
+      }
+    };
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!textarea || !('value' in textarea)) {
+        return;
+      }
+
+      const text = textarea.value;
+      textarea.value = '';
+      await sendMessage(text);
+    });
+
+    chips.forEach((chip) => {
+      chip.addEventListener('click', async () => {
+        const text = chip.textContent || '';
+
+        if (textarea && 'value' in textarea) {
+          textarea.value = '';
+        }
+
+        await sendMessage(text);
+      });
+    });
+
+    clearButton?.addEventListener('click', () => {
+      messages = [];
+      saveMessages(messages);
+      renderMessages(messages);
+
+      if (status) {
+        status.textContent = enabled ? '会话已清空，可以重新开始提问。' : '当前未启用课内问答。';
+      }
+    });
+  })();
+</script>

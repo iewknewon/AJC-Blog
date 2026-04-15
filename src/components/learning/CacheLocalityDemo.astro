@@ -1,0 +1,77 @@
+<div class="content-card learning-visual-card" data-learning-visual="cache-locality">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">缓存命中与局部性</h3>
+    </div>
+    <p class="muted">对比“连续访问”和“跳跃访问”，看看缓存命中率为什么差这么多。</p>
+  </div>
+  <div class="hero-actions" style="margin-bottom: 1rem;">
+    <button class="button button-primary" type="button" data-cache-mode="sequential">连续访问</button>
+    <button class="button" type="button" data-cache-mode="scattered">跳跃访问</button>
+  </div>
+  <div class="learning-cache-bar">
+    <div class="learning-cache-fill" data-cache-fill style="width: 82%;"></div>
+  </div>
+  <div class="learning-layer-panel">
+    <h4 data-cache-title>连续访问</h4>
+    <p data-cache-description>连续访问更符合空间局部性，缓存会更容易把“附近的数据”提前带进来，所以命中率通常更高。</p>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="cache-locality"]');
+
+    if (!root) {
+      return;
+    }
+
+    const buttons = Array.from(root.querySelectorAll('[data-cache-mode]'));
+    const title = root.querySelector('[data-cache-title]');
+    const description = root.querySelector('[data-cache-description]');
+    const fill = root.querySelector('[data-cache-fill]');
+
+    const modeMap = {
+      sequential: {
+        title: '连续访问',
+        description: '连续访问更符合空间局部性，缓存会更容易把“附近的数据”提前带进来，所以命中率通常更高。',
+        width: '82%',
+      },
+      scattered: {
+        title: '跳跃访问',
+        description: '跳跃访问会频繁碰到新的数据块，缓存刚带进来的内容可能还没来得及复用就被替换掉，命中率会明显下降。',
+        width: '34%',
+      },
+    };
+
+    const applyMode = (key) => {
+      const entry = modeMap[key];
+
+      if (!entry) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        const isActive = button.dataset.cacheMode === key;
+        button.classList.toggle('button-primary', isActive);
+      });
+
+      if (title) {
+        title.textContent = entry.title;
+      }
+
+      if (description) {
+        description.textContent = entry.description;
+      }
+
+      if (fill) {
+        fill.style.width = entry.width;
+      }
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyMode(button.dataset.cacheMode));
+    });
+  })();
+</script>

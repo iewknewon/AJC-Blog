@@ -86,9 +86,15 @@ export async function POST(context) {
   }
 
   let project = await updateNovelProject(db, id, validation.data) ?? existingProject;
-  const bible = await generateNovelStoryBible(baseUrl, apiKey, model, {
-    project,
-  });
+  let bible;
+
+  try {
+    bible = await generateNovelStoryBible(baseUrl, apiKey, model, {
+      project,
+    });
+  } catch (error) {
+    return json({ message: error instanceof Error ? error.message : '生成人物与设定卡失败。' }, 502);
+  }
 
   project = await updateNovelProject(db, id, {
     ...toNovelProjectInput(project),

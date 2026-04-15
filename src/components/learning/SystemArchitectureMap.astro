@@ -1,0 +1,64 @@
+<div class="content-card learning-visual-card" data-learning-visual="system-architecture">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">整机结构图</h3>
+    </div>
+    <p class="muted">点击部件，看看它在“程序运行”这件事里到底扮演什么角色。</p>
+  </div>
+  <div class="learning-architecture-grid">
+    <button class="learning-architecture-chip is-active" type="button" data-arch="cpu">CPU</button>
+    <button class="learning-architecture-chip" type="button" data-arch="memory">主存</button>
+    <button class="learning-architecture-chip" type="button" data-arch="bus">总线</button>
+    <button class="learning-architecture-chip" type="button" data-arch="io">I/O</button>
+  </div>
+  <div class="learning-layer-panel">
+    <h4 data-arch-title>CPU</h4>
+    <p data-arch-description>CPU 像高速工作台，负责执行指令和控制流程，但它离不开内存持续供应数据与指令。</p>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="system-architecture"]');
+
+    if (!root) {
+      return;
+    }
+
+    const buttons = Array.from(root.querySelectorAll('[data-arch]'));
+    const title = root.querySelector('[data-arch-title]');
+    const description = root.querySelector('[data-arch-description]');
+
+    const contentMap = {
+      cpu: ['CPU', 'CPU 像高速工作台，负责执行指令和控制流程，但它离不开内存持续供应数据与指令。'],
+      memory: ['主存', '主存负责保存程序和运行数据，是 CPU 的主要原料仓库。'],
+      bus: ['总线', '总线负责让地址、数据和控制信号在各部件之间流动，没有它整个系统就无法协作。'],
+      io: ['I/O', '输入输出设备负责和外部世界交换信息，比如键盘、磁盘、网卡都属于 I/O 范畴。'],
+    };
+
+    const applyState = (key) => {
+      const entry = contentMap[key];
+
+      if (!entry) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.arch === key);
+      });
+
+      if (title) {
+        title.textContent = entry[0];
+      }
+
+      if (description) {
+        description.textContent = entry[1];
+      }
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyState(button.dataset.arch));
+    });
+  })();
+</script>

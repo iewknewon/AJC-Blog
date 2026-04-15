@@ -1,0 +1,66 @@
+<div class="content-card learning-visual-card" data-learning-visual="instruction-cycle">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">指令执行周期</h3>
+    </div>
+    <p class="muted">沿着取指、译码、执行、访存、写回，把一条指令拆成可观察的步骤。</p>
+  </div>
+  <div class="learning-stepper">
+    <button class="learning-step-button is-active" type="button" data-cycle-step="fetch">取指</button>
+    <button class="learning-step-button" type="button" data-cycle-step="decode">译码</button>
+    <button class="learning-step-button" type="button" data-cycle-step="execute">执行</button>
+    <button class="learning-step-button" type="button" data-cycle-step="memory">访存</button>
+    <button class="learning-step-button" type="button" data-cycle-step="writeback">写回</button>
+  </div>
+  <div class="learning-layer-panel">
+    <h4 data-cycle-title>取指</h4>
+    <p data-cycle-description>程序计数器 PC 指向下一条指令地址，CPU 先把它从主存取进来，后面的动作才能开始。</p>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="instruction-cycle"]');
+
+    if (!root) {
+      return;
+    }
+
+    const buttons = Array.from(root.querySelectorAll('[data-cycle-step]'));
+    const title = root.querySelector('[data-cycle-title]');
+    const description = root.querySelector('[data-cycle-description]');
+
+    const steps = {
+      fetch: ['取指', '程序计数器 PC 指向下一条指令地址，CPU 先把它从主存取进来，后面的动作才能开始。'],
+      decode: ['译码', '控制器识别操作码、寄存器编号和寻址方式，把二进制翻译成内部控制信号。'],
+      execute: ['执行', 'ALU 或其他执行单元真正做运算、比较、跳转或地址计算。'],
+      memory: ['访存', '如果这条指令需要访问主存，这一步会去读写数据，而不是只在寄存器里打转。'],
+      writeback: ['写回', '最后把运算结果写回寄存器或内存，程序状态才算真的更新。'],
+    };
+
+    const applyStep = (key) => {
+      const entry = steps[key];
+
+      if (!entry) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.cycleStep === key);
+      });
+
+      if (title) {
+        title.textContent = entry[0];
+      }
+
+      if (description) {
+        description.textContent = entry[1];
+      }
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyStep(button.dataset.cycleStep));
+    });
+  })();
+</script>

@@ -12,6 +12,7 @@ import {
   normalizeNovelProjectInput,
   syncNovelChapterByPost,
   toNovelProjectInput,
+  updateNovelChapterMemory,
 } from './repository';
 
 test('normalizeNovelProjectInput 会标准化可选字段', () => {
@@ -297,6 +298,10 @@ test('syncNovelChapterByPost updates linked chapter snapshot', async () => {
     },
     prepare(sql: string) {
       return {
+        async run() {
+          calls.push({ sql, values: [] });
+          return { success: true };
+        },
         bind(...values: unknown[]) {
           calls.push({ sql, values });
 
@@ -313,15 +318,21 @@ test('syncNovelChapterByPost updates linked chapter snapshot', async () => {
   await syncNovelChapterByPost(db, {
     id: 'post-9',
     slug: 'token-emperor-v2-c9',
+    title: '第九章 新标题',
+    description: '最新的章节摘要',
     status: 'published',
   });
 
   assert.equal(batchCalls, 1);
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].sql, /UPDATE novel_chapters/);
-  assert.equal(calls[0].values[0], 'token-emperor-v2-c9');
-  assert.equal(calls[0].values[1], 'published');
-  assert.equal(calls[0].values[3], 'post-9');
+  const updateCall = calls.find((call) => /UPDATE novel_chapters/.test(call.sql));
+  assert.ok(updateCall);
+  assert.equal(updateCall.values[0], '第九章 新标题');
+  assert.equal(updateCall.values[1], '最新的章节摘要');
+  assert.equal(updateCall.values[2], '最新的章节摘要');
+  assert.equal(updateCall.values[3], '- 当前章节摘要：最新的章节摘要');
+  assert.equal(updateCall.values[4], 'token-emperor-v2-c9');
+  assert.equal(updateCall.values[5], 'published');
+  assert.equal(updateCall.values[7], 'post-9');
 });
 
 test('deleteNovelChapterByPostId removes linked chapter rows', async () => {
@@ -335,6 +346,10 @@ test('deleteNovelChapterByPostId removes linked chapter rows', async () => {
     },
     prepare(sql: string) {
       return {
+        async run() {
+          calls.push({ sql, values: [] });
+          return { success: true };
+        },
         bind(...values: unknown[]) {
           calls.push({ sql, values });
 
@@ -351,7 +366,71 @@ test('deleteNovelChapterByPostId removes linked chapter rows', async () => {
   await deleteNovelChapterByPostId(db, 'post-3');
 
   assert.equal(batchCalls, 1);
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].sql, /DELETE FROM novel_chapters/);
-  assert.deepEqual(calls[0].values, ['post-3']);
+  const deleteCall = calls.find((call) => /DELETE FROM novel_chapters/.test(call.sql) && call.values.length > 0);
+  assert.ok(deleteCall);
+  assert.deepEqual(deleteCall.values, ['post-3']);
+});
+
+test('updateNovelChapterMemory updates chapter summary and continuity delta', async () => {
+  let batchCalls = 0;
+  const calls: Array<{ sql: string; values: unknown[] }> = [];
+
+  const db = {
+    async batch() {
+      batchCalls += 1;
+      return [];
+    },
+    prepare(sql: string) {
+      return {
+        async run() {
+          calls.push({ sql, values: [] });
+          return { success: true };
+        },
+        bind(...values: unknown[]) {
+          calls.push({ sql, values });
+
+          return {
+            async run() {
+              return { success: true };
+            },
+            async first() {
+              return {
+                id: 'chapter-3',
+                project_id: 'novel-1',
+                volume_number: 1,
+                chapter_number: 3,
+                title: '新标题',
+                description: '新描述',
+                brief: 'brief',
+                summary: '重建后的摘要',
+                continuity_delta: '- 新的连续记忆',
+                post_id: 'post-3',
+                post_slug: 'post-3',
+                status: 'draft',
+                created_at: '2026-04-01T00:00:00.000Z',
+                updated_at: '2026-04-01T00:00:00.000Z',
+              };
+            },
+          };
+        },
+      };
+    },
+  } as unknown as D1Database;
+
+  const chapter = await updateNovelChapterMemory(db, 'chapter-3', {
+    title: '新标题',
+    description: '新描述',
+    summary: '重建后的摘要',
+    continuityDelta: '- 新的连续记忆',
+  });
+
+  assert.equal(batchCalls, 1);
+  const updateCall = calls.find((call) => /UPDATE novel_chapters/.test(call.sql));
+  assert.ok(updateCall);
+  assert.equal(updateCall.values[0], '新标题');
+  assert.equal(updateCall.values[1], '新描述');
+  assert.equal(updateCall.values[2], '重建后的摘要');
+  assert.equal(updateCall.values[3], '- 新的连续记忆');
+  assert.equal(updateCall.values[5], 'chapter-3');
+  assert.equal(chapter?.summary, '重建后的摘要');
 });

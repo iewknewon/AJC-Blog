@@ -1,0 +1,30 @@
+---
+import type { LearningLesson } from '../../data/learning/types';
+
+interface Props {
+  lesson: LearningLesson;
+  subjectTitle: string;
+}
+
+const { lesson, subjectTitle } = Astro.props;
+---
+
+<article class="content-card learning-lesson-card">
+  <div class="learning-lesson-card-top">
+    <span class="tag">第 {lesson.order} 课</span>
+    <span class="tag">{lesson.estimatedMinutes} 分钟</span>
+  </div>
+  <h3 class="learning-lesson-card-title">
+    <a href={`/learn/${lesson.subject}/${lesson.lessonSlug}`}>{lesson.title}</a>
+  </h3>
+  <p class="learning-lesson-card-description">{lesson.description}</p>
+  <div class="tags learning-lesson-card-tags">
+    <span class="tag">{subjectTitle}</span>
+    {lesson.keywords.slice(0, 3).map((keyword) => (
+      <span class="tag">{keyword}</span>
+    ))}
+  </div>
+  <div class="hero-actions" style="margin-top: 1rem;">
+    <a class="button button-primary" href={`/learn/${lesson.subject}/${lesson.lessonSlug}`}>进入课时</a>
+  </div>
+</article>

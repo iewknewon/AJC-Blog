@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildNovelContinuityNotesFromChapters,
   buildNovelChapterPrompt,
   buildNovelNextChapterPlanPrompt,
   buildNovelOutlinePrompt,
@@ -221,6 +222,31 @@ test('mergeNovelContinuityNotes 会追加新章节记忆', () => {
   assert.match(notes, /旧笔记/);
   assert.match(notes, /黑市交易/);
   assert.match(notes, /幕后黑手/);
+});
+
+test('buildNovelContinuityNotesFromChapters 会按章节顺序重建连续记忆', () => {
+  const notes = buildNovelContinuityNotesFromChapters([
+    {
+      volumeNumber: 1,
+      chapterNumber: 2,
+      title: '黑市交易',
+      summary: '主角在黑市见到了第一位真正的敌人。',
+      description: '黑市章节',
+      continuityDelta: '- 主角暴露了异火波动',
+    },
+    {
+      volumeNumber: 1,
+      chapterNumber: 1,
+      title: '异火初现',
+      summary: '主角第一次感知到异火呼唤。',
+      description: '开篇章节',
+      continuityDelta: '- 主角确认体内存在异火残痕',
+    },
+  ]);
+
+  assert.match(notes, /第1 卷 第1 章《异火初现》/);
+  assert.match(notes, /第1 卷 第2 章《黑市交易》/);
+  assert.ok(notes.indexOf('异火初现') < notes.indexOf('黑市交易'));
 });
 
 test('getNextNovelChapterPosition 会返回下一章序号', () => {

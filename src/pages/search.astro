@@ -1,15 +1,20 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PageHero from '../components/PageHero.astro';
+import EmptyState from '../components/EmptyState.astro';
 import { siteConfig } from '../data/site';
+import { getAllLearningLessons } from '../lib/learning/content';
 import { serializeInlineJson } from '../lib/utils/inline-json';
 import { formatDate } from '../utils/format';
 import { getPublishedPosts, renderPost } from '../utils/posts';
 
-const db = Astro.locals.runtime.env.DB;
-const posts = await getPublishedPosts(db);
+const db = Astro.locals.runtime?.env?.DB;
+const posts = db ? await getPublishedPosts(db) : [];
 const renderedPosts = await Promise.all(posts.map((post) => renderPost(post)));
-const searchIndex = renderedPosts.map((post) => ({
+
+const articleIndex = renderedPosts.map((post) => ({
+  kind: 'article',
+  href: `/blog/${post.slug}/`,
   slug: post.slug,
   title: post.title,
   description: post.description,
@@ -17,32 +22,50 @@ const searchIndex = renderedPosts.map((post) => ({
   date: formatDate(post.publishedAt ?? post.updatedAt),
   content: post.plainText,
 }));
+
+const learningIndex = getAllLearningLessons().map((lesson) => ({
+  kind: 'lesson',
+  href: lesson.href,
+  slug: lesson.lessonSlug,
+  title: lesson.title,
+  description: lesson.description,
+  tags: [lesson.subjectTitle, ...lesson.keywords],
+  date: `${lesson.estimatedMinutes} 分钟`,
+  content: lesson.plainText,
+}));
+
+const searchIndex = [...articleIndex, ...learningIndex];
 ---
 
-<BaseLayout title={`搜索 | ${siteConfig.title}`} description="按标题、摘要、标签和正文搜索文章。" pathname="/search">
+<BaseLayout title={`搜索 | ${siteConfig.title}`} description="按标题、摘要、标签、正文和课程关键词搜索内容。" pathname="/search">
   <section class="section">
     <div class="container">
       <PageHero
         kicker="Search"
-        title="搜索文章"
-        description="按标题、摘要、标签和正文关键词快速检索内容，适合回看以前的实践记录。"
+        title="搜索内容"
+        description="博客文章和学习课时都能一起搜，适合快速回看概念、部署经验和课程内容。"
         actions={[
           { href: '/archive', label: '浏览归档' },
-          { href: '/tags', label: '按标签查看' },
+          { href: '/learn', label: '学习中心', primary: true },
         ]}
         stats={[
-          { label: '收录范围', value: `${posts.length} 篇文章` },
-          { label: '检索字段', value: '标题 / 摘要 / 标签 / 正文' },
+          { label: '收录范围', value: `${searchIndex.length} 条内容` },
+          { label: '检索字段', value: '标题 / 摘要 / 标签 / 正文 / 课程关键词' },
         ]}
       />
       <div class="content-card search-shell">
         <form class="search-form search-form-panel" action="/search" method="get">
-          <input id="search-input" class="search-input" type="search" name="q" placeholder="例如：Astro、Cloudflare、部署" />
+          <input id="search-input" class="search-input" type="search" name="q" placeholder="例如：TCP、Cloudflare、缓存局部性" />
           <button class="button button-primary" type="submit">搜索</button>
         </form>
         <p id="search-summary" class="muted search-summary">输入关键词开始搜索。</p>
       </div>
       <div id="search-results" class="post-list search-results-grid"></div>
+      {!db ? (
+        <div class="search-results-grid" style="margin-top: 1.5rem;">
+          <EmptyState title="文章索引暂时不可用" description="当前环境还没有连上内容数据库，搜索当前仍可覆盖学习中心内容，博客文章会在数据恢复后自动恢复。" />
+        </div>
+      ) : null}
       <noscript>
         <div class="search-results-grid">
           <div class="empty-state">搜索功能需要启用浏览器 JavaScript。</div>
@@ -59,26 +82,25 @@ const searchIndex = renderedPosts.map((post) => ({
     const searchData = JSON.parse(document.querySelector('#search-index')?.textContent ?? '[]');
 
     const createTag = (tag) => {
-      const element = document.createElement('a');
+      const element = document.createElement('span');
       element.className = 'tag';
-      element.href = `/tags/${encodeURIComponent(tag)}/`;
       element.textContent = tag;
       return element;
     };
 
-    const createCard = (post) => {
+    const createCard = (item) => {
       const article = document.createElement('article');
       article.className = 'card post-card search-result-card';
 
       const coverLink = document.createElement('a');
       coverLink.className = 'post-card-cover-link is-placeholder';
-      coverLink.href = `/blog/${post.slug}/`;
+      coverLink.href = item.href;
 
       const cover = document.createElement('div');
       cover.className = 'post-card-cover post-card-cover-placeholder';
 
       const coverLabel = document.createElement('span');
-      coverLabel.textContent = post.tags[0] ?? 'Search';
+      coverLabel.textContent = item.kind === 'lesson' ? 'Learning' : (item.tags[0] ?? 'Search');
       cover.append(coverLabel);
       coverLink.append(cover);
 
@@ -90,26 +112,26 @@ const searchIndex = renderedPosts.map((post) => ({
 
       const meta = document.createElement('p');
       meta.className = 'meta post-card-meta';
-      meta.textContent = post.date;
+      meta.textContent = item.date;
 
       const readmore = document.createElement('span');
       readmore.className = 'post-card-readmore';
-      readmore.textContent = '查看文章';
+      readmore.textContent = item.kind === 'lesson' ? '进入课时' : '查看文章';
 
       const heading = document.createElement('h3');
       heading.className = 'post-card-title';
       const link = document.createElement('a');
-      link.href = `/blog/${post.slug}/`;
-      link.textContent = post.title;
+      link.href = item.href;
+      link.textContent = item.title;
       heading.append(link);
 
       const description = document.createElement('p');
       description.className = 'muted post-card-description';
-      description.textContent = post.description;
+      description.textContent = item.description;
 
       const tags = document.createElement('div');
       tags.className = 'tags post-card-tags';
-      post.tags.forEach((tag) => tags.append(createTag(tag)));
+      item.tags.forEach((tag) => tags.append(createTag(tag)));
 
       top.append(meta, readmore);
       body.append(top, heading, description, tags);
@@ -138,25 +160,25 @@ const searchIndex = renderedPosts.map((post) => ({
 
       if (!normalizedKeyword) {
         summary.textContent = '输入关键词开始搜索。';
-        renderEmpty('输入关键词开始搜索', '推荐先试试 Astro、Cloudflare、Markdown、部署 这些词。');
+        renderEmpty('输入关键词开始搜索', '推荐先试试：TCP、Cloudflare、缓存、协议栈、部署。');
         return;
       }
 
-      const matched = searchData.filter((post) => {
-        const searchableText = [post.title, post.description, ...post.tags, post.content].join(' ').toLowerCase();
+      const matched = searchData.filter((item) => {
+        const searchableText = [item.title, item.description, ...item.tags, item.content].join(' ').toLowerCase();
         return searchableText.includes(normalizedKeyword);
       });
 
       results.innerHTML = '';
 
       if (matched.length === 0) {
-        summary.textContent = `没有找到与“${keyword}”相关的文章`;
-        renderEmpty('没有找到匹配文章', '你可以尝试更短的关键词，或者先去归档页浏览全部文章。');
+        summary.textContent = `没有找到与“${keyword}”相关的内容`;
+        renderEmpty('没有找到匹配结果', '你可以试试更短的关键词，或者先去学习中心和归档页浏览。');
         return;
       }
 
-      summary.textContent = `共找到 ${matched.length} 篇与“${keyword}”相关的文章`;
-      matched.forEach((post) => results.append(createCard(post)));
+      summary.textContent = `共找到 ${matched.length} 条与“${keyword}”相关的内容`;
+      matched.forEach((item) => results.append(createCard(item)));
     };
 
     const params = new URLSearchParams(window.location.search);

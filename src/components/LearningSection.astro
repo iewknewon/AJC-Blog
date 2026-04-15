@@ -1,0 +1,32 @@
+---
+import SectionTitle from './SectionTitle.astro';
+import LearningSubjectCard from './learning/LearningSubjectCard.astro';
+import type { LearningSubject } from '../data/learning/types';
+
+interface Props {
+  subjects: LearningSubject[];
+}
+
+const { subjects } = Astro.props;
+---
+
+<section class="section" id="learning-center">
+  <div class="container">
+    <div class="archive-toolbar">
+      <SectionTitle
+        kicker="Learning Center"
+        title="公开学习中心"
+        description="把抽象概念讲得更像可以抓住的东西：有图解、有轻互动、也可以围绕当前课继续追问。"
+      />
+      <div class="hero-actions">
+        <a class="button button-primary" href="/learn">进入学习中心</a>
+        <a class="button" href="/learn/networking">先看网络</a>
+      </div>
+    </div>
+    <div class="grid two learning-subject-grid">
+      {subjects.map((subject) => (
+        <LearningSubjectCard subject={subject} />
+      ))}
+    </div>
+  </div>
+</section>

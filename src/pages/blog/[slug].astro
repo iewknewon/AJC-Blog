@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
 import PostNavigation from '../../components/PostNavigation.astro';
+import EmptyState from '../../components/EmptyState.astro';
 import { siteConfig } from '../../data/site';
 import { getPublishedNovelChapterRouteByPostSlug } from '../../lib/novels/repository';
 import { formatDate, getReadingTime } from '../../utils/format';
@@ -14,8 +15,8 @@ if (!slug) {
   return Astro.redirect('/archive');
 }
 
-const db = Astro.locals.runtime.env.DB;
-const novelChapterRoute = await getPublishedNovelChapterRouteByPostSlug(db, slug);
+const db = Astro.locals.runtime?.env?.DB;
+const novelChapterRoute = db ? await getPublishedNovelChapterRouteByPostSlug(db, slug) : null;
 
 if (novelChapterRoute) {
   return Astro.redirect(
@@ -27,55 +28,67 @@ if (novelChapterRoute) {
   );
 }
 
-const post = await getPublishedPostBySlug(db, slug);
+const post = db ? await getPublishedPostBySlug(db, slug) : null;
 
-if (!post) {
+if (db && !post) {
   return Astro.redirect('/404');
 }
 
-const renderedPost = await renderPost(post);
-const posts = await getPublishedPosts(db);
-const adjacentPosts = getAdjacentPosts(posts, post.slug);
-const readingTime = getReadingTime(renderedPost.plainText);
-const publishDate = post.publishedAt ?? post.updatedAt;
+const renderedPost = post ? await renderPost(post) : null;
+const posts = db ? await getPublishedPosts(db) : [];
+const adjacentPosts = post ? getAdjacentPosts(posts, post.slug) : { previous: undefined, next: undefined };
+const readingTime = renderedPost ? getReadingTime(renderedPost.plainText) : '';
+const publishDate = post ? (post.publishedAt ?? post.updatedAt) : null;
 ---
 
-<BaseLayout title={`${post.title} | ${siteConfig.title}`} description={post.description} pathname={`/blog/${post.slug}/`}>
-  <div class="container article-layout">
-    <article class="article-shell">
-      <p class="eyebrow">技术文章</p>
-      <h1>{post.title}</h1>
-      <p class="page-intro">{post.description}</p>
-      {post.cover ? (
-        <figure class="article-cover">
-          <img src={post.cover} alt={`${post.title} 封面图`} loading="eager" decoding="async" />
-        </figure>
-      ) : null}
-      <div class="tags" style="margin-top: 1rem; margin-bottom: 1.5rem;">
-        <span class="tag">{formatDate(publishDate)}</span>
-        <span class="tag">{readingTime}</span>
-        {post.tags.map((tag) => (
-          <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>{tag}</a>
-        ))}
-      </div>
-      <div class="hero-actions" style="margin-bottom: 1.5rem;">
-        <a class="button" href={`/blog/${post.slug}/wechat/`}>导出公众号格式</a>
-      </div>
-      <div class="article-content" set:html={renderedPost.html}></div>
-      <div class="content-card" style="margin-top: 2rem;">
-        <h3>继续阅读</h3>
-        <p class="muted">如果这篇内容对你有帮助，可以继续浏览归档、标签页或项目页，查看更多相关实践。</p>
-        <div class="hero-actions" style="margin-top: 1rem;">
-          <a class="button" href="/archive">浏览归档</a>
-          <a class="button" href="/tags">查看标签</a>
-          <a class="button" href="/projects">查看项目</a>
+<BaseLayout
+  title={post ? `${post.title} | ${siteConfig.title}` : `文章详情 | ${siteConfig.title}`}
+  description={post?.description ?? '当前环境还没有连上内容数据库。'}
+  pathname={post ? `/blog/${post.slug}/` : `/blog/${slug}/`}
+>
+  {post && renderedPost && publishDate ? (
+    <div class="container article-layout">
+      <article class="article-shell">
+        <p class="eyebrow">技术文章</p>
+        <h1>{post.title}</h1>
+        <p class="page-intro">{post.description}</p>
+        {post.cover ? (
+          <figure class="article-cover">
+            <img src={post.cover} alt={`${post.title} 封面图`} loading="eager" decoding="async" />
+          </figure>
+        ) : null}
+        <div class="tags" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+          <span class="tag">{formatDate(publishDate)}</span>
+          <span class="tag">{readingTime}</span>
+          {post.tags.map((tag) => (
+            <a class="tag" href={`/tags/${encodeURIComponent(tag)}/`}>{tag}</a>
+          ))}
         </div>
+        <div class="hero-actions" style="margin-bottom: 1.5rem;">
+          <a class="button" href={`/blog/${post.slug}/wechat/`}>导出公众号格式</a>
+        </div>
+        <div class="article-content" set:html={renderedPost.html}></div>
+        <div class="content-card" style="margin-top: 2rem;">
+          <h3>继续阅读</h3>
+          <p class="muted">如果这篇内容对你有帮助，可以继续浏览归档、标签页或项目页，查看更多相关实践。</p>
+          <div class="hero-actions" style="margin-top: 1rem;">
+            <a class="button" href="/archive">浏览归档</a>
+            <a class="button" href="/tags">查看标签</a>
+            <a class="button" href="/projects">查看项目</a>
+          </div>
+        </div>
+        <div style="margin-top: 1rem;">
+          <a class="button" href="/archive">返回文章列表</a>
+        </div>
+        <PostNavigation previous={adjacentPosts.previous} next={adjacentPosts.next} />
+      </article>
+      <TableOfContents headings={renderedPost.headings} />
+    </div>
+  ) : (
+    <section class="section">
+      <div class="container">
+        <EmptyState title="文章内容暂时不可用" description="当前环境还没有连上内容数据库，文章详情会在数据恢复后自动恢复。" />
       </div>
-      <div style="margin-top: 1rem;">
-        <a class="button" href="/archive">返回文章列表</a>
-      </div>
-      <PostNavigation previous={adjacentPosts.previous} next={adjacentPosts.next} />
-    </article>
-    <TableOfContents headings={renderedPost.headings} />
-  </div>
+    </section>
+  )}
 </BaseLayout>

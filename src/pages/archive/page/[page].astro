@@ -2,11 +2,12 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import PageHero from '../../../components/PageHero.astro';
 import PostCard from '../../../components/PostCard.astro';
+import EmptyState from '../../../components/EmptyState.astro';
 import { siteConfig } from '../../../data/site';
 import { getPublishedPosts, paginatePosts } from '../../../utils/posts';
 
-const db = Astro.locals.runtime.env.DB;
-const posts = await getPublishedPosts(db);
+const db = Astro.locals.runtime?.env?.DB;
+const posts = db ? await getPublishedPosts(db) : [];
 const currentPage = Number(Astro.params.page);
 const pagination = paginatePosts(posts, currentPage);
 ---
@@ -31,11 +32,15 @@ const pagination = paginatePosts(posts, currentPage);
           { label: '当前页码', value: `${pagination.currentPage} / ${pagination.totalPages}` },
         ]}
       />
-      <div class="archive-list page-card-grid">
-        {pagination.items.map((post) => (
-          <PostCard post={post} />
-        ))}
-      </div>
+      {pagination.items.length > 0 ? (
+        <div class="archive-list page-card-grid">
+          {pagination.items.map((post) => (
+            <PostCard post={post} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="这一页暂时没有内容" description={db ? '可以返回上一页继续浏览，或者先去归档首页查看全部文章。' : '当前环境还没有连上内容数据库，归档分页会在数据恢复后自动展示。'} />
+      )}
       <nav class="pagination">
         {pagination.currentPage > 1 ? (
           <a class="button" href={pagination.currentPage === 2 ? '/archive' : `/archive/page/${pagination.currentPage - 1}`}>

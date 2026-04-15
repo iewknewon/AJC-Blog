@@ -3,6 +3,7 @@ import { requireAdminApiAuth } from '../../../../../../lib/auth/guards';
 import {
   deleteNovelChapterByPostId,
   getNovelChapterById,
+  rebuildNovelProjectContinuityNotes,
   syncNovelChapterByPost,
 } from '../../../../../../lib/novels/repository';
 import { deletePost, getPostById, updatePost } from '../../../../../../lib/posts/repository';
@@ -41,6 +42,7 @@ export async function POST(context) {
   if (String(formData.get('intent') ?? '') === 'delete') {
     await deleteNovelChapterByPostId(db, chapter.postId);
     await deletePost(db, chapter.postId);
+    await rebuildNovelProjectContinuityNotes(db, chapter.projectId);
     return context.redirect(`/admin/novels/${id}`);
   }
 
@@ -63,6 +65,7 @@ export async function POST(context) {
 
   if (post) {
     await syncNovelChapterByPost(db, post);
+    await rebuildNovelProjectContinuityNotes(db, chapter.projectId);
   }
 
   return context.redirect(`/admin/novels/${id}/chapters/${chapterId}`);

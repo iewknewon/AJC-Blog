@@ -40,6 +40,7 @@ type GeneratePayload = {
   titleDirection?: string;
   endingStrategy?: string;
   endingNote?: string;
+  forceFreshResearch?: boolean;
   lengthPreset?: string;
   status?: string;
   autoPlan?: boolean;
@@ -150,6 +151,7 @@ export async function POST(context) {
   const titleDirection = String(payload.titleDirection ?? '').trim();
   const endingStrategy = String(payload.endingStrategy ?? '').trim();
   const endingNote = String(payload.endingNote ?? '').trim();
+  const forceFreshResearch = payload.forceFreshResearch === true;
   const status = payload.status === 'published' ? 'published' : 'draft';
   const lengthPreset = parseLengthPreset(payload.lengthPreset);
   const autoPlan = payload.autoPlan === true || (!chapterBrief && !chapterTitleHint);
@@ -250,9 +252,13 @@ export async function POST(context) {
         let effectiveEndingStrategy = endingStrategy;
         let effectiveEndingNote = endingNote;
 
-        if (project.referenceTitle && sources.length === 0) {
+        if (project.referenceTitle && (sources.length === 0 || forceFreshResearch)) {
           const query = buildNovelResearchQuery(project);
-          send('status', { message: `正在补充参考作品资料：${query}` });
+          send('status', {
+            message: forceFreshResearch
+              ? `正在强制重新联网检索参考作品资料：${query}`
+              : `正在补充参考作品资料：${query}`,
+          });
 
           try {
             const research = await collectWebResearch(query, {
@@ -301,18 +307,40 @@ export async function POST(context) {
               referenceSummary: project.referenceSummary ?? '',
               referenceNotes: project.referenceNotes ?? '',
               message: sources.length
-                ? `已通过${research.strategyLabel}载入 ${sources.length} 条参考资料，并自动整理成续写参考包。`
+                ? `${forceFreshResearch ? '已强制重新通过' : '已通过'}${research.strategyLabel}载入 ${sources.length} 条参考资料，并自动整理成续写参考包。`
                 : '这次没有检索到足够稳定的参考资料，继续按照当前项目设定写作。',
             });
           } catch (error) {
             send('research', {
               query,
+              strategy: 'local',
+              strategyLabel: '检索失败',
+              provider: '',
+              fallbackReason: '',
               sources: [],
               message: error instanceof Error
                 ? `${error.message}，这次将继续使用你手动填写的设定。`
                 : '参考资料检索失败，这次将继续使用你手动填写的设定。',
             });
           }
+        } else if (project.referenceTitle && sources.length > 0) {
+          send('research', {
+            query: buildNovelResearchQuery(project),
+            summary: project.referenceSummary ?? '',
+            strategy: 'cache',
+            strategyLabel: '已复用本地参考缓存',
+            provider: '',
+            fallbackReason: '',
+            sources: sources.map((source) => ({
+              title: source.title,
+              url: source.url,
+              snippet: source.snippet,
+              excerpt: source.excerpt,
+            })),
+            referenceSummary: project.referenceSummary ?? '',
+            referenceNotes: project.referenceNotes ?? '',
+            message: `本次直接复用了已保存的 ${sources.length} 条参考资料，没有重新联网检索。`,
+          });
         }
 
         if (autoPlan || !effectiveChapterBrief) {
@@ -405,7 +433,7 @@ export async function POST(context) {
 
         let memoryUpdate = {
           summary: generated.description,
-          continuityDelta: `- 第 ${chapterNumber} 章新增事件：${generated.description}`,
+          continuityDelta: `- 第${chapterNumber}章新增事件：${generated.description}`,
         };
 
         try {
@@ -460,8 +488,8 @@ export async function POST(context) {
 
         send('done', {
           message: status === 'published'
-            ? `第 ${chapterNumber} 章已经生成并发布。`
-            : `第 ${chapterNumber} 章已经生成并保存为草稿。`,
+            ? `第${chapterNumber}章已经生成并发布。`
+            : `第${chapterNumber}章已经生成并保存为草稿。`,
           rawText,
           post: {
             id: post.id,

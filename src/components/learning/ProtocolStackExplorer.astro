@@ -1,0 +1,94 @@
+<div class="content-card learning-visual-card" data-learning-visual="protocol-stack">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">协议栈分层浏览器</h3>
+    </div>
+    <p class="muted">点击不同层，看看它在真实请求里承担什么角色。</p>
+  </div>
+  <div class="learning-layer-grid">
+    <button class="learning-layer-button is-active" type="button" data-layer="application">应用层</button>
+    <button class="learning-layer-button" type="button" data-layer="transport">传输层</button>
+    <button class="learning-layer-button" type="button" data-layer="network">网络层</button>
+    <button class="learning-layer-button" type="button" data-layer="link">链路层</button>
+  </div>
+  <div class="learning-layer-panel">
+    <h4 data-layer-title>应用层</h4>
+    <p data-layer-description>直接面向程序语义，例如浏览器发 HTTP、域名解析时用 DNS。它关心“我要表达什么”，不关心底下具体走哪根线。</p>
+    <div class="tags">
+      <span class="tag" data-layer-tag-one>HTTP</span>
+      <span class="tag" data-layer-tag-two>DNS</span>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="protocol-stack"]');
+
+    if (!root) {
+      return;
+    }
+
+    const buttons = Array.from(root.querySelectorAll('[data-layer]'));
+    const title = root.querySelector('[data-layer-title]');
+    const description = root.querySelector('[data-layer-description]');
+    const tagOne = root.querySelector('[data-layer-tag-one]');
+    const tagTwo = root.querySelector('[data-layer-tag-two]');
+
+    const layerMap = {
+      application: {
+        title: '应用层',
+        description: '直接面向程序语义，例如浏览器发 HTTP、域名解析时用 DNS。它关心“我要表达什么”，不关心底下具体走哪根线。',
+        tags: ['HTTP', 'DNS'],
+      },
+      transport: {
+        title: '传输层',
+        description: '负责端到端进程通信，决定数据是可靠送达还是尽快送达。TCP、UDP 都在这里工作。',
+        tags: ['TCP', 'UDP'],
+      },
+      network: {
+        title: '网络层',
+        description: '负责寻址和路由，让数据知道该去哪个网络、经过哪条路径。IP 是这里的核心代表。',
+        tags: ['IP', 'Router'],
+      },
+      link: {
+        title: '链路层',
+        description: '负责当前这一跳怎么把帧发到对端，比如网卡、交换机、MAC 地址等都与这一层紧密相关。',
+        tags: ['MAC', 'Frame'],
+      },
+    };
+
+    const applyLayer = (key) => {
+      const layer = layerMap[key];
+
+      if (!layer) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.layer === key);
+      });
+
+      if (title) {
+        title.textContent = layer.title;
+      }
+
+      if (description) {
+        description.textContent = layer.description;
+      }
+
+      if (tagOne) {
+        tagOne.textContent = layer.tags[0];
+      }
+
+      if (tagTwo) {
+        tagTwo.textContent = layer.tags[1];
+      }
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyLayer(button.dataset.layer));
+    });
+  })();
+</script>

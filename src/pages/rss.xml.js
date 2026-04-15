@@ -3,8 +3,8 @@ import { getPublishedPosts, renderPost } from '../utils/posts';
 import { siteConfig } from '../data/site';
 
 export async function GET(context) {
-  const db = context.locals.runtime.env.DB;
-  const posts = await getPublishedPosts(db);
+  const db = context.locals.runtime?.env?.DB;
+  const posts = db ? await getPublishedPosts(db) : [];
   const renderedPosts = await Promise.all(posts.map((post) => renderPost(post)));
 
   return rss({

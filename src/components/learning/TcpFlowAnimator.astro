@@ -1,0 +1,99 @@
+<div class="content-card learning-visual-card" data-learning-visual="tcp-flow">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">TCP 握手与重传流程</h3>
+    </div>
+    <p class="muted">切换到不同场景，观察 TCP 如何确认状态、检测丢包并恢复。</p>
+  </div>
+  <div class="hero-actions" style="margin-bottom: 1rem;">
+    <button class="button button-primary" type="button" data-tcp-mode="handshake">三次握手</button>
+    <button class="button" type="button" data-tcp-mode="retransmit">丢包重传</button>
+  </div>
+  <div class="learning-tcp-board">
+    <div class="learning-tcp-column">
+      <strong>客户端</strong>
+      <div class="learning-tcp-node">发起连接</div>
+    </div>
+    <div class="learning-tcp-flow">
+      <div class="learning-tcp-arrow" data-tcp-arrow-one>SYN</div>
+      <div class="learning-tcp-arrow" data-tcp-arrow-two>SYN + ACK</div>
+      <div class="learning-tcp-arrow" data-tcp-arrow-three>ACK</div>
+    </div>
+    <div class="learning-tcp-column">
+      <strong>服务端</strong>
+      <div class="learning-tcp-node">确认状态</div>
+    </div>
+  </div>
+  <div class="learning-layer-panel">
+    <h4 data-tcp-title>三次握手</h4>
+    <p data-tcp-description>三次握手的核心不是礼貌，而是确认双方收发能力与初始序号都已同步。</p>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="tcp-flow"]');
+
+    if (!root) {
+      return;
+    }
+
+    const buttons = Array.from(root.querySelectorAll('[data-tcp-mode]'));
+    const title = root.querySelector('[data-tcp-title]');
+    const description = root.querySelector('[data-tcp-description]');
+    const arrowOne = root.querySelector('[data-tcp-arrow-one]');
+    const arrowTwo = root.querySelector('[data-tcp-arrow-two]');
+    const arrowThree = root.querySelector('[data-tcp-arrow-three]');
+
+    const modeMap = {
+      handshake: {
+        title: '三次握手',
+        description: '三次握手的核心不是礼貌，而是确认双方收发能力与初始序号都已同步。',
+        arrows: ['SYN', 'SYN + ACK', 'ACK'],
+      },
+      retransmit: {
+        title: '丢包重传',
+        description: '当确认迟迟不到来时，发送方不会装作没事，而是根据超时或快速重传机制补发数据。',
+        arrows: ['DATA', 'ACK 丢失', '重传 DATA'],
+      },
+    };
+
+    const applyMode = (key) => {
+      const mode = modeMap[key];
+
+      if (!mode) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        const isActive = button.dataset.tcpMode === key;
+        button.classList.toggle('button-primary', isActive);
+      });
+
+      if (title) {
+        title.textContent = mode.title;
+      }
+
+      if (description) {
+        description.textContent = mode.description;
+      }
+
+      if (arrowOne) {
+        arrowOne.textContent = mode.arrows[0];
+      }
+
+      if (arrowTwo) {
+        arrowTwo.textContent = mode.arrows[1];
+      }
+
+      if (arrowThree) {
+        arrowThree.textContent = mode.arrows[2];
+      }
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyMode(button.dataset.tcpMode));
+    });
+  })();
+</script>

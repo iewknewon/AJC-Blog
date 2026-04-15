@@ -2259,10 +2259,341 @@ body::after {
   padding-left: 1rem;
 }
 
+.learning-subject-grid,
+.learning-lesson-grid {
+  margin-top: 1.75rem;
+}
+
+.learning-subject-card,
+.learning-lesson-card,
+.learning-visual-card,
+.learning-section-card,
+.learning-misconception-card,
+.learning-chat-shell,
+.learning-quiz-card,
+.learning-objectives-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.learning-subject-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 100%;
+}
+
+.learning-subject-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -18% -38% auto;
+  width: 220px;
+  height: 220px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.14), transparent 72%);
+  pointer-events: none;
+}
+
+.learning-subject-card.is-networking::after {
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.18), transparent 72%);
+}
+
+.learning-subject-card.is-architecture::after {
+  background: radial-gradient(circle, rgba(194, 111, 54, 0.18), transparent 72%);
+}
+
+.learning-subject-top,
+.learning-lesson-card-top,
+.learning-visual-header,
+.learning-chat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.learning-subject-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent-strong) 58%, var(--accent) 42%));
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.learning-subject-card.is-networking .learning-subject-icon {
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+}
+
+.learning-subject-card.is-architecture .learning-subject-icon {
+  background: linear-gradient(135deg, #b45309, #f59e0b);
+}
+
+.learning-subject-eyebrow {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.learning-subject-title,
+.learning-lesson-card-title,
+.learning-quiz-question {
+  margin: 0;
+  font-family: var(--display-font);
+  letter-spacing: -0.02em;
+}
+
+.learning-subject-title {
+  font-size: 1.65rem;
+}
+
+.learning-subject-description,
+.learning-lesson-card-description,
+.learning-objective-item,
+.learning-subject-path-item,
+.learning-misconception-item p,
+.learning-section-prose p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.learning-subject-path,
+.learning-objectives-list,
+.learning-misconception-list,
+.learning-sidebar-links,
+.learning-related-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.learning-path-item,
+.learning-objective-item,
+.learning-misconception-item,
+.learning-related-link,
+.learning-layer-panel,
+.learning-quiz-option,
+.learning-chat-message,
+.learning-cache-bar,
+.learning-tcp-node,
+.learning-tcp-arrow,
+.learning-layer-button,
+.learning-step-button,
+.learning-architecture-chip {
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+  background: color-mix(in srgb, var(--surface) 88%, white 12%);
+}
+
+.learning-path-item,
+.learning-objective-item,
+.learning-misconception-item,
+.learning-related-link,
+.learning-layer-panel,
+.learning-chat-message {
+  padding: 0.95rem 1rem;
+}
+
+.learning-related-link {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.learning-related-link:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.learning-layer-grid,
+.learning-stepper,
+.learning-architecture-grid,
+.learning-quiz-options,
+.learning-chat-suggestions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.learning-layer-button,
+.learning-step-button,
+.learning-architecture-chip,
+.learning-chat-chip {
+  padding: 0.7rem 0.95rem;
+  font: inherit;
+  cursor: pointer;
+  color: var(--text);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.learning-chat-chip {
+  border: 1px dashed color-mix(in srgb, var(--accent) 26%, var(--border) 74%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-muted) 88%, white 12%);
+}
+
+.learning-layer-button:hover,
+.learning-step-button:hover,
+.learning-architecture-chip:hover,
+.learning-chat-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.learning-layer-button.is-active,
+.learning-step-button.is-active,
+.learning-architecture-chip.is-active {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 72%, white 28%), color-mix(in srgb, var(--surface) 84%, white 16%));
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border) 66%);
+}
+
+.learning-lifecycle-track,
+.learning-cache-bar {
+  position: relative;
+  min-height: 1rem;
+  overflow: hidden;
+}
+
+.learning-lifecycle-track {
+  height: 1rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-muted) 82%, white 18%);
+}
+
+.learning-lifecycle-dot,
+.learning-cache-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: inherit;
+  transition: transform 0.35s ease, width 0.35s ease;
+}
+
+.learning-lifecycle-dot {
+  width: 20%;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent-strong) 58%, var(--accent) 42%));
+}
+
+.learning-cache-fill {
+  background: linear-gradient(90deg, #0f766e, #14b8a6);
+}
+
+.learning-tcp-board {
+  display: grid;
+  grid-template-columns: 1fr minmax(180px, 0.8fr) 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.learning-tcp-column {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.learning-tcp-flow {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.learning-tcp-node,
+.learning-tcp-arrow {
+  padding: 0.85rem 0.95rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.learning-quiz-option {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.learning-quiz-option.is-correct {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.learning-quiz-option.is-wrong {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.learning-quiz-feedback {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.learning-chat-shell {
+  position: relative;
+}
+
+.learning-chat-shell::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -26% auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.1), transparent 72%);
+  pointer-events: none;
+}
+
+.learning-chat-log {
+  display: grid;
+  gap: 0.85rem;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.learning-chat-message strong,
+.learning-misconception-item strong {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.learning-chat-message.is-user {
+  background: color-mix(in srgb, var(--accent-soft) 74%, white 26%);
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border) 76%);
+}
+
+.learning-chat-message p {
+  margin: 0;
+}
+
+.learning-chat-input {
+  border-radius: 18px;
+  min-height: 120px;
+  resize: vertical;
+}
+
+.learning-lesson-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 1.5rem;
+  margin-top: 1.75rem;
+}
+
+.learning-sidebar {
+  display: grid;
+  gap: 1rem;
+  align-self: start;
+  position: sticky;
+  top: 7rem;
+}
+
 @media (max-width: 900px) {
   .page-hero-card,
   .about-grid,
-  .project-detail-grid {
+  .project-detail-grid,
+  .learning-lesson-layout,
+  .learning-tcp-board {
     grid-template-columns: 1fr;
   }
 }

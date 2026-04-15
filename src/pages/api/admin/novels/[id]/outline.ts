@@ -88,11 +88,17 @@ export async function POST(context) {
   }
 
   let project = await updateNovelProject(db, id, validation.data) ?? existingProject;
-  const outline = await generateNovelOutline(baseUrl, apiKey, model, {
-    project,
-    targetVolumes: payload.targetVolumes,
-    chaptersPerVolume: payload.chaptersPerVolume,
-  });
+  let outline = '';
+
+  try {
+    outline = await generateNovelOutline(baseUrl, apiKey, model, {
+      project,
+      targetVolumes: payload.targetVolumes,
+      chaptersPerVolume: payload.chaptersPerVolume,
+    });
+  } catch (error) {
+    return json({ message: error instanceof Error ? error.message : '生成分卷骨架失败。' }, 502);
+  }
 
   project = await updateNovelProject(db, id, {
     ...toNovelProjectInput(project),

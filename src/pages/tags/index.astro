@@ -5,8 +5,8 @@ import EmptyState from '../../components/EmptyState.astro';
 import { siteConfig } from '../../data/site';
 import { getAllTags } from '../../utils/posts';
 
-const db = Astro.locals.runtime.env.DB;
-const tags = await getAllTags(db);
+const db = Astro.locals.runtime?.env?.DB;
+const tags = db ? await getAllTags(db) : [];
 ---
 
 <BaseLayout title={`标签 | ${siteConfig.title}`} description="浏览博客中的所有标签。" pathname="/tags">
@@ -34,7 +34,10 @@ const tags = await getAllTags(db);
           ))}
         </div>
       ) : (
-        <EmptyState title="暂无标签" description="当前还没有可展示的标签。" />
+        <EmptyState
+          title="暂无标签"
+          description={db ? '当前还没有可展示的标签。' : '当前环境还没有连上内容数据库，标签会在数据恢复后自动展示。'}
+        />
       )}
     </div>
   </section>

@@ -20,9 +20,15 @@ export async function POST(context) {
     return new Response(null, { status: 204 });
   }
 
+  const db = context.locals.runtime?.env?.DB;
+
+  if (!db) {
+    return new Response(null, { status: 204 });
+  }
+
   try {
     const pageView = await getPageViewInputFromRequest(context.request, path);
-    await recordPageView(context.locals.runtime.env.DB, pageView);
+    await recordPageView(db, pageView);
   } catch (error) {
     console.error('Failed to record page view', error);
   }

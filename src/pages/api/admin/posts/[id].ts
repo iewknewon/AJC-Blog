@@ -1,6 +1,11 @@
 import { validatePostInput } from '../../../../lib/admin/validation';
 import { requireAdminApiAuth } from '../../../../lib/auth/guards';
-import { deleteNovelChapterByPostId, syncNovelChapterByPost } from '../../../../lib/novels/repository';
+import {
+  deleteNovelChapterByPostId,
+  getNovelChapterByPostId,
+  rebuildNovelProjectContinuityNotes,
+  syncNovelChapterByPost,
+} from '../../../../lib/novels/repository';
 import { deletePost, getPostById, updatePost } from '../../../../lib/posts/repository';
 
 export async function POST(context) {
@@ -27,10 +32,16 @@ export async function POST(context) {
 
   const formData = await context.request.formData();
   const db = context.locals.runtime.env.DB;
+  const linkedChapter = await getNovelChapterByPostId(db, id);
 
   if (String(formData.get('intent') ?? '') === 'delete') {
     await deleteNovelChapterByPostId(db, id);
     await deletePost(db, id);
+
+    if (linkedChapter) {
+      await rebuildNovelProjectContinuityNotes(db, linkedChapter.projectId);
+    }
+
     return context.redirect('/admin/posts');
   }
 
@@ -53,6 +64,10 @@ export async function POST(context) {
 
   if (post) {
     await syncNovelChapterByPost(db, post);
+
+    if (linkedChapter) {
+      await rebuildNovelProjectContinuityNotes(db, linkedChapter.projectId);
+    }
   }
 
   return context.redirect(`/admin/posts/${id}`);

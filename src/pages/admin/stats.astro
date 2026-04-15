@@ -18,7 +18,7 @@ if (!authenticated) {
   return Astro.redirect('/admin/login');
 }
 
-const db = Astro.locals.runtime.env.DB;
+const db = Astro.locals.runtime?.env?.DB;
 
 let analyticsUnavailable = false;
 
@@ -35,15 +35,19 @@ let locations: Awaited<ReturnType<typeof getLocationBreakdown>> = [];
 let recentVisits: Awaited<ReturnType<typeof getRecentVisits>> = [];
 
 try {
-  await ensureAnalyticsSchema(db);
+  if (!db) {
+    analyticsUnavailable = true;
+  } else {
+    await ensureAnalyticsSchema(db);
 
-  [summary, topPages, topPosts, locations, recentVisits] = await Promise.all([
-    getAnalyticsSummary(db),
-    getTopPages(db),
-    getTopPosts(db),
-    getLocationBreakdown(db),
-    getRecentVisits(db),
-  ]);
+    [summary, topPages, topPosts, locations, recentVisits] = await Promise.all([
+      getAnalyticsSummary(db),
+      getTopPages(db),
+      getTopPosts(db),
+      getLocationBreakdown(db),
+      getRecentVisits(db),
+    ]);
+  }
 } catch (error) {
   analyticsUnavailable = true;
   console.error('Failed to load analytics dashboard', error);

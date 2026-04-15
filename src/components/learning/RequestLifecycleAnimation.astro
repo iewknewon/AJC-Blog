@@ -1,0 +1,91 @@
+<div class="content-card learning-visual-card" data-learning-visual="request-lifecycle">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">网络请求路径动画</h3>
+    </div>
+    <p class="muted">顺着时间线看一次请求从浏览器到页面可见经历了哪些阶段。</p>
+  </div>
+  <div class="learning-stepper">
+    <button class="learning-step-button is-active" type="button" data-step="dns">DNS</button>
+    <button class="learning-step-button" type="button" data-step="tcp">TCP</button>
+    <button class="learning-step-button" type="button" data-step="tls">TLS</button>
+    <button class="learning-step-button" type="button" data-step="http">HTTP</button>
+    <button class="learning-step-button" type="button" data-step="render">渲染</button>
+  </div>
+  <div class="learning-lifecycle-track">
+    <div class="learning-lifecycle-dot" data-step-indicator></div>
+  </div>
+  <div class="learning-layer-panel">
+    <h4 data-step-title>DNS 解析</h4>
+    <p data-step-description>浏览器先要知道域名对应的 IP 地址，这一步慢了，请求甚至还没真正接触服务器。</p>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="request-lifecycle"]');
+
+    if (!root) {
+      return;
+    }
+
+    const buttons = Array.from(root.querySelectorAll('[data-step]'));
+    const title = root.querySelector('[data-step-title]');
+    const description = root.querySelector('[data-step-description]');
+    const indicator = root.querySelector('[data-step-indicator]');
+
+    const steps = ['dns', 'tcp', 'tls', 'http', 'render'];
+    const stepMap = {
+      dns: {
+        title: 'DNS 解析',
+        description: '浏览器先要知道域名对应的 IP 地址，这一步慢了，请求甚至还没真正接触服务器。',
+      },
+      tcp: {
+        title: 'TCP 建连',
+        description: '拿到 IP 后先建立可靠连接，双方同步状态与序号，才有基础发送业务数据。',
+      },
+      tls: {
+        title: 'TLS 协商',
+        description: 'HTTPS 还要继续协商证书与密钥，确保后面传输的数据具备加密和完整性保护。',
+      },
+      http: {
+        title: '发送 HTTP 请求',
+        description: '真正的请求头和请求体在这一步发出，服务器开始生成响应。',
+      },
+      render: {
+        title: '浏览器渲染',
+        description: '响应回来了还不算结束，浏览器还要解析 HTML、下载资源、执行脚本并完成渲染。',
+      },
+    };
+
+    const applyStep = (key) => {
+      const step = stepMap[key];
+
+      if (!step) {
+        return;
+      }
+
+      const index = steps.indexOf(key);
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.step === key);
+      });
+
+      if (title) {
+        title.textContent = step.title;
+      }
+
+      if (description) {
+        description.textContent = step.description;
+      }
+
+      if (indicator && index >= 0) {
+        indicator.style.transform = `translateX(calc(${index} * 100%))`;
+      }
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyStep(button.dataset.step));
+    });
+  })();
+</script>

@@ -12,8 +12,8 @@ if (!tag) {
   return Astro.redirect('/tags');
 }
 
-const db = Astro.locals.runtime.env.DB;
-const posts = await getPostsByTag(db, tag);
+const db = Astro.locals.runtime?.env?.DB;
+const posts = db ? await getPostsByTag(db, tag) : [];
 ---
 
 <BaseLayout title={`${tag} | 标签 | ${siteConfig.title}`} description={`查看标签 ${tag} 下的全部文章。`} pathname={`/tags/${encodeURIComponent(tag)}/`}>
@@ -39,7 +39,10 @@ const posts = await getPostsByTag(db, tag);
         </div>
       ) : (
         <div style="margin-top: 2rem;">
-          <EmptyState title="这个标签下还没有文章" description="你可以先返回标签总览，看看其他主题。" />
+          <EmptyState
+            title="这个标签下还没有文章"
+            description={db ? '你可以先返回标签总览，看看其他主题。' : '当前环境还没有连上内容数据库，标签内容会在数据恢复后自动展示。'}
+          />
         </div>
       )}
     </div>

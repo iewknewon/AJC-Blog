@@ -1,0 +1,22 @@
+---
+import type { LearningAnimationKind } from '../../data/learning/types';
+import ProtocolStackExplorer from './ProtocolStackExplorer.astro';
+import RequestLifecycleAnimation from './RequestLifecycleAnimation.astro';
+import TcpFlowAnimator from './TcpFlowAnimator.astro';
+import SystemArchitectureMap from './SystemArchitectureMap.astro';
+import InstructionCycleExplorer from './InstructionCycleExplorer.astro';
+import CacheLocalityDemo from './CacheLocalityDemo.astro';
+
+interface Props {
+  kind: LearningAnimationKind;
+}
+
+const { kind } = Astro.props;
+---
+
+{kind === 'protocol-stack' ? <ProtocolStackExplorer /> : null}
+{kind === 'http-lifecycle' ? <RequestLifecycleAnimation /> : null}
+{kind === 'tcp-flow' ? <TcpFlowAnimator /> : null}
+{kind === 'system-architecture' ? <SystemArchitectureMap /> : null}
+{kind === 'instruction-cycle' ? <InstructionCycleExplorer /> : null}
+{kind === 'cache-locality' ? <CacheLocalityDemo /> : null}

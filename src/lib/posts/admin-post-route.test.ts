@@ -25,6 +25,9 @@ function createDbMock(postExists = true) {
     },
     prepare(sql: string) {
       return {
+        async run() {
+          return { success: true };
+        },
         bind(...values: unknown[]) {
           return {
             async first() {

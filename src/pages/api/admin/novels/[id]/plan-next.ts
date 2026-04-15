@@ -104,13 +104,19 @@ export async function POST(context) {
   const sources = await getNovelReferenceSources(db, id);
   const volumeNumber = parsePositiveInteger(payload.volumeNumber, Math.max(1, project.lastVolumeNumber || 1));
   const chapterNumber = parsePositiveInteger(payload.chapterNumber, Math.max(1, project.lastChapterNumber + 1 || 1));
-  const plan = await generateNovelNextChapterPlan(baseUrl, apiKey, model, {
-    project,
-    chapters,
-    sources,
-    volumeNumber,
-    chapterNumber,
-  });
+  let plan;
+
+  try {
+    plan = await generateNovelNextChapterPlan(baseUrl, apiKey, model, {
+      project,
+      chapters,
+      sources,
+      volumeNumber,
+      chapterNumber,
+    });
+  } catch (error) {
+    return json({ message: error instanceof Error ? error.message : '生成下一章任务卡失败。' }, 502);
+  }
 
   return json({
     ...plan,

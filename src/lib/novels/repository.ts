@@ -17,6 +17,7 @@ import type {
   UpsertNovelProjectInput,
 } from './types';
 import { mapPostRow } from '../posts/repository';
+import { buildNovelContinuityNotesFromChapters } from '../ai/novels';
 
 const novelSchemaReady = new WeakSet<D1Database>();
 const novelSchemaPending = new WeakMap<D1Database, Promise<void>>();
@@ -798,17 +799,25 @@ export async function getPublishedNovelChapterRouteByPostSlug(db: D1Database, po
 
 export async function syncNovelChapterByPost(
   db: D1Database,
-  post: Pick<BlogPost, 'id' | 'slug' | 'status'>,
+  post: Pick<BlogPost, 'id' | 'slug' | 'status' | 'title' | 'description'>,
 ) {
   await withNovelSchema(db, () => db.prepare(`
       UPDATE novel_chapters
       SET
+        title = ?,
+        description = ?,
+        summary = ?,
+        continuity_delta = ?,
         post_slug = ?,
         status = ?,
         updated_at = ?
       WHERE post_id = ?
     `)
     .bind(
+      post.title,
+      post.description,
+      post.description,
+      `- 当前章节摘要：${post.description}`,
       post.slug,
       post.status,
       new Date().toISOString(),
@@ -824,4 +833,53 @@ export async function deleteNovelChapterByPostId(db: D1Database, postId: string)
     `)
     .bind(postId)
     .run());
+}
+
+export async function updateNovelChapterMemory(
+  db: D1Database,
+  chapterId: string,
+  input: {
+    title?: string;
+    description?: string;
+    summary: string;
+    continuityDelta: string;
+  },
+) {
+  await withNovelSchema(db, () => db.prepare(`
+      UPDATE novel_chapters
+      SET
+        title = COALESCE(?, title),
+        description = COALESCE(?, description),
+        summary = ?,
+        continuity_delta = ?,
+        updated_at = ?
+      WHERE id = ?
+    `)
+    .bind(
+      normalizeOptionalText(input.title),
+      normalizeOptionalText(input.description),
+      normalizeText(input.summary),
+      normalizeText(input.continuityDelta),
+      new Date().toISOString(),
+      chapterId,
+    )
+    .run());
+
+  return getNovelChapterById(db, chapterId);
+}
+
+export async function rebuildNovelProjectContinuityNotes(db: D1Database, projectId: string) {
+  const project = await getNovelProjectById(db, projectId);
+
+  if (!project) {
+    return null;
+  }
+
+  const chapters = await getNovelChaptersByProjectId(db, projectId);
+  const continuityNotes = buildNovelContinuityNotesFromChapters(chapters);
+
+  return updateNovelProject(db, projectId, {
+    ...toNovelProjectInput(project),
+    continuityNotes,
+  });
 }

@@ -39,6 +39,7 @@ const pageData = serializeInlineJson({
   researchApiUrl: `/api/admin/novels/${project.id}/research`,
   bibleApiUrl: `/api/admin/novels/${project.id}/bible`,
   outlineApiUrl: `/api/admin/novels/${project.id}/outline`,
+  rebuildMemoryApiUrl: `/api/admin/novels/${project.id}/rebuild-memory`,
   planNextApiUrl: `/api/admin/novels/${project.id}/plan-next`,
   generateApiUrl: `/api/admin/novels/${project.id}/generate`,
   sources: sources.map((source) => ({
@@ -96,6 +97,8 @@ const pageData = serializeInlineJson({
           <button id="novel-research-button" class="button" type="button">检索参考作品</button>
           <button id="novel-bible-button" class="button" type="button">生成人物与设定卡</button>
           <button id="novel-outline-button" class="button" type="button">生成分卷骨架</button>
+          <button id="novel-rebuild-memory-button" class="button" type="button">重建全书记忆</button>
+          <button id="novel-rebuild-memory-deep-button" class="button" type="button">深度重建记忆</button>
           <button id="novel-plan-next-button" class="button" type="button">生成下一章任务卡</button>
         </div>
 
@@ -136,6 +139,11 @@ const pageData = serializeInlineJson({
         <input type="hidden" name="endingNote" value="" />
 
         <div id="novel-plan-output" class="ai-preset-summary" hidden></div>
+
+        <label class="admin-checkbox">
+          <input type="checkbox" name="forceFreshResearch" />
+          <span>每次续写前都重新联网检索参考资料</span>
+        </label>
 
         <div class="grid two">
           <label class="admin-field">
@@ -281,6 +289,8 @@ const pageData = serializeInlineJson({
     const researchButton = document.querySelector('#novel-research-button');
     const bibleButton = document.querySelector('#novel-bible-button');
     const outlineButton = document.querySelector('#novel-outline-button');
+    const rebuildMemoryButton = document.querySelector('#novel-rebuild-memory-button');
+    const rebuildMemoryDeepButton = document.querySelector('#novel-rebuild-memory-deep-button');
     const planNextButton = document.querySelector('#novel-plan-next-button');
     const autoGenerateButton = document.querySelector('#generate-novel-chapter-auto');
     const batchGenerateButton = document.querySelector('#generate-novel-chapter-batch');
@@ -639,19 +649,50 @@ const pageData = serializeInlineJson({
       status: String(projectForm?.elements?.namedItem('status')?.value ?? 'planning'),
     });
 
-    const renderResearchOutput = ({ query, sources, message }) => {
+    const renderResearchOutput = ({ query, sources, message, summary: researchSummary, strategyLabel, provider, fallbackReason }) => {
       researchOutput.innerHTML = '';
 
-      const summary = document.createElement('div');
-      summary.className = 'ai-research-summary';
-      summary.textContent = message || '还没有检索结果。';
-      researchOutput.append(summary);
+      const messageNode = document.createElement('div');
+      messageNode.className = 'ai-research-summary';
+      messageNode.textContent = message || '还没有检索结果。';
+      researchOutput.append(messageNode);
 
       if (query) {
         const queryNode = document.createElement('div');
         queryNode.className = 'ai-research-query';
         queryNode.textContent = `检索词：${query}`;
         researchOutput.append(queryNode);
+      }
+
+      if (strategyLabel) {
+        const strategyNode = document.createElement('div');
+        strategyNode.className = 'ai-research-query';
+        strategyNode.textContent = provider ? `检索方式：${strategyLabel} · ${provider}` : `检索方式：${strategyLabel}`;
+        researchOutput.append(strategyNode);
+      }
+
+      if (fallbackReason) {
+        const fallbackNode = document.createElement('div');
+        fallbackNode.className = 'ai-research-query';
+        fallbackNode.textContent = `回退说明：${fallbackReason}`;
+        researchOutput.append(fallbackNode);
+      }
+
+      if (researchSummary) {
+        const summaryCard = document.createElement('article');
+        summaryCard.className = 'ai-research-item';
+
+        const title = document.createElement('h3');
+        title.className = 'ai-research-item-title';
+        title.textContent = '资料总览';
+        summaryCard.append(title);
+
+        const snippet = document.createElement('p');
+        snippet.className = 'ai-research-item-snippet';
+        snippet.textContent = researchSummary;
+        summaryCard.append(snippet);
+
+        researchOutput.append(summaryCard);
       }
 
       if (!Array.isArray(sources) || !sources.length) {
@@ -1135,6 +1176,82 @@ const pageData = serializeInlineJson({
       }
     });
 
+    rebuildMemoryButton?.addEventListener('click', async () => {
+      rebuildMemoryButton.disabled = true;
+      setStatus('正在根据当前章节记录重建连续记忆...');
+
+      try {
+        const response = await fetch(PAGE_DATA.rebuildMemoryApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '重建连续记忆失败。');
+        }
+
+        const continuityField = projectForm?.elements?.namedItem('continuityNotes');
+
+        if (continuityField && 'value' in continuityField) {
+          continuityField.value = data.continuityNotes || '';
+        }
+
+        if (typeof data.chaptersCount === 'number' && projectChaptersCountValue) {
+          projectChaptersCountValue.textContent = String(data.chaptersCount);
+        }
+
+        setStatus(data.message || '连续记忆重建完成。');
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '重建连续记忆失败。', true);
+      } finally {
+        rebuildMemoryButton.disabled = false;
+      }
+    });
+
+    rebuildMemoryDeepButton?.addEventListener('click', async () => {
+      rebuildMemoryDeepButton.disabled = true;
+      setStatus('正在基于章节正文深度重建连续记忆...');
+
+      try {
+        const response = await fetch(PAGE_DATA.rebuildMemoryApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            mode: 'deep',
+            baseUrl: baseUrlInput?.value?.trim() || '',
+            apiKey: apiKeyInput?.value?.trim() || '',
+            model: modelSelect?.value?.trim() || '',
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '深度重建连续记忆失败。');
+        }
+
+        const continuityField = projectForm?.elements?.namedItem('continuityNotes');
+
+        if (continuityField && 'value' in continuityField) {
+          continuityField.value = data.continuityNotes || '';
+        }
+
+        if (typeof data.chaptersCount === 'number' && projectChaptersCountValue) {
+          projectChaptersCountValue.textContent = String(data.chaptersCount);
+        }
+
+        setStatus(data.message || '深度连续记忆重建完成。');
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '深度重建连续记忆失败。', true);
+      } finally {
+        rebuildMemoryDeepButton.disabled = false;
+      }
+    });
+
     planNextButton?.addEventListener('click', async () => {
       planNextButton.disabled = true;
       setStatus('正在生成下一章任务卡...');
@@ -1218,6 +1335,7 @@ const pageData = serializeInlineJson({
             titleDirection: String(formData.get('titleDirection') ?? ''),
             endingStrategy: String(formData.get('endingStrategy') ?? ''),
             endingNote: String(formData.get('endingNote') ?? ''),
+            forceFreshResearch: formData.get('forceFreshResearch') === 'on',
             lengthPreset: String(formData.get('lengthPreset') ?? 'standard'),
             status: String(formData.get('status') ?? 'draft'),
             autoPlan,

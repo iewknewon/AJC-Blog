@@ -28,7 +28,13 @@ export async function POST(context) {
     return context.redirect('/admin/posts/new?error=1');
   }
 
-  const post = await createPost(context.locals.runtime.env.DB, validation.data);
+  const db = context.locals.runtime?.env?.DB;
+
+  if (!db) {
+    return context.redirect('/admin/posts/new?error=1');
+  }
+
+  const post = await createPost(db, validation.data);
 
   if (!post) {
     return context.redirect('/admin/posts/new?error=1');

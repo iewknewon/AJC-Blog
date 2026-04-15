@@ -34,8 +34,14 @@ export async function POST(context) {
     return context.redirect('/admin/novels/new?error=1');
   }
 
+  const db = context.locals.runtime?.env?.DB;
+
+  if (!db) {
+    return context.redirect('/admin/novels/new?error=1');
+  }
+
   try {
-    const project = await createNovelProject(context.locals.runtime.env.DB, validation.data);
+    const project = await createNovelProject(db, validation.data);
 
     if (!project) {
       return context.redirect('/admin/novels/new?error=1');

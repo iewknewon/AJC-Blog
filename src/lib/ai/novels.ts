@@ -634,6 +634,54 @@ export function mergeNovelContinuityNotes(
   return merged.slice(Math.max(0, merged.length - 12_000)).trimStart();
 }
 
+export function buildNovelContinuityNotesFromChapters(
+  chapters: Array<Pick<NovelChapter, 'volumeNumber' | 'chapterNumber' | 'title' | 'summary' | 'description' | 'continuityDelta'>>,
+) {
+  if (!chapters.length) {
+    return '';
+  }
+
+  const ordered = [...chapters]
+    .sort((left, right) => left.volumeNumber - right.volumeNumber || left.chapterNumber - right.chapterNumber);
+
+  const sections = ordered.map((chapter) => {
+    const summary = trimPromptText(chapter.summary || chapter.description || '', 220);
+    const delta = String(chapter.continuityDelta ?? '').trim();
+    const parts = [`第${chapter.volumeNumber} 卷 第${chapter.chapterNumber} 章《${chapter.title}》`];
+
+    if (summary) {
+      parts.push(`- 章节摘要：${summary}`);
+    }
+
+    if (delta) {
+      parts.push(delta);
+    }
+
+    return parts.join('\n').trim();
+  }).filter(Boolean);
+
+  if (!sections.length) {
+    return '';
+  }
+
+  const selected: string[] = [];
+  let totalLength = 0;
+
+  for (let index = sections.length - 1; index >= 0; index -= 1) {
+    const section = sections[index];
+    const separatorLength = selected.length ? '\n\n---\n\n'.length : 0;
+
+    if (selected.length && totalLength + section.length + separatorLength > 12_000) {
+      break;
+    }
+
+    selected.unshift(section);
+    totalLength += section.length + separatorLength;
+  }
+
+  return selected.join('\n\n---\n\n');
+}
+
 export function getNextNovelChapterPosition(chapters: NovelChapter[]) {
   if (!chapters.length) {
     return {

@@ -191,9 +191,15 @@ export async function POST(context) {
     } catch (error) {
       console.error('[admin-novels-quickstart] research failed', error);
     }
-    const pack = sources.length
-      ? await generateNovelReferencePack(baseUrl, apiKey, model, project, sources)
-      : buildFallbackPack(sources);
+    let pack = buildFallbackPack(sources);
+
+    if (sources.length) {
+      try {
+        pack = await generateNovelReferencePack(baseUrl, apiKey, model, project, sources);
+      } catch (error) {
+        console.error('[admin-novels-quickstart] reference pack generation failed', error);
+      }
+    }
 
     project = await updateNovelProject(db, project.id, {
       ...toNovelProjectInput(project),
@@ -202,7 +208,19 @@ export async function POST(context) {
       referenceNotes: pack.referenceNotes || null,
     }) ?? project;
 
-    const bible = await generateNovelStoryBible(baseUrl, apiKey, model, { project });
+    let bible = {
+      writingGoals: project.writingGoals,
+      worldBible: project.worldBible,
+      characterBible: project.characterBible,
+      styleGuide: project.styleGuide,
+    };
+
+    try {
+      bible = await generateNovelStoryBible(baseUrl, apiKey, model, { project });
+    } catch (error) {
+      console.error('[admin-novels-quickstart] story bible generation failed', error);
+    }
+
     project = await updateNovelProject(db, project.id, {
       ...toNovelProjectInput(project),
       writingGoals: bible.writingGoals,
@@ -211,23 +229,44 @@ export async function POST(context) {
       styleGuide: bible.styleGuide,
     }) ?? project;
 
-    const outline = await generateNovelOutline(baseUrl, apiKey, model, {
-      project,
-      targetVolumes: 3,
-      chaptersPerVolume: 8,
-    });
+    let outline = project.outline;
+
+    try {
+      outline = await generateNovelOutline(baseUrl, apiKey, model, {
+        project,
+        targetVolumes: 3,
+        chaptersPerVolume: 8,
+      });
+    } catch (error) {
+      console.error('[admin-novels-quickstart] outline generation failed', error);
+    }
+
     project = await updateNovelProject(db, project.id, {
       ...toNovelProjectInput(project),
       outline,
     }) ?? project;
 
-    const firstChapterPlan = await generateNovelNextChapterPlan(baseUrl, apiKey, model, {
-      project,
-      chapters: [],
-      sources,
-      volumeNumber: 1,
-      chapterNumber: 1,
-    });
+    let firstChapterPlan = {
+      chapterRole: '开篇切入',
+      chapterTitleHint: '第一章',
+      titleDirection: '主角切入型',
+      chapterBrief: '请写出这部小说的第一章，完成主角出场、世界观切入和主线引爆，并让读者愿意继续看下去。',
+      progressionChecklist: '',
+      endingStrategy: '轻悬念',
+      endingNote: '结尾留出主线即将正式展开的动力即可，不必强行夸张断章。',
+    };
+
+    try {
+      firstChapterPlan = await generateNovelNextChapterPlan(baseUrl, apiKey, model, {
+        project,
+        chapters: [],
+        sources,
+        volumeNumber: 1,
+        chapterNumber: 1,
+      });
+    } catch (error) {
+      console.error('[admin-novels-quickstart] first chapter plan generation failed', error);
+    }
 
     const rawChapterText = await generateCompatibleText(baseUrl, apiKey, model, {
       systemPrompt: [
@@ -243,6 +282,10 @@ export async function POST(context) {
         chapterNumber: 1,
         chapterBrief: firstChapterPlan.chapterBrief,
         chapterTitleHint: firstChapterPlan.chapterTitleHint,
+        chapterRole: firstChapterPlan.chapterRole,
+        titleDirection: firstChapterPlan.titleDirection,
+        endingStrategy: firstChapterPlan.endingStrategy,
+        endingNote: firstChapterPlan.endingNote,
         lengthPreset: parseLengthPreset(payload.lengthPreset),
       }),
       temperature: 0.82,

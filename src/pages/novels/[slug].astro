@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import EmptyState from '../../components/EmptyState.astro';
 import { siteConfig } from '../../data/site';
 import {
   getPublishedNovelChapterSummariesByProjectId,
@@ -19,146 +20,154 @@ if (!slug) {
   return Astro.redirect('/novels');
 }
 
-const db = Astro.locals.runtime.env.DB;
-const project = await getPublishedNovelProjectBySlug(db, slug);
+const db = Astro.locals.runtime?.env?.DB;
+const project = db ? await getPublishedNovelProjectBySlug(db, slug) : null;
 
-if (!project) {
+if (db && !project) {
   return Astro.redirect('/novels');
 }
 
-const chapters = await getPublishedNovelChapterSummariesByProjectId(db, project.id);
+const chapters = project ? await getPublishedNovelChapterSummariesByProjectId(db, project.id) : [];
 const volumes = groupNovelChaptersByVolume(chapters);
 const firstChapter = chapters[0];
 const latestChapter = chapters[chapters.length - 1];
 ---
 
 <BaseLayout
-  title={`${project.title} | 小说连载 | ${siteConfig.title}`}
-  description={project.premise}
-  pathname={getNovelUrl(project.slug)}
-  image={project.cover ?? '/favicon.svg'}
+  title={project ? `${project.title} | 小说连载 | ${siteConfig.title}` : `连载详情 | ${siteConfig.title}`}
+  description={project?.premise ?? '当前环境还没有连上内容数据库。'}
+  pathname={slug ? getNovelUrl(slug) : '/novels'}
+  image={project?.cover ?? '/favicon.svg'}
 >
-  <section class="section">
-    <div class="container">
-      <div class="hero novel-detail-hero">
-        <div class="novel-detail-copy">
-          <p class="eyebrow">小说项目</p>
-          <h1>{project.title}</h1>
-          <p>{project.premise}</p>
-          <div class="tags">
-            {project.genre ? <span class="tag">{project.genre}</span> : null}
-            <span class="tag">{project.status === 'completed' ? '已完结' : '持续连载'}</span>
-            <span class="tag">共 {chapters.length} 章</span>
-            <span class="tag">共 {volumes.length} 卷</span>
+  {project ? (
+    <section class="section">
+      <div class="container">
+        <div class="hero novel-detail-hero">
+          <div class="novel-detail-copy">
+            <p class="eyebrow">小说项目</p>
+            <h1>{project.title}</h1>
+            <p>{project.premise}</p>
+            <div class="tags">
+              {project.genre ? <span class="tag">{project.genre}</span> : null}
+              <span class="tag">{project.status === 'completed' ? '已完结' : '持续连载'}</span>
+              <span class="tag">共 {chapters.length} 章</span>
+              <span class="tag">共 {volumes.length} 卷</span>
+            </div>
+            <div class="hero-actions" style="margin-top: 1rem;">
+              {firstChapter ? (
+                <a
+                  class="button button-primary"
+                  href={getNovelChapterUrl(project.slug, firstChapter.volumeNumber, firstChapter.chapterNumber)}
+                >
+                  从第一章开始
+                </a>
+              ) : null}
+              {latestChapter ? (
+                <a
+                  class="button"
+                  href={getNovelChapterUrl(project.slug, latestChapter.volumeNumber, latestChapter.chapterNumber)}
+                >
+                  阅读最新章节
+                </a>
+              ) : null}
+            </div>
           </div>
-          <div class="hero-actions" style="margin-top: 1rem;">
-            {firstChapter ? (
-              <a
-                class="button button-primary"
-                href={getNovelChapterUrl(project.slug, firstChapter.volumeNumber, firstChapter.chapterNumber)}
-              >
-                从第一章开始
-              </a>
+          {project.cover ? (
+            <div class="novel-detail-cover">
+              <img src={project.cover} alt={`${project.title} 封面图`} loading="eager" decoding="async" />
+            </div>
+          ) : null}
+        </div>
+
+        <div class="grid two" style="margin-top: 2rem;">
+          <div class="content-card">
+            <h2>更新状态</h2>
+            <div class="novel-stat-grid">
+              <div class="novel-stat-item">
+                <span class="novel-stat-label">最新更新</span>
+                <strong>{formatDate(project.latestPublishedAt ?? project.updatedAt)}</strong>
+              </div>
+              <div class="novel-stat-item">
+                <span class="novel-stat-label">最近一章</span>
+                <strong>{project.latestChapterTitle ?? '待更新'}</strong>
+              </div>
+              <div class="novel-stat-item">
+                <span class="novel-stat-label">当前进度</span>
+                <strong>{getNovelChapterLabel(project.lastVolumeNumber, project.lastChapterNumber)}</strong>
+              </div>
+              <div class="novel-stat-item">
+                <span class="novel-stat-label">写作目标</span>
+                <strong>{project.writingGoals || '持续更新中'}</strong>
+              </div>
+            </div>
+          </div>
+          <div class="content-card">
+            <h2>作品设定</h2>
+            <p class="muted">{project.premise}</p>
+            {project.referenceTitle ? (
+              <p class="muted">参考作品：{project.referenceTitle}</p>
             ) : null}
+            {project.referenceSummary ? (
+              <p class="muted">{project.referenceSummary}</p>
+            ) : (
+              <p class="muted">当前公开页只展示阅读所需信息，详细设定会继续在后台维护。</p>
+            )}
+          </div>
+        </div>
+
+        <section style="margin-top: 2rem;">
+          <div class="archive-toolbar">
+            <div>
+              <h2 class="section-title" style="margin-bottom: 0.25rem;">章节目录</h2>
+              <p class="muted" style="margin: 0;">按分卷顺序浏览已发布章节。</p>
+            </div>
             {latestChapter ? (
               <a
                 class="button"
                 href={getNovelChapterUrl(project.slug, latestChapter.volumeNumber, latestChapter.chapterNumber)}
               >
-                阅读最新章节
+                继续阅读
               </a>
             ) : null}
           </div>
-        </div>
-        {project.cover ? (
-          <div class="novel-detail-cover">
-            <img src={project.cover} alt={`${project.title} 封面图`} loading="eager" decoding="async" />
-          </div>
-        ) : null}
-      </div>
 
-      <div class="grid two" style="margin-top: 2rem;">
-        <div class="content-card">
-          <h2>更新状态</h2>
-          <div class="novel-stat-grid">
-            <div class="novel-stat-item">
-              <span class="novel-stat-label">最新更新</span>
-              <strong>{formatDate(project.latestPublishedAt ?? project.updatedAt)}</strong>
-            </div>
-            <div class="novel-stat-item">
-              <span class="novel-stat-label">最近一章</span>
-              <strong>{project.latestChapterTitle ?? '待更新'}</strong>
-            </div>
-            <div class="novel-stat-item">
-              <span class="novel-stat-label">当前进度</span>
-              <strong>{getNovelChapterLabel(project.lastVolumeNumber, project.lastChapterNumber)}</strong>
-            </div>
-            <div class="novel-stat-item">
-              <span class="novel-stat-label">写作目标</span>
-              <strong>{project.writingGoals || '持续更新中'}</strong>
-            </div>
-          </div>
-        </div>
-        <div class="content-card">
-          <h2>作品设定</h2>
-          <p class="muted">{project.premise}</p>
-          {project.referenceTitle ? (
-            <p class="muted">参考作品：{project.referenceTitle}</p>
-          ) : null}
-          {project.referenceSummary ? (
-            <p class="muted">{project.referenceSummary}</p>
-          ) : (
-            <p class="muted">当前公开页只展示阅读所需信息，详细设定会继续在后台维护。</p>
-          )}
-        </div>
-      </div>
-
-      <section style="margin-top: 2rem;">
-        <div class="archive-toolbar">
-          <div>
-            <h2 class="section-title" style="margin-bottom: 0.25rem;">章节目录</h2>
-            <p class="muted" style="margin: 0;">按分卷顺序浏览已发布章节。</p>
-          </div>
-          {latestChapter ? (
-            <a
-              class="button"
-              href={getNovelChapterUrl(project.slug, latestChapter.volumeNumber, latestChapter.chapterNumber)}
-            >
-              继续阅读
-            </a>
-          ) : null}
-        </div>
-
-        <div class="novel-volume-stack" style="margin-top: 1.5rem;">
-          {volumes.map((volume) => (
-            <section class="content-card novel-volume-card">
-              <div class="novel-volume-header">
-                <div>
-                  <h3>第 {volume.volumeNumber} 卷</h3>
-                  <p class="muted">共 {volume.chapters.length} 章</p>
+          <div class="novel-volume-stack" style="margin-top: 1.5rem;">
+            {volumes.map((volume) => (
+              <section class="content-card novel-volume-card">
+                <div class="novel-volume-header">
+                  <div>
+                    <h3>第 {volume.volumeNumber} 卷</h3>
+                    <p class="muted">共 {volume.chapters.length} 章</p>
+                  </div>
                 </div>
-              </div>
-              <div class="novel-chapter-list">
-                {volume.chapters.map((chapter) => (
-                  <a
-                    class="novel-chapter-link"
-                    href={getNovelChapterUrl(project.slug, chapter.volumeNumber, chapter.chapterNumber)}
-                  >
-                    <div class="novel-chapter-link-main">
-                      <strong>{getNovelChapterLabel(chapter.volumeNumber, chapter.chapterNumber)}</strong>
-                      <span>{chapter.title}</span>
-                    </div>
-                    <div class="novel-chapter-link-meta">
-                      <span>{formatDate(chapter.publishedAt ?? chapter.updatedAt)}</span>
-                      <span>{chapter.description}</span>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      </section>
-    </div>
-  </section>
+                <div class="novel-chapter-list">
+                  {volume.chapters.map((chapter) => (
+                    <a
+                      class="novel-chapter-link"
+                      href={getNovelChapterUrl(project.slug, chapter.volumeNumber, chapter.chapterNumber)}
+                    >
+                      <div class="novel-chapter-link-main">
+                        <strong>{getNovelChapterLabel(chapter.volumeNumber, chapter.chapterNumber)}</strong>
+                        <span>{chapter.title}</span>
+                      </div>
+                      <div class="novel-chapter-link-meta">
+                        <span>{formatDate(chapter.publishedAt ?? chapter.updatedAt)}</span>
+                        <span>{chapter.description}</span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  ) : (
+    <section class="section">
+      <div class="container">
+        <EmptyState title="连载内容暂时不可用" description="当前环境还没有连上内容数据库，小说目录和章节内容会在数据恢复后自动显示。" />
+      </div>
+    </section>
+  )}
 </BaseLayout>
