@@ -2,20 +2,48 @@
   <div class="learning-visual-header">
     <div>
       <p class="eyebrow">Interactive Visual</p>
-      <h3 class="section-title" style="font-size: 1.35rem;">缓存命中与局部性</h3>
+      <h3 class="section-title" style="font-size: 1.35rem;">缓存命中对比实验</h3>
     </div>
-    <p class="muted">对比“连续访问”和“跳跃访问”，看看缓存命中率为什么差这么多。</p>
+    <p class="muted">不要只看“命中率高/低”，要看到访问模式本身是怎么把结果拉开的。</p>
   </div>
+
   <div class="hero-actions" style="margin-bottom: 1rem;">
     <button class="button button-primary" type="button" data-cache-mode="sequential">连续访问</button>
     <button class="button" type="button" data-cache-mode="scattered">跳跃访问</button>
   </div>
+
+  <div class="learning-cache-layout">
+    <div class="learning-cache-sequence" data-cache-sequence>
+      <span class="learning-cache-cell is-hot">0</span>
+      <span class="learning-cache-cell is-hot">1</span>
+      <span class="learning-cache-cell is-hot">2</span>
+      <span class="learning-cache-cell is-hot">3</span>
+      <span class="learning-cache-cell">4</span>
+      <span class="learning-cache-cell">5</span>
+      <span class="learning-cache-cell">6</span>
+      <span class="learning-cache-cell">7</span>
+    </div>
+
+    <div class="learning-cache-metrics">
+      <div class="learning-cache-metric-card">
+        <span class="learning-cache-metric-label">命中率</span>
+        <strong data-cache-rate>82%</strong>
+      </div>
+      <div class="learning-cache-metric-card">
+        <span class="learning-cache-metric-label">访问特征</span>
+        <strong data-cache-pattern>相邻数据反复被复用</strong>
+      </div>
+    </div>
+  </div>
+
   <div class="learning-cache-bar">
     <div class="learning-cache-fill" data-cache-fill style="width: 82%;"></div>
   </div>
+
   <div class="learning-layer-panel">
     <h4 data-cache-title>连续访问</h4>
     <p data-cache-description>连续访问更符合空间局部性，缓存会更容易把“附近的数据”提前带进来，所以命中率通常更高。</p>
+    <p class="learning-step-hint" data-cache-hint>例如顺着数组从头到尾扫，CPU 常常刚好能用上缓存预先带来的下一批数据。</p>
   </div>
 </div>
 
@@ -31,17 +59,29 @@
     const title = root.querySelector('[data-cache-title]');
     const description = root.querySelector('[data-cache-description]');
     const fill = root.querySelector('[data-cache-fill]');
+    const rate = root.querySelector('[data-cache-rate]');
+    const pattern = root.querySelector('[data-cache-pattern]');
+    const hint = root.querySelector('[data-cache-hint]');
+    const cells = Array.from(root.querySelectorAll('.learning-cache-cell'));
 
     const modeMap = {
       sequential: {
         title: '连续访问',
         description: '连续访问更符合空间局部性，缓存会更容易把“附近的数据”提前带进来，所以命中率通常更高。',
         width: '82%',
+        rate: '82%',
+        pattern: '相邻数据反复被复用',
+        hint: '例如顺着数组从头到尾扫，CPU 常常刚好能用上缓存预先带来的下一批数据。',
+        activeCells: [0, 1, 2, 3],
       },
       scattered: {
         title: '跳跃访问',
         description: '跳跃访问会频繁碰到新的数据块，缓存刚带进来的内容可能还没来得及复用就被替换掉，命中率会明显下降。',
         width: '34%',
+        rate: '34%',
+        pattern: '频繁切换到远处数据块',
+        hint: '例如隔着很远的地址来回跳，CPU 每次都在“重新找新数据”，缓存很难占到便宜。',
+        activeCells: [0, 3, 5, 7],
       },
     };
 
@@ -57,6 +97,10 @@
         button.classList.toggle('button-primary', isActive);
       });
 
+      cells.forEach((cell, index) => {
+        cell.classList.toggle('is-hot', entry.activeCells.includes(index));
+      });
+
       if (title) {
         title.textContent = entry.title;
       }
@@ -67,6 +111,18 @@
 
       if (fill) {
         fill.style.width = entry.width;
+      }
+
+      if (rate) {
+        rate.textContent = entry.rate;
+      }
+
+      if (pattern) {
+        pattern.textContent = entry.pattern;
+      }
+
+      if (hint) {
+        hint.textContent = entry.hint;
       }
     };
 

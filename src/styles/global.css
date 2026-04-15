@@ -2417,6 +2417,124 @@ body::after {
   flex-wrap: wrap;
 }
 
+.learning-stack-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
+  align-items: stretch;
+}
+
+.learning-stack-board,
+.learning-lifecycle-nodes,
+.learning-tcp-insights,
+.learning-cache-metrics {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.learning-architecture-board,
+.learning-cache-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.learning-architecture-board {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+}
+
+.learning-architecture-node,
+.learning-cache-metric-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+  background: color-mix(in srgb, var(--surface) 88%, white 12%);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.learning-architecture-node span,
+.learning-cache-metric-label {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.learning-architecture-node.is-active {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border) 66%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 72%, white 28%), color-mix(in srgb, var(--surface) 84%, white 16%));
+}
+
+.learning-architecture-link {
+  display: none;
+}
+
+.learning-stack-card,
+.learning-lifecycle-node {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+  background: color-mix(in srgb, var(--surface) 88%, white 12%);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.learning-stack-card strong,
+.learning-lifecycle-node {
+  color: var(--text);
+}
+
+.learning-stack-card span {
+  color: var(--text-muted);
+  font-size: 0.94rem;
+}
+
+.learning-stack-card.is-active,
+.learning-lifecycle-node.is-active {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border) 66%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 72%, white 28%), color-mix(in srgb, var(--surface) 84%, white 16%));
+}
+
+.learning-stack-payload {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  padding: 1rem;
+  border-radius: 22px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 26%, var(--border) 74%);
+  background: color-mix(in srgb, var(--surface-muted) 84%, white 16%);
+}
+
+.learning-stack-caption {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.learning-stack-packet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.16), rgba(194, 111, 54, 0.12));
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border) 76%);
+  font-weight: 700;
+}
+
+.learning-stack-tags,
+.learning-tcp-insights {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
 .learning-layer-button,
 .learning-step-button,
 .learning-architecture-chip,
@@ -2477,8 +2595,38 @@ body::after {
   background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent-strong) 58%, var(--accent) 42%));
 }
 
+.learning-lifecycle-board {
+  display: grid;
+  gap: 1rem;
+}
+
 .learning-cache-fill {
   background: linear-gradient(90deg, #0f766e, #14b8a6);
+}
+
+.learning-cache-sequence {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.learning-cache-cell {
+  display: grid;
+  place-items: center;
+  min-height: 3rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+  background: color-mix(in srgb, var(--surface) 88%, white 12%);
+  color: var(--text-muted);
+  font-weight: 700;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.learning-cache-cell.is-hot {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border) 66%);
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(20, 184, 166, 0.14));
+  color: var(--text);
 }
 
 .learning-tcp-board {
@@ -2503,6 +2651,15 @@ body::after {
   padding: 0.85rem 0.95rem;
   text-align: center;
   font-weight: 700;
+}
+
+.learning-tcp-arrow.is-reverse {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(255, 255, 255, 0.4));
+}
+
+.learning-step-hint {
+  margin: 0.85rem 0 0;
+  color: var(--text-muted);
 }
 
 .learning-quiz-option {
@@ -2593,8 +2750,15 @@ body::after {
   .about-grid,
   .project-detail-grid,
   .learning-lesson-layout,
-  .learning-tcp-board {
+  .learning-tcp-board,
+  .learning-stack-layout,
+  .learning-architecture-board,
+  .learning-cache-layout {
     grid-template-columns: 1fr;
+  }
+
+  .learning-cache-sequence {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

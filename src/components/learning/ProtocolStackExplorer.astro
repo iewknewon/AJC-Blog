@@ -4,21 +4,49 @@
       <p class="eyebrow">Interactive Visual</p>
       <h3 class="section-title" style="font-size: 1.35rem;">协议栈分层浏览器</h3>
     </div>
-    <p class="muted">点击不同层，看看它在真实请求里承担什么角色。</p>
+    <p class="muted">点击任意一层，观察“同一份数据”在不同层眼中的样子和职责变化。</p>
   </div>
+
   <div class="learning-layer-grid">
     <button class="learning-layer-button is-active" type="button" data-layer="application">应用层</button>
     <button class="learning-layer-button" type="button" data-layer="transport">传输层</button>
     <button class="learning-layer-button" type="button" data-layer="network">网络层</button>
     <button class="learning-layer-button" type="button" data-layer="link">链路层</button>
   </div>
+
+  <div class="learning-stack-layout">
+    <div class="learning-stack-board">
+      <article class="learning-stack-card is-active" data-layer-card="application">
+        <strong>应用层</strong>
+        <span>表达“我要传什么”</span>
+      </article>
+      <article class="learning-stack-card" data-layer-card="transport">
+        <strong>传输层</strong>
+        <span>处理可靠性与端口</span>
+      </article>
+      <article class="learning-stack-card" data-layer-card="network">
+        <strong>网络层</strong>
+        <span>决定去哪里、怎么走</span>
+      </article>
+      <article class="learning-stack-card" data-layer-card="link">
+        <strong>链路层</strong>
+        <span>完成当前这一跳发送</span>
+      </article>
+    </div>
+
+    <div class="learning-stack-payload">
+      <p class="learning-stack-caption">当前这层看到的数据</p>
+      <div class="learning-stack-packet" data-layer-packet>HTTP 请求报文</div>
+      <div class="learning-stack-tags">
+        <span class="tag" data-layer-tag-one>HTTP</span>
+        <span class="tag" data-layer-tag-two>DNS</span>
+      </div>
+    </div>
+  </div>
+
   <div class="learning-layer-panel">
     <h4 data-layer-title>应用层</h4>
-    <p data-layer-description>直接面向程序语义，例如浏览器发 HTTP、域名解析时用 DNS。它关心“我要表达什么”，不关心底下具体走哪根线。</p>
-    <div class="tags">
-      <span class="tag" data-layer-tag-one>HTTP</span>
-      <span class="tag" data-layer-tag-two>DNS</span>
-    </div>
+    <p data-layer-description>应用层直接面向程序语义，例如浏览器发 HTTP、域名解析时用 DNS。它关心“我要表达什么”，不关心底下具体走哪根线。</p>
   </div>
 </div>
 
@@ -31,31 +59,37 @@
     }
 
     const buttons = Array.from(root.querySelectorAll('[data-layer]'));
+    const cards = Array.from(root.querySelectorAll('[data-layer-card]'));
     const title = root.querySelector('[data-layer-title]');
     const description = root.querySelector('[data-layer-description]');
     const tagOne = root.querySelector('[data-layer-tag-one]');
     const tagTwo = root.querySelector('[data-layer-tag-two]');
+    const packet = root.querySelector('[data-layer-packet]');
 
     const layerMap = {
       application: {
         title: '应用层',
-        description: '直接面向程序语义，例如浏览器发 HTTP、域名解析时用 DNS。它关心“我要表达什么”，不关心底下具体走哪根线。',
+        description: '应用层直接面向程序语义，例如浏览器发 HTTP、域名解析时用 DNS。它关心“我要表达什么”，不关心底下具体走哪根线。',
         tags: ['HTTP', 'DNS'],
+        packet: 'HTTP 请求报文',
       },
       transport: {
         title: '传输层',
-        description: '负责端到端进程通信，决定数据是可靠送达还是尽快送达。TCP、UDP 都在这里工作。',
-        tags: ['TCP', 'UDP'],
+        description: '传输层关心端到端进程通信。TCP 会给这段数据补上端口、序号和确认机制，确保数据可靠、有序地交给对端。',
+        tags: ['TCP', 'Port'],
+        packet: 'TCP 段 Segment',
       },
       network: {
         title: '网络层',
-        description: '负责寻址和路由，让数据知道该去哪个网络、经过哪条路径。IP 是这里的核心代表。',
-        tags: ['IP', 'Router'],
+        description: '网络层负责寻址和路由。它不在意“这是不是网页”，只关心“这份数据要去哪个 IP，下一跳交给谁”。',
+        tags: ['IP', 'Route'],
+        packet: 'IP 包 Packet',
       },
       link: {
         title: '链路层',
-        description: '负责当前这一跳怎么把帧发到对端，比如网卡、交换机、MAC 地址等都与这一层紧密相关。',
+        description: '链路层处理的是当前这一段实际发送。它会把上层的数据包包成帧，通过网卡、交换机等设备在局部网络里传出去。',
         tags: ['MAC', 'Frame'],
+        packet: '以太网帧 Frame',
       },
     };
 
@@ -68,6 +102,10 @@
 
       buttons.forEach((button) => {
         button.classList.toggle('is-active', button.dataset.layer === key);
+      });
+
+      cards.forEach((card) => {
+        card.classList.toggle('is-active', card.dataset.layerCard === key);
       });
 
       if (title) {
@@ -84,6 +122,10 @@
 
       if (tagTwo) {
         tagTwo.textContent = layer.tags[1];
+      }
+
+      if (packet) {
+        packet.textContent = layer.packet;
       }
     };
 

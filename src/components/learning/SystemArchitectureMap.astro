@@ -2,19 +2,32 @@
   <div class="learning-visual-header">
     <div>
       <p class="eyebrow">Interactive Visual</p>
-      <h3 class="section-title" style="font-size: 1.35rem;">整机结构图</h3>
+      <h3 class="section-title" style="font-size: 1.35rem;">整机协作看板</h3>
     </div>
-    <p class="muted">点击部件，看看它在“程序运行”这件事里到底扮演什么角色。</p>
+    <p class="muted">不是孤立认识 CPU、内存和总线，而是沿着“数据怎么流动”去看整台机器。</p>
   </div>
+
   <div class="learning-architecture-grid">
     <button class="learning-architecture-chip is-active" type="button" data-arch="cpu">CPU</button>
     <button class="learning-architecture-chip" type="button" data-arch="memory">主存</button>
     <button class="learning-architecture-chip" type="button" data-arch="bus">总线</button>
     <button class="learning-architecture-chip" type="button" data-arch="io">I/O</button>
   </div>
+
+  <div class="learning-architecture-board">
+    <div class="learning-architecture-node is-active" data-arch-node="cpu">CPU<br /><span>执行指令 / 控制流程</span></div>
+    <div class="learning-architecture-link">⇄</div>
+    <div class="learning-architecture-node" data-arch-node="memory">主存<br /><span>保存程序与数据</span></div>
+    <div class="learning-architecture-link">⇄</div>
+    <div class="learning-architecture-node" data-arch-node="bus">总线<br /><span>搬运地址 / 数据 / 控制信号</span></div>
+    <div class="learning-architecture-link">⇄</div>
+    <div class="learning-architecture-node" data-arch-node="io">I/O<br /><span>连接外部世界</span></div>
+  </div>
+
   <div class="learning-layer-panel">
     <h4 data-arch-title>CPU</h4>
     <p data-arch-description>CPU 像高速工作台，负责执行指令和控制流程，但它离不开内存持续供应数据与指令。</p>
+    <p class="learning-step-hint" data-arch-hint>如果把程序运行想成工厂生产，CPU 更像核心车间，而不是整个工厂本身。</p>
   </div>
 </div>
 
@@ -27,14 +40,32 @@
     }
 
     const buttons = Array.from(root.querySelectorAll('[data-arch]'));
+    const nodes = Array.from(root.querySelectorAll('[data-arch-node]'));
     const title = root.querySelector('[data-arch-title]');
     const description = root.querySelector('[data-arch-description]');
+    const hint = root.querySelector('[data-arch-hint]');
 
     const contentMap = {
-      cpu: ['CPU', 'CPU 像高速工作台，负责执行指令和控制流程，但它离不开内存持续供应数据与指令。'],
-      memory: ['主存', '主存负责保存程序和运行数据，是 CPU 的主要原料仓库。'],
-      bus: ['总线', '总线负责让地址、数据和控制信号在各部件之间流动，没有它整个系统就无法协作。'],
-      io: ['I/O', '输入输出设备负责和外部世界交换信息，比如键盘、磁盘、网卡都属于 I/O 范畴。'],
+      cpu: {
+        title: 'CPU',
+        description: 'CPU 像高速工作台，负责执行指令和控制流程，但它离不开内存持续供应数据与指令。',
+        hint: '如果把程序运行想成工厂生产，CPU 更像核心车间，而不是整个工厂本身。',
+      },
+      memory: {
+        title: '主存',
+        description: '主存负责保存程序和运行数据，是 CPU 的主要原料仓库。没有它，CPU 很快就会“有工位没原料”。',
+        hint: '很多性能问题不是 CPU 算不动，而是数据根本还没送到它手边。',
+      },
+      bus: {
+        title: '总线',
+        description: '总线负责让地址、数据和控制信号在各部件之间流动，没有它，部件之间就像彼此失联的孤岛。',
+        hint: '总线最像整机里的运输系统：谁和谁通信、带什么过去，都要经过它。',
+      },
+      io: {
+        title: 'I/O',
+        description: 'I/O 负责和外部世界交换信息，比如键盘、磁盘、网卡都属于这一类，程序最终一定要通过它接触真实输入输出。',
+        hint: '如果说 CPU 是“想”，I/O 更像“看”和“说”，是整机对外沟通的窗口。',
+      },
     };
 
     const applyState = (key) => {
@@ -48,12 +79,20 @@
         button.classList.toggle('is-active', button.dataset.arch === key);
       });
 
+      nodes.forEach((node) => {
+        node.classList.toggle('is-active', node.dataset.archNode === key);
+      });
+
       if (title) {
-        title.textContent = entry[0];
+        title.textContent = entry.title;
       }
 
       if (description) {
-        description.textContent = entry[1];
+        description.textContent = entry.description;
+      }
+
+      if (hint) {
+        hint.textContent = entry.hint;
       }
     };
 

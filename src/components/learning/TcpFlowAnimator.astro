@@ -2,29 +2,37 @@
   <div class="learning-visual-header">
     <div>
       <p class="eyebrow">Interactive Visual</p>
-      <h3 class="section-title" style="font-size: 1.35rem;">TCP 握手与重传流程</h3>
+      <h3 class="section-title" style="font-size: 1.35rem;">TCP：建立连接与丢包恢复</h3>
     </div>
-    <p class="muted">切换到不同场景，观察 TCP 如何确认状态、检测丢包并恢复。</p>
+    <p class="muted">切换场景，观察 TCP 怎么先同步状态，再在出问题时自我修复。</p>
   </div>
+
   <div class="hero-actions" style="margin-bottom: 1rem;">
     <button class="button button-primary" type="button" data-tcp-mode="handshake">三次握手</button>
     <button class="button" type="button" data-tcp-mode="retransmit">丢包重传</button>
   </div>
+
   <div class="learning-tcp-board">
     <div class="learning-tcp-column">
       <strong>客户端</strong>
-      <div class="learning-tcp-node">发起连接</div>
+      <div class="learning-tcp-node" data-client-state>我想建立连接</div>
     </div>
     <div class="learning-tcp-flow">
       <div class="learning-tcp-arrow" data-tcp-arrow-one>SYN</div>
-      <div class="learning-tcp-arrow" data-tcp-arrow-two>SYN + ACK</div>
+      <div class="learning-tcp-arrow is-reverse" data-tcp-arrow-two>SYN + ACK</div>
       <div class="learning-tcp-arrow" data-tcp-arrow-three>ACK</div>
     </div>
     <div class="learning-tcp-column">
       <strong>服务端</strong>
-      <div class="learning-tcp-node">确认状态</div>
+      <div class="learning-tcp-node" data-server-state>我也准备好了</div>
     </div>
   </div>
+
+  <div class="learning-tcp-insights">
+    <span class="tag" data-tcp-insight-one>同步初始序号</span>
+    <span class="tag" data-tcp-insight-two>确认双方收发能力</span>
+  </div>
+
   <div class="learning-layer-panel">
     <h4 data-tcp-title>三次握手</h4>
     <p data-tcp-description>三次握手的核心不是礼貌，而是确认双方收发能力与初始序号都已同步。</p>
@@ -45,17 +53,27 @@
     const arrowOne = root.querySelector('[data-tcp-arrow-one]');
     const arrowTwo = root.querySelector('[data-tcp-arrow-two]');
     const arrowThree = root.querySelector('[data-tcp-arrow-three]');
+    const clientState = root.querySelector('[data-client-state]');
+    const serverState = root.querySelector('[data-server-state]');
+    const insightOne = root.querySelector('[data-tcp-insight-one]');
+    const insightTwo = root.querySelector('[data-tcp-insight-two]');
 
     const modeMap = {
       handshake: {
         title: '三次握手',
         description: '三次握手的核心不是礼貌，而是确认双方收发能力与初始序号都已同步。',
         arrows: ['SYN', 'SYN + ACK', 'ACK'],
+        clientState: '我想建立连接',
+        serverState: '我也准备好了',
+        insights: ['同步初始序号', '确认双方收发能力'],
       },
       retransmit: {
         title: '丢包重传',
         description: '当确认迟迟不到来时，发送方不会装作没事，而是根据超时或快速重传机制补发数据。',
         arrows: ['DATA', 'ACK 丢失', '重传 DATA'],
+        clientState: '我还没收到确认',
+        serverState: '我收到过，但确认没送达',
+        insights: ['超时触发补发', '可靠性来自持续确认'],
       },
     };
 
@@ -89,6 +107,22 @@
 
       if (arrowThree) {
         arrowThree.textContent = mode.arrows[2];
+      }
+
+      if (clientState) {
+        clientState.textContent = mode.clientState;
+      }
+
+      if (serverState) {
+        serverState.textContent = mode.serverState;
+      }
+
+      if (insightOne) {
+        insightOne.textContent = mode.insights[0];
+      }
+
+      if (insightTwo) {
+        insightTwo.textContent = mode.insights[1];
       }
     };
 

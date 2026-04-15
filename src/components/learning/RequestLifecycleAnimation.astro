@@ -2,10 +2,11 @@
   <div class="learning-visual-header">
     <div>
       <p class="eyebrow">Interactive Visual</p>
-      <h3 class="section-title" style="font-size: 1.35rem;">网络请求路径动画</h3>
+      <h3 class="section-title" style="font-size: 1.35rem;">一次请求的完整路径</h3>
     </div>
-    <p class="muted">顺着时间线看一次请求从浏览器到页面可见经历了哪些阶段。</p>
+    <p class="muted">不是“点一下就拿到页面”，而是一条跨过 DNS、连接、加密、请求、渲染的时间链。</p>
   </div>
+
   <div class="learning-stepper">
     <button class="learning-step-button is-active" type="button" data-step="dns">DNS</button>
     <button class="learning-step-button" type="button" data-step="tcp">TCP</button>
@@ -13,12 +14,24 @@
     <button class="learning-step-button" type="button" data-step="http">HTTP</button>
     <button class="learning-step-button" type="button" data-step="render">渲染</button>
   </div>
-  <div class="learning-lifecycle-track">
-    <div class="learning-lifecycle-dot" data-step-indicator></div>
+
+  <div class="learning-lifecycle-board">
+    <div class="learning-lifecycle-track">
+      <div class="learning-lifecycle-dot" data-step-indicator></div>
+    </div>
+    <div class="learning-lifecycle-nodes">
+      <div class="learning-lifecycle-node is-active" data-step-node="dns">浏览器问“这是谁”</div>
+      <div class="learning-lifecycle-node" data-step-node="tcp">双方确认能连上</div>
+      <div class="learning-lifecycle-node" data-step-node="tls">先把安全通道谈好</div>
+      <div class="learning-lifecycle-node" data-step-node="http">再真正发请求</div>
+      <div class="learning-lifecycle-node" data-step-node="render">浏览器自己把页面拼出来</div>
+    </div>
   </div>
+
   <div class="learning-layer-panel">
     <h4 data-step-title>DNS 解析</h4>
     <p data-step-description>浏览器先要知道域名对应的 IP 地址，这一步慢了，请求甚至还没真正接触服务器。</p>
+    <p class="learning-step-hint" data-step-hint>如果这一段慢，性能面板里通常会表现为“还没开始连接，时间就已经花掉了”。</p>
   </div>
 </div>
 
@@ -31,31 +44,38 @@
     }
 
     const buttons = Array.from(root.querySelectorAll('[data-step]'));
+    const nodes = Array.from(root.querySelectorAll('[data-step-node]'));
     const title = root.querySelector('[data-step-title]');
     const description = root.querySelector('[data-step-description]');
     const indicator = root.querySelector('[data-step-indicator]');
+    const hint = root.querySelector('[data-step-hint]');
 
     const steps = ['dns', 'tcp', 'tls', 'http', 'render'];
     const stepMap = {
       dns: {
         title: 'DNS 解析',
         description: '浏览器先要知道域名对应的 IP 地址，这一步慢了，请求甚至还没真正接触服务器。',
+        hint: '如果这一段慢，性能面板里通常会表现为“还没开始连接，时间就已经花掉了”。',
       },
       tcp: {
         title: 'TCP 建连',
         description: '拿到 IP 后先建立可靠连接，双方同步状态与序号，才有基础发送业务数据。',
+        hint: '这一段属于“先把路搭好”，所以即使还没发 HTTP，请求耗时也可能已经在上涨。',
       },
       tls: {
         title: 'TLS 协商',
         description: 'HTTPS 还要继续协商证书与密钥，确保后面传输的数据具备加密和完整性保护。',
+        hint: '很多人以为 HTTPS 只是“多一个锁图标”，其实这一步本身就是真实的链路成本。',
       },
       http: {
         title: '发送 HTTP 请求',
         description: '真正的请求头和请求体在这一步发出，服务器开始生成响应。',
+        hint: '只有走到这里，服务器才真的开始处理你的业务请求。',
       },
       render: {
         title: '浏览器渲染',
         description: '响应回来了还不算结束，浏览器还要解析 HTML、下载资源、执行脚本并完成渲染。',
+        hint: '这也是为什么“后端很快”不等于“用户马上看到页面”。',
       },
     };
 
@@ -67,8 +87,13 @@
       }
 
       const index = steps.indexOf(key);
+
       buttons.forEach((button) => {
         button.classList.toggle('is-active', button.dataset.step === key);
+      });
+
+      nodes.forEach((node) => {
+        node.classList.toggle('is-active', node.dataset.stepNode === key);
       });
 
       if (title) {
@@ -77,6 +102,10 @@
 
       if (description) {
         description.textContent = step.description;
+      }
+
+      if (hint) {
+        hint.textContent = step.hint;
       }
 
       if (indicator && index >= 0) {
