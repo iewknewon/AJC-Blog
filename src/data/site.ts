@@ -1,3 +1,5 @@
+import { brandCopy } from '../lib/site/brand-copy';
+
 const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://gisgis.eu.cc';
 const contactEmail = import.meta.env.PUBLIC_CONTACT_EMAIL ?? 'hello@gisgis.eu.cc';
 const githubUrl = import.meta.env.PUBLIC_GITHUB_URL ?? 'https://github.com/iewknewon';
@@ -20,6 +22,7 @@ export const siteConfig = {
   keywords: ['AJC 博客', '技术博客', 'Astro', 'Cloudflare Pages', 'Markdown', '项目展示', '学习中心'],
   siteUrl,
   author: 'AJC',
+  brand: brandCopy,
   hero: {
     eyebrow: 'AJC · 技术博客 · 项目实践',
     title: '你好，这里是 AJC。',
