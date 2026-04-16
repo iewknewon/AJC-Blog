@@ -1,21 +1,28 @@
 ---
 import { navigation, siteConfig } from '../data/site';
+
+interface Props {
+  editorial?: boolean;
+}
+
+const { editorial = false } = Astro.props;
 ---
 
-<footer class="site-footer">
+<footer class:list={['site-footer', editorial && 'site-footer-editorial']}>
   <div class="container">
-    <div class="footer-inner">
+    <div class:list={['footer-inner', editorial && 'footer-inner-editorial']}>
       <div class="footer-copy">
-        <a class="brand brand-footer" href="/">
+        {editorial ? <p class="footer-label">Colophon</p> : null}
+        <a class:list={['brand', 'brand-footer', editorial && 'brand-editorial']} href="/">
           <span class="brand-mark">AJC</span>
           <span class="brand-copy">
             <strong>{siteConfig.title}</strong>
-            <span>长期写作与作品沉淀</span>
+            <span>é—€æŒŽæ¹¡éæ¬Žç¶”æ¶“åºç¶”éä½¹çŸ‡å¨£â‚¬</span>
           </span>
         </a>
         <p class="footer-note">{siteConfig.footer}</p>
       </div>
-      <nav class="nav footer-nav">
+      <nav class:list={['nav', 'footer-nav', editorial && 'footer-nav-editorial']}>
         {navigation.map((item) => (
           <a class="nav-link" href={item.href}>{item.label}</a>
         ))}

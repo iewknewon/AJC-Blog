@@ -2,21 +2,27 @@
 import ThemeToggle from './ThemeToggle.astro';
 import { navigation, siteConfig } from '../data/site';
 
+interface Props {
+  editorial?: boolean;
+}
+
+const { editorial = false } = Astro.props;
 const currentPath = Astro.url.pathname;
 ---
 
-<header class="site-header">
-  <div class="container">
-    <div class="header-inner">
-      <a class="brand" href="/">
-        <span class="brand-mark">AJC</span>
-        <span class="brand-copy">
-          <strong>{siteConfig.title}</strong>
-          <span>写作、学习与连载档案</span>
-        </span>
+<header class:list={['site-header', editorial && 'site-header-editorial']}>
+  {editorial ? (
+    <div class="masthead-shell">
+      <div class="masthead-meta">
+        <span>Independent Notes</span>
+        <span>Essays & Learning</span>
+        <span>Dispatches & Archives</span>
+      </div>
+      <a class="masthead-brand" href="/" aria-label={siteConfig.title}>
+        <span class="masthead-title">AJC JOURNAL</span>
       </a>
-      <div class="header-actions">
-        <nav class="nav">
+      <div class="masthead-nav-row">
+        <nav class="nav masthead-nav">
           {navigation.map((item) => {
             const isActive = item.href === '/' ? currentPath === '/' : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
 
@@ -30,5 +36,31 @@ const currentPath = Astro.url.pathname;
         <ThemeToggle />
       </div>
     </div>
-  </div>
+  ) : (
+    <div class="container">
+      <div class="header-inner">
+        <a class="brand" href="/">
+          <span class="brand-mark">AJC</span>
+          <span class="brand-copy">
+            <strong>{siteConfig.title}</strong>
+            <span>éæ¬Žç¶”éŠ†ä½¸î„Ÿæ¶”çŠ±ç¬Œæ©ç‚¶æµ‡å¦—ï½†î”</span>
+          </span>
+        </a>
+        <div class="header-actions">
+          <nav class="nav">
+            {navigation.map((item) => {
+              const isActive = item.href === '/' ? currentPath === '/' : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+
+              return (
+                <a class:list={["nav-link", isActive && 'is-active']} href={item.href}>
+                  {item.label}
+                </a>
+              );
+            })}
+          </nav>
+          <ThemeToggle />
+        </div>
+      </div>
+    </div>
+  )}
 </header>
