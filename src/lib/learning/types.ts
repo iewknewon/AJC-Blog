@@ -82,6 +82,26 @@ export type ManagedLearningLesson = LearningLesson & {
   updatedAt: Date;
 };
 
+export type LearningContinuationPlanItem = {
+  order: number;
+  lessonSlug: string;
+  title: string;
+  description: string;
+  estimatedMinutes: number;
+  objectives: string[];
+  keywords: string[];
+  animation: LearningAnimationKind;
+  heroSummary: string;
+  chatContextSummary: string;
+  quickPrompts: string[];
+};
+
+export type LearningContinuationDraftFailure = {
+  order: number;
+  title: string;
+  reason: string;
+};
+
 export type UpsertLearningTrackInput = {
   slug: string;
   title: string;

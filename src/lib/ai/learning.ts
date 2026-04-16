@@ -503,6 +503,32 @@ function buildLessonOutlinePrompt(prompt: string, blueprint: LearningTrackBluepr
   ].join('\n');
 }
 
+export function buildContinuationOutlinePrompt(input: {
+  direction: string;
+  count: number;
+  blueprint: LearningTrackBlueprint;
+  existingLessons: Array<Pick<LearningLessonOutlineItem, 'order' | 'lessonSlug' | 'title' | 'description'>>;
+}) {
+  return [
+    '你要继续扩写一条已经存在的公开学习专题。',
+    '只能追加新的课时，不要重写、替换或重命名已有课时。',
+    'Append new lessons only. Do not rewrite existing lessons.',
+    `本次只输出 ${input.count} 节新课。`,
+    `animation 只能从这些值里选一个：${ANIMATION_KINDS.join(', ')}`,
+    '所有学习者可见文案请使用简体中文，lessonSlug 保持英文 kebab-case。',
+    '请只返回 JSON，结构为 {"lessons":[...]}。',
+    '',
+    '专题信息：',
+    JSON.stringify(input.blueprint),
+    '',
+    '已有课时：',
+    JSON.stringify(input.existingLessons),
+    '',
+    '续写方向：',
+    input.direction.trim(),
+  ].join('\n');
+}
+
 function buildLessonDraftPrompt(prompt: string, blueprint: LearningTrackBlueprint, lesson: LearningLessonOutlineItem) {
   return [
     '你要为一节技术学习课生成完整正文结构。',
@@ -555,6 +581,24 @@ export async function generateLearningLessonOutline(
   });
 
   return parseLearningLessonOutline(rawText, input);
+}
+
+export async function generateLearningContinuationOutline(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  input: Parameters<typeof buildContinuationOutlinePrompt>[0],
+) {
+  const rawText = await generateCompatibleText(baseUrl, apiKey, model, {
+    temperature: 0.45,
+    systemPrompt: '你是一个学习专题续写助手，擅长在保留既有节奏的前提下继续追加合理的新课时。',
+    userPrompt: buildContinuationOutlinePrompt(input),
+  });
+
+  return parseLearningLessonOutline(rawText, {
+    prompt: input.direction,
+    blueprint: input.blueprint,
+  });
 }
 
 export async function generateLearningLessonDraft(

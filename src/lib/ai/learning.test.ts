@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildContinuationOutlinePrompt,
   parseLearningLessonDraft,
   parseLearningLessonOutline,
   parseLearningTrackBlueprint,
@@ -130,4 +131,30 @@ test('parseLearningLessonDraft falls back when core lesson structure is missing'
 
   assert.ok(draft.sections.length >= 3);
   assert.ok(draft.quiz.length >= 2);
+});
+
+test('buildContinuationOutlinePrompt includes direction, count, existing lessons, and append-only guidance', () => {
+  const blueprint = parseLearningTrackBlueprint(`{
+    "title":"Networking",
+    "description":"desc",
+    "stageSlug":"fundamentals",
+    "learningPath":["Layers","Requests","Transport"],
+    "conceptOverview":{"title":"Overview","summary":"desc","pillars":["Layers"],"safetyNotes":["Learning only"]}
+  }`);
+
+  const prompt = buildContinuationOutlinePrompt({
+    direction: 'Continue with cache validation and CDN cooperation.',
+    count: 2,
+    blueprint,
+    existingLessons: [
+      { order: 1, lessonSlug: 'protocol-stack', title: 'Protocol Stack', description: 'desc' },
+      { order: 2, lessonSlug: 'http-lifecycle', title: 'HTTP Lifecycle', description: 'desc' },
+    ],
+  });
+
+  assert.match(prompt, /Continue with cache validation/);
+  assert.match(prompt, /2/);
+  assert.match(prompt, /protocol-stack/);
+  assert.match(prompt, /http-lifecycle/);
+  assert.match(prompt, /append|追加|do not rewrite|不要重写/i);
 });

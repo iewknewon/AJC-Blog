@@ -1,5 +1,6 @@
 ---
 import AdminLearningForm from '../../../components/admin/AdminLearningForm.astro';
+import AdminLearningContinuationPanel from '../../../components/admin/AdminLearningContinuationPanel.astro';
 import AdminLearningLessonForm from '../../../components/admin/AdminLearningLessonForm.astro';
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { learningStages } from '../../../data/learning/stages';
@@ -94,6 +95,8 @@ const error = Astro.url.searchParams.get('error');
           ) : null}
         </div>
       </article>
+
+      <AdminLearningContinuationPanel track={track} lessons={lessons} />
 
       <article class="content-card">
         <h2 class="section-title">添加新课时</h2>

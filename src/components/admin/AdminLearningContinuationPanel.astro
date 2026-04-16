@@ -1,0 +1,336 @@
+---
+import type { ManagedLearningLesson, ManagedLearningSubject } from '../../lib/learning/types';
+import { serializeInlineJson } from '../../lib/utils/inline-json';
+
+interface Props {
+  track: ManagedLearningSubject;
+  lessons: ManagedLearningLesson[];
+}
+
+const { track, lessons } = Astro.props;
+const pageData = serializeInlineJson({
+  trackId: track.id,
+  endpoints: {
+    plan: `/api/admin/learning/${track.id}/continuation-plan`,
+    drafts: `/api/admin/learning/${track.id}/continuation-drafts`,
+  },
+  lessons: lessons.map((lesson) => ({
+    id: lesson.id,
+    order: lesson.order,
+    title: lesson.title,
+    lessonSlug: lesson.lessonSlug,
+  })),
+});
+---
+
+<article class="content-card" data-learning-continuation-root>
+  <div class="archive-toolbar" style="margin-bottom: 1rem;">
+    <div>
+      <h2 class="section-title">AI 续写课时</h2>
+      <p class="section-description">先生成续写计划，再确认批量生成草稿课时；AI 配置直接复用你浏览器里已经保存的设置。</p>
+    </div>
+    <span class="admin-status-badge is-draft" data-learning-continuation-state>idle</span>
+  </div>
+
+  <label class="admin-field" style="display: grid; gap: 0.45rem;">
+    <span>续写方向</span>
+    <textarea
+      class="search-input admin-input-rect admin-textarea admin-textarea-sm"
+      data-learning-continuation-direction
+      placeholder="例如：继续补上缓存验证、CDN 协作、回源保护与故障隔离这一段学习链路"
+      rows="4"
+    ></textarea>
+  </label>
+
+  <div class="grid two" style="margin-top: 1rem;">
+    <label class="admin-field">
+      <span>生成数量</span>
+      <select class="search-input admin-input-rect" data-learning-continuation-count>
+        <option value="1">1 节</option>
+        <option value="2" selected>2 节</option>
+        <option value="3">3 节</option>
+      </select>
+    </label>
+
+    <label class="admin-field">
+      <span>当前专题</span>
+      <input class="search-input admin-input-rect" type="text" value={track.title} readonly />
+    </label>
+  </div>
+
+  <div class="hero-actions" style="margin-top: 1rem;">
+    <button class="button button-primary" type="button" data-learning-continuation-plan-button>生成续写计划</button>
+    <button class="button" type="button" data-learning-continuation-draft-button disabled>生成草稿课时</button>
+  </div>
+
+  <div class="admin-insight-list" style="margin-top: 1rem;">
+    <div class="admin-insight-row">
+      <div>
+        <p class="admin-insight-title">阶段反馈</p>
+        <p class="admin-insight-meta" data-learning-continuation-status>等待开始。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-card" style="margin-top: 1rem; padding: 1rem; background: var(--surface-muted); box-shadow: none;">
+    <h3 style="margin-bottom: 0.5rem;">日志</h3>
+    <div class="admin-insight-list" data-learning-continuation-logs>
+      <div class="admin-insight-row"><div><p class="admin-insight-meta">还没有开始生成。</p></div></div>
+    </div>
+  </div>
+
+  <div class="content-card" style="margin-top: 1rem; padding: 1rem; background: var(--surface-muted); box-shadow: none;">
+    <h3 style="margin-bottom: 0.5rem;">续写计划</h3>
+    <div class="admin-insight-list" data-learning-continuation-plan-list>
+      <div class="admin-insight-row"><div><p class="admin-insight-meta">生成计划后会在这里列出候选课时。</p></div></div>
+    </div>
+  </div>
+
+  <div class="content-card" style="margin-top: 1rem; padding: 1rem; background: var(--surface-muted); box-shadow: none;">
+    <h3 style="margin-bottom: 0.5rem;">生成结果</h3>
+    <div class="admin-insight-list" data-learning-continuation-result-list>
+      <div class="admin-insight-row"><div><p class="admin-insight-meta">确认生成后，这里会显示成功和失败摘要。</p></div></div>
+    </div>
+  </div>
+
+  <script type="application/json" data-learning-continuation-data set:html={pageData}></script>
+  <script is:inline>
+    const AI_STORAGE_KEYS = {
+      baseUrl: 'ajc.ai.baseUrl',
+      apiKey: 'ajc.ai.apiKey',
+      model: 'ajc.ai.model',
+    };
+
+    const continuationRoot = document.querySelector('[data-learning-continuation-root]');
+    const dataNode = continuationRoot?.querySelector('[data-learning-continuation-data]');
+
+    if (continuationRoot instanceof HTMLElement && dataNode instanceof HTMLScriptElement) {
+      const pageData = JSON.parse(dataNode.textContent || '{}');
+      const directionInput = continuationRoot.querySelector('[data-learning-continuation-direction]');
+      const countSelect = continuationRoot.querySelector('[data-learning-continuation-count]');
+      const planButton = continuationRoot.querySelector('[data-learning-continuation-plan-button]');
+      const draftButton = continuationRoot.querySelector('[data-learning-continuation-draft-button]');
+      const statusNode = continuationRoot.querySelector('[data-learning-continuation-status]');
+      const stateNode = continuationRoot.querySelector('[data-learning-continuation-state]');
+      const logsNode = continuationRoot.querySelector('[data-learning-continuation-logs]');
+      const planListNode = continuationRoot.querySelector('[data-learning-continuation-plan-list]');
+      const resultListNode = continuationRoot.querySelector('[data-learning-continuation-result-list]');
+
+      let currentState = 'idle';
+      let currentPlanItems = [];
+
+      const setState = (nextState, message, isError = false) => {
+        currentState = nextState;
+
+        if (stateNode instanceof HTMLElement) {
+          stateNode.textContent = nextState;
+          stateNode.className = `admin-status-badge ${isError ? 'is-draft' : 'is-published'}`;
+        }
+
+        if (statusNode instanceof HTMLElement) {
+          statusNode.textContent = message;
+          statusNode.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+        }
+
+        if (planButton instanceof HTMLButtonElement) {
+          planButton.disabled = nextState === 'planning' || nextState === 'drafting';
+        }
+
+        if (draftButton instanceof HTMLButtonElement) {
+          draftButton.disabled = nextState !== 'plan-ready';
+        }
+      };
+
+      const appendLog = (message) => {
+        if (!(logsNode instanceof HTMLElement)) {
+          return;
+        }
+
+        if (!logsNode.dataset.initialized) {
+          logsNode.replaceChildren();
+          logsNode.dataset.initialized = '1';
+        }
+
+        logsNode.prepend(createInsightRow([{ className: 'admin-insight-meta', text: message }]));
+      };
+
+      const clearNode = (node) => {
+        if (node instanceof HTMLElement) {
+          node.replaceChildren();
+        }
+      };
+
+      const createText = (tagName, className, text) => {
+        const element = document.createElement(tagName);
+        element.className = className;
+        element.textContent = text;
+        return element;
+      };
+
+      const createInsightRow = (lines) => {
+        const row = document.createElement('div');
+        row.className = 'admin-insight-row';
+
+        const body = document.createElement('div');
+
+        lines.forEach((line) => {
+          body.append(createText('p', line.className, line.text));
+        });
+
+        row.append(body);
+        return row;
+      };
+
+      const readAiConfig = () => ({
+        baseUrl: localStorage.getItem(AI_STORAGE_KEYS.baseUrl) || '',
+        apiKey: localStorage.getItem(AI_STORAGE_KEYS.apiKey) || '',
+        model: localStorage.getItem(AI_STORAGE_KEYS.model) || '',
+      });
+
+      const renderPlans = (plans) => {
+        if (!(planListNode instanceof HTMLElement)) {
+          return;
+        }
+
+        clearNode(planListNode);
+
+        if (!Array.isArray(plans) || plans.length === 0) {
+          planListNode.append(createInsightRow([{ className: 'admin-insight-meta', text: '这次没有生成可用计划。' }]));
+          return;
+        }
+
+        plans.forEach((plan) => {
+          planListNode.append(createInsightRow([
+            { className: 'admin-insight-title', text: `第 ${plan.order} 节 · ${plan.title}` },
+            { className: 'admin-insight-meta', text: plan.description },
+            { className: 'admin-insight-meta', text: `Slug: ${plan.lessonSlug} · ${plan.estimatedMinutes} 分钟` },
+          ]));
+        });
+      };
+
+      const renderResults = (payload) => {
+        if (!(resultListNode instanceof HTMLElement)) {
+          return;
+        }
+
+        const created = Array.isArray(payload?.created) ? payload.created : [];
+        const failed = Array.isArray(payload?.failed) ? payload.failed : [];
+
+        clearNode(resultListNode);
+
+        created.forEach((item) => {
+          resultListNode.append(createInsightRow([
+            { className: 'admin-insight-title', text: `已生成：${item.title}` },
+            { className: 'admin-insight-meta', text: item.adminUrl || '' },
+          ]));
+        });
+
+        failed.forEach((item) => {
+          resultListNode.append(createInsightRow([
+            { className: 'admin-insight-title', text: `失败：${item.title}` },
+            { className: 'admin-insight-meta', text: item.reason || '生成失败' },
+          ]));
+        });
+
+        if (created.length === 0 && failed.length === 0) {
+          resultListNode.append(createInsightRow([{ className: 'admin-insight-meta', text: '还没有生成结果。' }]));
+        }
+      };
+
+      const requestPayload = () => ({
+        direction: directionInput instanceof HTMLTextAreaElement ? directionInput.value.trim() : '',
+        count: countSelect instanceof HTMLSelectElement ? Number(countSelect.value || '2') : 2,
+        ...readAiConfig(),
+      });
+
+      planButton?.addEventListener('click', async () => {
+        const payload = requestPayload();
+
+        if (!payload.direction) {
+          setState('failed', '请先填写续写方向。', true);
+          return;
+        }
+
+        if (!payload.baseUrl || !payload.apiKey || !payload.model) {
+          setState('failed', '本地 AI 配置不完整，请先在 AI 页面或学习创建页保存 Base URL、API Key 和模型。', true);
+          return;
+        }
+
+        setState('planning', '正在生成续写计划...');
+        appendLog('开始请求 continuation-plan。');
+
+        try {
+          const response = await fetch(pageData.endpoints.plan, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || '生成续写计划失败。');
+          }
+
+          currentPlanItems = Array.isArray(data.plans) ? data.plans : [];
+          renderPlans(currentPlanItems);
+          setState('plan-ready', `已生成 ${currentPlanItems.length} 个候选课时。`);
+          appendLog('续写计划生成完成。');
+        } catch (error) {
+          currentPlanItems = [];
+          renderPlans([]);
+          setState('failed', error instanceof Error ? error.message : '生成续写计划失败。', true);
+          appendLog('续写计划生成失败。');
+        }
+      });
+
+      draftButton?.addEventListener('click', async () => {
+        const payload = requestPayload();
+
+        if (currentPlanItems.length === 0) {
+          setState('failed', '请先生成续写计划。', true);
+          return;
+        }
+
+        setState('drafting', '正在生成草稿课时...');
+        appendLog('开始请求 continuation-drafts。');
+
+        try {
+          const response = await fetch(pageData.endpoints.drafts, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...payload,
+              plans: currentPlanItems,
+            }),
+          });
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || '生成草稿课时失败。');
+          }
+
+          renderResults(data);
+
+          if (Array.isArray(data.failed) && data.failed.length > 0) {
+            setState('partial-failed', data.message || '部分草稿生成成功。');
+            appendLog('草稿课时部分成功。');
+            return;
+          }
+
+          setState('completed', data.message || '草稿课时已生成。');
+          appendLog('草稿课时生成完成。');
+        } catch (error) {
+          setState('failed', error instanceof Error ? error.message : '生成草稿课时失败。', true);
+          appendLog('草稿课时生成失败。');
+        }
+      });
+
+      if (!pageData?.lessons?.length) {
+        setState('failed', '当前专题还没有课时，无法续写。', true);
+        if (planButton instanceof HTMLButtonElement) {
+          planButton.disabled = true;
+        }
+      }
+    }
+  </script>
+</article>
