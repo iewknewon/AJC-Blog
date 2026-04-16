@@ -3,7 +3,6 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 import { siteConfig } from '../data/site';
-import { getEditorialRouteKind } from '../lib/editorial/routes';
 import { serializeInlineJson } from '../lib/utils/inline-json';
 import { getCanonicalUrl } from '../utils/posts';
 
@@ -22,8 +21,6 @@ const {
 } = Astro.props;
 const canonical = getCanonicalUrl(pathname, siteConfig.siteUrl);
 const imageUrl = new URL(image, siteConfig.siteUrl).toString();
-const editorialKind = getEditorialRouteKind(pathname);
-const editorial = editorialKind !== 'none';
 ---
 
 <!doctype html>
@@ -49,7 +46,7 @@ const editorial = editorialKind !== 'none';
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@500;700;900&family=Playfair+Display:wght@600;700;800;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@500;700;900&display=swap"
       rel="stylesheet"
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -110,15 +107,11 @@ const editorial = editorialKind !== 'none';
       }
     </script>
   </head>
-  <body class:list={[
-    editorial && 'site-body-editorial',
-    editorialKind === 'home' && 'site-body-editorial-home',
-    editorialKind === 'article' && 'site-body-editorial-article',
-  ]}>
-    <Header editorial={editorial} editorialKind={editorialKind} />
-    <main class:list={['page-shell', editorial && 'page-shell-editorial']}>
+  <body>
+    <Header />
+    <main class="page-shell">
       <slot />
     </main>
-    <Footer editorial={editorial} />
+    <Footer />
   </body>
 </html>

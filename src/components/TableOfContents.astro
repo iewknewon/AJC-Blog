@@ -14,8 +14,8 @@ const items = headings.filter((heading) => heading.depth === 2 || heading.depth 
 ---
 
 {items.length > 0 && (
-  <aside class="content-card toc toc-editorial" aria-label="Table of contents">
-    <p class="toc-label">Contents</p>
+  <aside class="content-card toc">
+    <h3 class="toc-heading">文章目录</h3>
     <ul>
       {items.map((heading) => (
         <li class:list={['toc-item', heading.depth > 2 && 'is-sub']}>

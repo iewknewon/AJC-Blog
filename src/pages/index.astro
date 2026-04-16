@@ -1,9 +1,15 @@
 ---
-import HomepageFrontPage from '../components/editorial/HomepageFrontPage.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { projects } from '../data/projects';
+import HeroSection from '../components/HeroSection.astro';
+import TechStackSection from '../components/TechStackSection.astro';
+import FeaturedProjectsSection from '../components/FeaturedProjectsSection.astro';
+import FeaturedPostsSection from '../components/FeaturedPostsSection.astro';
+import LatestPostsSection from '../components/LatestPostsSection.astro';
+import ContactSection from '../components/ContactSection.astro';
+import EmptyState from '../components/EmptyState.astro';
+import LearningSection from '../components/LearningSection.astro';
 import { siteConfig } from '../data/site';
-import { buildHomepageEdition } from '../lib/editorial/homepage';
+import { projects } from '../data/projects';
 import { getLearningSubjects } from '../lib/learning/content';
 import { getFeaturedPosts, getLatestPosts } from '../utils/posts';
 
@@ -12,15 +18,21 @@ const featuredPosts = db ? await getFeaturedPosts(db) : [];
 const latestPosts = db ? await getLatestPosts(db, 5) : [];
 const featuredProjects = projects.filter((project) => project.featured);
 const learningSubjects = getLearningSubjects();
-
-const edition = buildHomepageEdition({
-  featuredPosts,
-  latestPosts,
-  learningSubjects,
-  featuredProjects,
-});
 ---
 
 <BaseLayout title={siteConfig.title} description={siteConfig.description} pathname="/">
-  <HomepageFrontPage edition={edition} editorNote={siteConfig.description} />
+  <HeroSection />
+  <TechStackSection />
+  <FeaturedProjectsSection projects={featuredProjects} />
+  {!db ? (
+    <section class="section">
+      <div class="container">
+        <EmptyState title="内容数据暂时不可用" description="当前环境还没有连上内容数据库，站点框架仍然可访问，等数据绑定恢复后文章和连载会自动显示。" />
+      </div>
+    </section>
+  ) : null}
+  <LearningSection subjects={learningSubjects} />
+  <FeaturedPostsSection posts={featuredPosts} />
+  <LatestPostsSection posts={latestPosts} />
+  <ContactSection />
 </BaseLayout>
