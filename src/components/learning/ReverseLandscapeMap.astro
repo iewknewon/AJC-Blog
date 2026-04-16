@@ -1,0 +1,194 @@
+---
+const stages = [
+  {
+    key: 'file',
+    title: '程序文件',
+    summary: '先把样本当成“结构化文件”来观察，而不是一上来就盯指令。',
+    detail: '从文件格式、Header、Section、Import 和资源入手，先回答“它大概是什么、依赖什么、入口可能在哪”。',
+    clues: ['PE / Header', 'Section', 'Import / Resource'],
+  },
+  {
+    key: 'static',
+    title: '静态分析',
+    summary: '还没运行也能先建立整体假设。',
+    detail: '字符串、导入函数、函数列表和交叉引用能帮助你先圈出关键区域，再决定哪些点值得调试。',
+    clues: ['Strings', 'Cross Reference', 'Function List'],
+  },
+  {
+    key: 'dynamic',
+    title: '动态调试',
+    summary: '让程序跑起来，确认“此刻到底发生了什么”。',
+    detail: '通过断点、单步、寄存器和调用栈把高速流程拆成可观察的片段，验证静态阶段的猜测。',
+    clues: ['Breakpoint', 'Step', 'Call Stack'],
+  },
+  {
+    key: 'memory',
+    title: '函数与内存',
+    summary: '最终要落到“哪个函数改了什么数据”。',
+    detail: '追踪参数、栈帧、返回值和关键内存块的变化，把现象收束成一条清晰证据链。',
+    clues: ['Parameter', 'Stack Frame', 'Memory Delta'],
+  },
+] as const;
+---
+
+<div class="content-card learning-visual-card reverse-landscape-card" data-learning-visual="reverse-landscape">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">逆向全景图</h3>
+    </div>
+    <p class="muted">按顺序切换四张地图，先建立整体框架，再进入具体样本。</p>
+  </div>
+
+  <div class="learning-stepper">
+    {stages.map((stage, index) => (
+      <button class:list={['learning-step-button', index === 0 && 'is-active']} type="button" data-reverse-stage={stage.key}>
+        {stage.title}
+      </button>
+    ))}
+  </div>
+
+  <div class="reverse-landscape-layout">
+    <div class="reverse-landscape-lane">
+      {stages.map((stage, index) => (
+        <article class:list={['reverse-landscape-node', index === 0 && 'is-active']} data-reverse-node={stage.key}>
+          <strong>{stage.title}</strong>
+          <span>{stage.summary}</span>
+        </article>
+      ))}
+    </div>
+
+    <div class="reverse-landscape-panel">
+      <p class="learning-stack-caption">当前焦点</p>
+      <h4 data-reverse-title>{stages[0].title}</h4>
+      <p data-reverse-detail>{stages[0].detail}</p>
+      <div class="learning-stack-tags">
+        {stages[0].clues.map((clue, index) => (
+          <span class="tag" data-reverse-clue={index}>{clue}</span>
+        ))}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="reverse-landscape"]');
+
+    if (!root) {
+      return;
+    }
+
+    const stageMap = {
+      file: {
+        title: '程序文件',
+        detail: '从文件格式、Header、Section、Import 和资源入手，先回答“它大概是什么、依赖什么、入口可能在哪”。',
+        clues: ['PE / Header', 'Section', 'Import / Resource'],
+      },
+      static: {
+        title: '静态分析',
+        detail: '字符串、导入函数、函数列表和交叉引用能帮助你先圈出关键区域，再决定哪些点值得调试。',
+        clues: ['Strings', 'Cross Reference', 'Function List'],
+      },
+      dynamic: {
+        title: '动态调试',
+        detail: '通过断点、单步、寄存器和调用栈把高速流程拆成可观察的片段，验证静态阶段的猜测。',
+        clues: ['Breakpoint', 'Step', 'Call Stack'],
+      },
+      memory: {
+        title: '函数与内存',
+        detail: '追踪参数、栈帧、返回值和关键内存块的变化，把现象收束成一条清晰证据链。',
+        clues: ['Parameter', 'Stack Frame', 'Memory Delta'],
+      },
+    };
+
+    const buttons = Array.from(root.querySelectorAll('[data-reverse-stage]'));
+    const nodes = Array.from(root.querySelectorAll('[data-reverse-node]'));
+    const title = root.querySelector('[data-reverse-title]');
+    const detail = root.querySelector('[data-reverse-detail]');
+    const clues = Array.from(root.querySelectorAll('[data-reverse-clue]'));
+
+    const applyStage = (key) => {
+      const stage = stageMap[key];
+
+      if (!stage) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.reverseStage === key);
+      });
+
+      nodes.forEach((node) => {
+        node.classList.toggle('is-active', node.dataset.reverseNode === key);
+      });
+
+      if (title) {
+        title.textContent = stage.title;
+      }
+
+      if (detail) {
+        detail.textContent = stage.detail;
+      }
+
+      clues.forEach((clueNode, index) => {
+        clueNode.textContent = stage.clues[index] ?? '';
+      });
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyStage(button.dataset.reverseStage));
+    });
+  })();
+</script>
+
+<style>
+  .reverse-landscape-layout {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  .reverse-landscape-lane {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .reverse-landscape-node,
+  .reverse-landscape-panel {
+    display: grid;
+    gap: 0.45rem;
+    padding: 1rem;
+    border-radius: 20px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+    background: color-mix(in srgb, var(--surface) 90%, white 10%);
+  }
+
+  .reverse-landscape-node span {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
+  .reverse-landscape-node.is-active {
+    border-color: color-mix(in srgb, var(--accent) 34%, var(--border) 66%);
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.11), rgba(15, 23, 42, 0.02));
+    transform: translateY(-2px);
+  }
+
+  .reverse-landscape-panel h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-family: var(--display-font);
+  }
+
+  .reverse-landscape-panel p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .reverse-landscape-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

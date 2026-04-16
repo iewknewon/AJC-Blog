@@ -1,0 +1,199 @@
+---
+const regions = [
+  {
+    key: 'dos',
+    label: 'DOS Header',
+    cue: '先确认它是不是 PE 文件',
+    detail: 'DOS Header 像老式封面和跳转提示，它本身不是分析重点，但能帮你迅速确认格式入口。',
+    focus: ['格式识别', 'e_lfanew', '进入 PE Header'],
+  },
+  {
+    key: 'pe',
+    label: 'PE Header',
+    cue: '看入口点、机器类型和整体装载信息',
+    detail: 'PE Header 会告诉你入口点偏移、目标架构以及后续 Section 布局的基本规则，是系统装载时的重要说明页。',
+    focus: ['Entry Point', 'Machine', 'Image Base'],
+  },
+  {
+    key: 'section',
+    label: 'Section',
+    cue: '把代码、数据和资源分抽屉摆放',
+    detail: 'Section Table 让你知道哪些区域是代码、哪些更像数据或资源。入门时先分清“.text /.rdata /.data”就已经很有帮助。',
+    focus: ['Code vs Data', 'Virtual Size', 'Raw Size'],
+  },
+  {
+    key: 'import',
+    label: 'Import',
+    cue: '它向系统借了哪些能力',
+    detail: 'Import Table 像能力清单。看到文件、网络、注册表、界面相关 API，经常就能迅速猜到程序大概在做什么。',
+    focus: ['Kernel32', 'User32', 'Advapi32'],
+  },
+  {
+    key: 'resource',
+    label: 'Resource',
+    cue: '图标、字符串、对话框也藏在线索里',
+    detail: '资源区常包含图标、菜单、对话框模板或文案，它们有时能比底层指令更快暴露程序用途。',
+    focus: ['Icon', 'Dialog', 'String Table'],
+  },
+] as const;
+---
+
+<div class="content-card learning-visual-card pe-anatomy-card" data-learning-visual="pe-anatomy">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">PE 结构浏览器</h3>
+    </div>
+    <p class="muted">点不同区域，看看它最适合帮你回答哪类问题。</p>
+  </div>
+
+  <div class="pe-anatomy-strip">
+    {regions.map((region, index) => (
+      <button class:list={['pe-anatomy-block', index === 0 && 'is-active']} type="button" data-pe-region={region.key}>
+        <strong>{region.label}</strong>
+        <span>{region.cue}</span>
+      </button>
+    ))}
+  </div>
+
+  <div class="pe-anatomy-panel">
+    <p class="learning-stack-caption">当前区域适合先看什么</p>
+    <h4 data-pe-title>{regions[0].label}</h4>
+    <p data-pe-detail>{regions[0].detail}</p>
+    <div class="learning-stack-tags">
+      {regions[0].focus.map((item, index) => (
+        <span class="tag" data-pe-focus={index}>{item}</span>
+      ))}
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="pe-anatomy"]');
+
+    if (!root) {
+      return;
+    }
+
+    const regionMap = {
+      dos: {
+        title: 'DOS Header',
+        detail: 'DOS Header 像老式封面和跳转提示，它本身不是分析重点，但能帮你迅速确认格式入口。',
+        focus: ['格式识别', 'e_lfanew', '进入 PE Header'],
+      },
+      pe: {
+        title: 'PE Header',
+        detail: 'PE Header 会告诉你入口点偏移、目标架构以及后续 Section 布局的基本规则，是系统装载时的重要说明页。',
+        focus: ['Entry Point', 'Machine', 'Image Base'],
+      },
+      section: {
+        title: 'Section',
+        detail: 'Section Table 让你知道哪些区域是代码、哪些更像数据或资源。入门时先分清“.text /.rdata /.data”就已经很有帮助。',
+        focus: ['Code vs Data', 'Virtual Size', 'Raw Size'],
+      },
+      import: {
+        title: 'Import',
+        detail: 'Import Table 像能力清单。看到文件、网络、注册表、界面相关 API，经常就能迅速猜到程序大概在做什么。',
+        focus: ['Kernel32', 'User32', 'Advapi32'],
+      },
+      resource: {
+        title: 'Resource',
+        detail: '资源区常包含图标、菜单、对话框模板或文案，它们有时能比底层指令更快暴露程序用途。',
+        focus: ['Icon', 'Dialog', 'String Table'],
+      },
+    };
+
+    const buttons = Array.from(root.querySelectorAll('[data-pe-region]'));
+    const title = root.querySelector('[data-pe-title]');
+    const detail = root.querySelector('[data-pe-detail]');
+    const focus = Array.from(root.querySelectorAll('[data-pe-focus]'));
+
+    const applyRegion = (key) => {
+      const region = regionMap[key];
+
+      if (!region) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.peRegion === key);
+      });
+
+      if (title) {
+        title.textContent = region.title;
+      }
+
+      if (detail) {
+        detail.textContent = region.detail;
+      }
+
+      focus.forEach((node, index) => {
+        node.textContent = region.focus[index] ?? '';
+      });
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyRegion(button.dataset.peRegion));
+    });
+  })();
+</script>
+
+<style>
+  .pe-anatomy-strip {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .pe-anatomy-block {
+    display: grid;
+    gap: 0.35rem;
+    padding: 1rem 0.9rem;
+    text-align: left;
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+    background: color-mix(in srgb, var(--surface) 90%, white 10%);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .pe-anatomy-block span {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+  }
+
+  .pe-anatomy-block.is-active {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, #2563eb 38%, var(--border) 62%);
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(15, 23, 42, 0.03));
+  }
+
+  .pe-anatomy-panel {
+    display: grid;
+    gap: 0.7rem;
+    padding: 1rem;
+    border-radius: 20px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+    background: color-mix(in srgb, var(--surface) 90%, white 10%);
+  }
+
+  .pe-anatomy-panel h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-family: var(--display-font);
+  }
+
+  .pe-anatomy-panel p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .pe-anatomy-strip {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

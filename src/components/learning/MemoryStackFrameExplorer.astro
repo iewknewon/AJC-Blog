@@ -1,0 +1,187 @@
+---
+const states = [
+  {
+    key: 'before',
+    title: '调用前',
+    note: '主函数还没把参数压进来，栈顶相对干净。',
+    slots: ['返回地址：main+0x34', '参数 1：尚未写入', '参数 2：尚未写入', '局部变量：未建立'],
+    insight: ['先看谁准备调用', '参数尚未入场'],
+  },
+  {
+    key: 'enter',
+    title: '进入函数',
+    note: '新栈帧建立，参数和返回地址都有了明确位置。',
+    slots: ['返回地址：main+0x34', '参数 1：user*', '参数 2：token*', '局部变量：counter = 0'],
+    insight: ['栈帧搭起来', '参数可被追踪'],
+  },
+  {
+    key: 'mutate',
+    title: '修改局部变量',
+    note: '函数内部逻辑推进时，局部变量和临时值会不断变化。',
+    slots: ['返回地址：main+0x34', '参数 1：user*', '参数 2：token*', '局部变量：counter = 3'],
+    insight: ['内部状态在推进', '局部变量可作证据'],
+  },
+  {
+    key: 'return',
+    title: '返回上层',
+    note: 'ret 之后栈帧回收，重点转到返回值和上层接下来怎么用。',
+    slots: ['EAX：success', 'ESP：回到调用者', '参数区：准备清理', '局部变量：随栈帧销毁'],
+    insight: ['关注返回值', '回到上层流程'],
+  },
+] as const;
+---
+
+<div class="content-card learning-visual-card stack-frame-card" data-learning-visual="memory-stack-frame">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">内存 / 栈帧 / 函数调用图</h3>
+    </div>
+    <p class="muted">按函数生命周期切换，观察参数、局部变量和返回值如何接力。</p>
+  </div>
+
+  <div class="learning-stepper">
+    {states.map((state, index) => (
+      <button class:list={['learning-step-button', index === 0 && 'is-active']} type="button" data-stack-state={state.key}>
+        {state.title}
+      </button>
+    ))}
+  </div>
+
+  <div class="stack-frame-layout">
+    <div class="stack-frame-board">
+      {states[0].slots.map((slot, index) => (
+        <article class="stack-frame-slot" data-stack-slot={index}>{slot}</article>
+      ))}
+    </div>
+    <div class="stack-frame-panel">
+      <p class="learning-stack-caption">这一阶段最该盯住什么</p>
+      <h4 data-stack-title>{states[0].title}</h4>
+      <p data-stack-note>{states[0].note}</p>
+      <div class="learning-stack-tags">
+        {states[0].insight.map((item, index) => (
+          <span class="tag" data-stack-insight={index}>{item}</span>
+        ))}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="memory-stack-frame"]');
+
+    if (!root) {
+      return;
+    }
+
+    const stateMap = {
+      before: {
+        title: '调用前',
+        note: '主函数还没把参数压进来，栈顶相对干净。',
+        slots: ['返回地址：main+0x34', '参数 1：尚未写入', '参数 2：尚未写入', '局部变量：未建立'],
+        insight: ['先看谁准备调用', '参数尚未入场'],
+      },
+      enter: {
+        title: '进入函数',
+        note: '新栈帧建立，参数和返回地址都有了明确位置。',
+        slots: ['返回地址：main+0x34', '参数 1：user*', '参数 2：token*', '局部变量：counter = 0'],
+        insight: ['栈帧搭起来', '参数可被追踪'],
+      },
+      mutate: {
+        title: '修改局部变量',
+        note: '函数内部逻辑推进时，局部变量和临时值会不断变化。',
+        slots: ['返回地址：main+0x34', '参数 1：user*', '参数 2：token*', '局部变量：counter = 3'],
+        insight: ['内部状态在推进', '局部变量可作证据'],
+      },
+      return: {
+        title: '返回上层',
+        note: 'ret 之后栈帧回收，重点转到返回值和上层接下来怎么用。',
+        slots: ['EAX：success', 'ESP：回到调用者', '参数区：准备清理', '局部变量：随栈帧销毁'],
+        insight: ['关注返回值', '回到上层流程'],
+      },
+    };
+
+    const buttons = Array.from(root.querySelectorAll('[data-stack-state]'));
+    const title = root.querySelector('[data-stack-title]');
+    const note = root.querySelector('[data-stack-note]');
+    const slots = Array.from(root.querySelectorAll('[data-stack-slot]'));
+    const insights = Array.from(root.querySelectorAll('[data-stack-insight]'));
+
+    const applyState = (key) => {
+      const state = stateMap[key];
+
+      if (!state) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.stackState === key);
+      });
+
+      if (title) {
+        title.textContent = state.title;
+      }
+
+      if (note) {
+        note.textContent = state.note;
+      }
+
+      slots.forEach((slot, index) => {
+        slot.textContent = state.slots[index] ?? '';
+      });
+
+      insights.forEach((insight, index) => {
+        insight.textContent = state.insight[index] ?? '';
+      });
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyState(button.dataset.stackState));
+    });
+  })();
+</script>
+
+<style>
+  .stack-frame-layout {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.15fr);
+  }
+
+  .stack-frame-board {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .stack-frame-slot,
+  .stack-frame-panel {
+    display: grid;
+    gap: 0.35rem;
+    padding: 1rem;
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+    background: color-mix(in srgb, var(--surface) 90%, white 10%);
+  }
+
+  .stack-frame-slot {
+    font-weight: 700;
+  }
+
+  .stack-frame-panel h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-family: var(--display-font);
+  }
+
+  .stack-frame-panel p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .stack-frame-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

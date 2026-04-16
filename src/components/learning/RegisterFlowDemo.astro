@@ -1,0 +1,193 @@
+---
+const steps = [
+  {
+    key: 'load',
+    title: '加载参数',
+    description: '先把输入值放进寄存器，CPU 才知道“接下来要拿谁比较”。',
+    registers: ['EAX = 12', 'EBX = 20', 'ECX = threshold', 'EIP = cmp'],
+    insight: ['把值搬近一点', '准备进入判断'],
+  },
+  {
+    key: 'compare',
+    title: '执行比较',
+    description: 'cmp 本身不跳，它只是更新标志位，告诉后面的条件跳转该不该走。',
+    registers: ['EAX = 12', 'EBX = 20', 'ZF = 0', 'SF = 1'],
+    insight: ['标志位改变', '逻辑尚未分叉'],
+  },
+  {
+    key: 'branch',
+    title: '条件跳转',
+    description: '真正的“去成功分支还是失败分支”通常发生在 jump 指令这里。',
+    registers: ['EIP = fail_branch', 'EAX = 12', 'ZF = 0', 'CF = 1'],
+    insight: ['路径被决定', '关键逻辑显形'],
+  },
+  {
+    key: 'call',
+    title: '进入函数',
+    description: 'call 像“跳入子流程并记住回来地址”，这时看参数和调用栈都很关键。',
+    registers: ['EIP = validate_user', 'ESP ↓', 'ARG0 = user', 'ARG1 = token'],
+    insight: ['参数进场', '调用栈加深'],
+  },
+] as const;
+---
+
+<div class="content-card learning-visual-card register-flow-card" data-learning-visual="register-flow">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">汇编与寄存器演示器</h3>
+    </div>
+    <p class="muted">按执行顺序切换，看“同一段逻辑”如何把状态一步步推向分支。</p>
+  </div>
+
+  <div class="learning-stepper">
+    {steps.map((step, index) => (
+      <button class:list={['learning-step-button', index === 0 && 'is-active']} type="button" data-register-step={step.key}>
+        {step.title}
+      </button>
+    ))}
+  </div>
+
+  <div class="register-flow-layout">
+    <div class="register-flow-board">
+      {steps[0].registers.map((register, index) => (
+        <article class="register-flow-cell">
+          <span>寄存器 {index + 1}</span>
+          <strong data-register-value={index}>{register}</strong>
+        </article>
+      ))}
+    </div>
+    <div class="register-flow-panel">
+      <p class="learning-stack-caption">当前动作的意义</p>
+      <h4 data-register-title>{steps[0].title}</h4>
+      <p data-register-description>{steps[0].description}</p>
+      <div class="learning-stack-tags">
+        {steps[0].insight.map((item, index) => (
+          <span class="tag" data-register-insight={index}>{item}</span>
+        ))}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="register-flow"]');
+
+    if (!root) {
+      return;
+    }
+
+    const stepMap = {
+      load: {
+        title: '加载参数',
+        description: '先把输入值放进寄存器，CPU 才知道“接下来要拿谁比较”。',
+        registers: ['EAX = 12', 'EBX = 20', 'ECX = threshold', 'EIP = cmp'],
+        insight: ['把值搬近一点', '准备进入判断'],
+      },
+      compare: {
+        title: '执行比较',
+        description: 'cmp 本身不跳，它只是更新标志位，告诉后面的条件跳转该不该走。',
+        registers: ['EAX = 12', 'EBX = 20', 'ZF = 0', 'SF = 1'],
+        insight: ['标志位改变', '逻辑尚未分叉'],
+      },
+      branch: {
+        title: '条件跳转',
+        description: '真正的“去成功分支还是失败分支”通常发生在 jump 指令这里。',
+        registers: ['EIP = fail_branch', 'EAX = 12', 'ZF = 0', 'CF = 1'],
+        insight: ['路径被决定', '关键逻辑显形'],
+      },
+      call: {
+        title: '进入函数',
+        description: 'call 像“跳入子流程并记住回来地址”，这时看参数和调用栈都很关键。',
+        registers: ['EIP = validate_user', 'ESP ↓', 'ARG0 = user', 'ARG1 = token'],
+        insight: ['参数进场', '调用栈加深'],
+      },
+    };
+
+    const buttons = Array.from(root.querySelectorAll('[data-register-step]'));
+    const title = root.querySelector('[data-register-title]');
+    const description = root.querySelector('[data-register-description]');
+    const values = Array.from(root.querySelectorAll('[data-register-value]'));
+    const insights = Array.from(root.querySelectorAll('[data-register-insight]'));
+
+    const applyStep = (key) => {
+      const step = stepMap[key];
+
+      if (!step) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.registerStep === key);
+      });
+
+      if (title) {
+        title.textContent = step.title;
+      }
+
+      if (description) {
+        description.textContent = step.description;
+      }
+
+      values.forEach((value, index) => {
+        value.textContent = step.registers[index] ?? '';
+      });
+
+      insights.forEach((insight, index) => {
+        insight.textContent = step.insight[index] ?? '';
+      });
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyStep(button.dataset.registerStep));
+    });
+  })();
+</script>
+
+<style>
+  .register-flow-layout {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
+  }
+
+  .register-flow-board {
+    display: grid;
+    gap: 0.8rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .register-flow-cell,
+  .register-flow-panel {
+    display: grid;
+    gap: 0.4rem;
+    padding: 1rem;
+    border-radius: 20px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+    background: color-mix(in srgb, var(--surface) 90%, white 10%);
+  }
+
+  .register-flow-cell span {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .register-flow-panel h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-family: var(--display-font);
+  }
+
+  .register-flow-panel p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .register-flow-layout,
+    .register-flow-board {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

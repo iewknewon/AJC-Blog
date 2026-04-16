@@ -1,7 +1,8 @@
 export type LearningSubjectSlug =
   | 'networking'
   | 'computer-organization'
-  | 'ai-agent-engineering';
+  | 'ai-agent-engineering'
+  | 'reverse-engineering';
 
 export type LearningAnimationKind =
   | 'protocol-stack'
@@ -16,7 +17,20 @@ export type LearningAnimationKind =
   | 'workflow-vs-agent'
   | 'memory-context'
   | 'rag-pipeline'
-  | 'guardrails-observability';
+  | 'guardrails-observability'
+  | 'reverse-landscape'
+  | 'pe-anatomy'
+  | 'register-flow'
+  | 'debugger-flow'
+  | 'memory-stack-frame'
+  | 'reverse-case-trace';
+
+export type LearningConceptOverview = {
+  title: string;
+  summary: string;
+  pillars: string[];
+  safetyNotes: string[];
+};
 
 export type LearningLessonSection = {
   title: string;
@@ -62,6 +76,8 @@ export type LearningSubject = {
   eyebrow: string;
   colorToken: string;
   icon: string;
+  pageVariant?: 'default' | 'timeline';
+  conceptOverview?: LearningConceptOverview;
   learningPath: string[];
   lessons: LearningLesson[];
 };

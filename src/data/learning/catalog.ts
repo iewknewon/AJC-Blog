@@ -1,3 +1,4 @@
+import { reverseEngineeringSubject } from './reverse-engineering';
 import type { LearningSubject } from './types';
 
 export const learningCatalog: LearningSubject[] = [
@@ -1069,4 +1070,5 @@ export const learningCatalog: LearningSubject[] = [
       },
     ],
   },
+  reverseEngineeringSubject,
 ];

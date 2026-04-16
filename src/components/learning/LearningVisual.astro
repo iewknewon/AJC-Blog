@@ -13,6 +13,12 @@ import WorkflowAgentComparator from './WorkflowAgentComparator.astro';
 import MemoryContextExplorer from './MemoryContextExplorer.astro';
 import RagPipelineExplorer from './RagPipelineExplorer.astro';
 import GuardrailsObservabilityBoard from './GuardrailsObservabilityBoard.astro';
+import ReverseLandscapeMap from './ReverseLandscapeMap.astro';
+import PeAnatomyExplorer from './PeAnatomyExplorer.astro';
+import RegisterFlowDemo from './RegisterFlowDemo.astro';
+import DebuggerFlowBoard from './DebuggerFlowBoard.astro';
+import MemoryStackFrameExplorer from './MemoryStackFrameExplorer.astro';
+import ReverseCaseTraceBoard from './ReverseCaseTraceBoard.astro';
 
 interface Props {
   kind: LearningAnimationKind;
@@ -34,3 +40,9 @@ const { kind } = Astro.props;
 {kind === 'memory-context' ? <MemoryContextExplorer /> : null}
 {kind === 'rag-pipeline' ? <RagPipelineExplorer /> : null}
 {kind === 'guardrails-observability' ? <GuardrailsObservabilityBoard /> : null}
+{kind === 'reverse-landscape' ? <ReverseLandscapeMap /> : null}
+{kind === 'pe-anatomy' ? <PeAnatomyExplorer /> : null}
+{kind === 'register-flow' ? <RegisterFlowDemo /> : null}
+{kind === 'debugger-flow' ? <DebuggerFlowBoard /> : null}
+{kind === 'memory-stack-frame' ? <MemoryStackFrameExplorer /> : null}
+{kind === 'reverse-case-trace' ? <ReverseCaseTraceBoard /> : null}

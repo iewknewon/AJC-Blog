@@ -1,0 +1,177 @@
+---
+const stages = [
+  {
+    key: 'hint',
+    title: '静态锁定线索',
+    story: '先从字符串和导入表看出这里存在“校验失败”的提示，怀疑某个按钮后面有关键判断。',
+    evidence: ['错误提示字符串', '按钮事件附近函数', '导入表出现对话框 API'],
+  },
+  {
+    key: 'trigger',
+    title: '运行触发动作',
+    story: '点击按钮，让程序走进怀疑路径，同时确认断点是否命中预想函数。',
+    evidence: ['断点命中', '调用栈出现按钮回调', '寄存器携带输入值'],
+  },
+  {
+    key: 'branch',
+    title: '定位关键跳转',
+    story: '在比较和条件跳转附近看到“输入不满足条件时跳去失败提示”，关键逻辑正式显形。',
+    evidence: ['cmp + jne', '失败分支弹窗', '成功分支继续执行'],
+  },
+  {
+    key: 'confirm',
+    title: '证据链收口',
+    story: '回看参数、局部变量和内存变化，确认这段逻辑就是决定成败的核心节点。',
+    evidence: ['参数参与比较', '局部变量记录状态', '返回值影响上层流程'],
+  },
+] as const;
+---
+
+<div class="content-card learning-visual-card case-trace-card" data-learning-visual="reverse-case-trace">
+  <div class="learning-visual-header">
+    <div>
+      <p class="eyebrow">Interactive Visual</p>
+      <h3 class="section-title" style="font-size: 1.35rem;">小案例逻辑追踪图</h3>
+    </div>
+    <p class="muted">把“先猜、再证、最后确认”的闭环拆成四步，练的是方法，不是猜答案。</p>
+  </div>
+
+  <div class="case-trace-grid">
+    {stages.map((stage, index) => (
+      <button class:list={['case-trace-step', index === 0 && 'is-active']} type="button" data-case-stage={stage.key}>
+        <span>{String(index + 1).padStart(2, '0')}</span>
+        <strong>{stage.title}</strong>
+      </button>
+    ))}
+  </div>
+
+  <div class="case-trace-panel">
+    <p class="learning-stack-caption">当前阶段要留下什么证据</p>
+    <h4 data-case-title>{stages[0].title}</h4>
+    <p data-case-story>{stages[0].story}</p>
+    <div class="learning-stack-tags">
+      {stages[0].evidence.map((item, index) => (
+        <span class="tag" data-case-evidence={index}>{item}</span>
+      ))}
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  (() => {
+    const root = document.querySelector('[data-learning-visual="reverse-case-trace"]');
+
+    if (!root) {
+      return;
+    }
+
+    const stageMap = {
+      hint: {
+        title: '静态锁定线索',
+        story: '先从字符串和导入表看出这里存在“校验失败”的提示，怀疑某个按钮后面有关键判断。',
+        evidence: ['错误提示字符串', '按钮事件附近函数', '导入表出现对话框 API'],
+      },
+      trigger: {
+        title: '运行触发动作',
+        story: '点击按钮，让程序走进怀疑路径，同时确认断点是否命中预想函数。',
+        evidence: ['断点命中', '调用栈出现按钮回调', '寄存器携带输入值'],
+      },
+      branch: {
+        title: '定位关键跳转',
+        story: '在比较和条件跳转附近看到“输入不满足条件时跳去失败提示”，关键逻辑正式显形。',
+        evidence: ['cmp + jne', '失败分支弹窗', '成功分支继续执行'],
+      },
+      confirm: {
+        title: '证据链收口',
+        story: '回看参数、局部变量和内存变化，确认这段逻辑就是决定成败的核心节点。',
+        evidence: ['参数参与比较', '局部变量记录状态', '返回值影响上层流程'],
+      },
+    };
+
+    const buttons = Array.from(root.querySelectorAll('[data-case-stage]'));
+    const title = root.querySelector('[data-case-title]');
+    const story = root.querySelector('[data-case-story]');
+    const evidence = Array.from(root.querySelectorAll('[data-case-evidence]'));
+
+    const applyStage = (key) => {
+      const stage = stageMap[key];
+
+      if (!stage) {
+        return;
+      }
+
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.caseStage === key);
+      });
+
+      if (title) {
+        title.textContent = stage.title;
+      }
+
+      if (story) {
+        story.textContent = stage.story;
+      }
+
+      evidence.forEach((node, index) => {
+        node.textContent = stage.evidence[index] ?? '';
+      });
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => applyStage(button.dataset.caseStage));
+    });
+  })();
+</script>
+
+<style>
+  .case-trace-grid {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .case-trace-step,
+  .case-trace-panel {
+    display: grid;
+    gap: 0.35rem;
+    padding: 1rem;
+    text-align: left;
+    border-radius: 20px;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
+    background: color-mix(in srgb, var(--surface) 90%, white 10%);
+    color: var(--text);
+    font: inherit;
+  }
+
+  .case-trace-step {
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .case-trace-step span {
+    color: var(--text-muted);
+  }
+
+  .case-trace-step.is-active {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, #2563eb 38%, var(--border) 62%);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(15, 23, 42, 0.03));
+  }
+
+  .case-trace-panel h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-family: var(--display-font);
+  }
+
+  .case-trace-panel p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .case-trace-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
