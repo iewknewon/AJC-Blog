@@ -18,6 +18,8 @@ if (!resolved) {
 const { subject: currentSubject, lesson: currentLesson } = resolved;
 const adjacent = getAdjacentLearningLessons(currentSubject, currentLesson.lessonSlug);
 const relatedLessons = getRelatedLearningLessons(currentSubject, currentLesson);
+const orderedLessons = [...currentSubject.lessons].sort((left, right) => left.order - right.order);
+const watchPoints = currentLesson.objectives.slice(0, 3);
 const chatEnabled = Boolean(
   String(Astro.locals.runtime?.env?.LEARNING_AI_BASE_URL ?? '').trim()
   && String(Astro.locals.runtime?.env?.LEARNING_AI_API_KEY ?? '').trim()
@@ -57,7 +59,31 @@ const chatEnabled = Boolean(
             </div>
           </div>
 
+          <div class="grid two learning-focus-grid">
+            <div class="content-card learning-focus-card">
+              <h2 class="section-title" style="font-size: 1.2rem;">看动画前，先盯住这几个问题</h2>
+              <div class="learning-objectives-list">
+                {watchPoints.map((item) => (
+                  <p class="learning-objective-item">{item}</p>
+                ))}
+              </div>
+            </div>
+            <div class="content-card learning-focus-card is-highlight">
+              <h2 class="section-title" style="font-size: 1.2rem;">先抓一句最重要的话</h2>
+              <p class="learning-focus-summary">{currentLesson.heroSummary}</p>
+            </div>
+          </div>
+
           <LearningVisual kind={currentLesson.animation} />
+
+          <div class="content-card learning-focus-card">
+            <h2 class="section-title" style="font-size: 1.2rem;">看完动画后，你应该能直接说清</h2>
+            <div class="learning-objectives-list">
+              {currentLesson.objectives.map((objective) => (
+                <p class="learning-objective-item">{objective}</p>
+              ))}
+            </div>
+          </div>
 
           {currentLesson.sections.map((section) => (
             <section class="content-card learning-section-card">
@@ -93,6 +119,21 @@ const chatEnabled = Boolean(
         </article>
 
         <aside class="toc learning-sidebar">
+          <div class="content-card">
+            <h3 class="toc-heading">课程进度</h3>
+            <p class="muted" style="margin: 0.5rem 0 0;">第 {currentLesson.order} / {orderedLessons.length} 课</p>
+            <div class="learning-related-list" style="margin-top: 0.85rem;">
+              {orderedLessons.map((item) => (
+                <a
+                  class:list={['learning-related-link', item.lessonSlug === currentLesson.lessonSlug && 'is-current']}
+                  href={`/learn/${currentSubject.slug}/${item.lessonSlug}`}
+                >
+                  第 {item.order} 课 · {item.title}
+                </a>
+              ))}
+            </div>
+          </div>
+
           <div class="content-card">
             <h3 class="toc-heading">课时导航</h3>
             <div class="learning-sidebar-links">
