@@ -158,6 +158,103 @@ test('collectWebResearch 会优先使用 OpenAI 原生联网检索', async () =>
   assert.equal(research.sources.length, 2);
 });
 
+test('collectWebResearch 会对兼容 baseUrl 尝试 Responses 原生联网', async () => {
+  const fetchCalls: string[] = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = String(input);
+    fetchCalls.push(url);
+
+    if (url === 'https://gateway.example.com/v1/responses') {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      assert.equal(body.model, 'gpt-5.4');
+      assert.equal(body.tools?.[0]?.type, 'web_search');
+
+      return new Response(JSON.stringify({
+        output_text: JSON.stringify({
+          query: '最新 HTTP/3 握手变化',
+          summary: '兼容 Responses API 的供应商也成功执行了原生联网检索。',
+          sources: [
+            {
+              title: 'HTTP/3 deployment notes',
+              url: 'https://example.com/http3-notes',
+              snippet: '概述 HTTP/3 部署与握手差异。',
+            },
+          ],
+        }),
+      }), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      });
+    }
+
+    return new Response('not found', { status: 404 });
+  };
+
+  const research = await collectWebResearch('最新 HTTP/3 握手变化', {
+    mode: 'auto',
+    baseUrl: 'https://gateway.example.com/v1',
+    apiKey: 'test-key',
+    model: 'gpt-5.4',
+    fetchImpl,
+  });
+
+  assert.deepEqual(fetchCalls, ['https://gateway.example.com/v1/responses']);
+  assert.equal(research.strategy, 'native');
+  assert.match(research.provider ?? '', /Responses API/);
+  assert.match(research.summary ?? '', /成功执行了原生联网检索/);
+  assert.equal(research.sources.length, 1);
+});
+
+test('collectWebResearch 会过滤明显不相关的本地搜索结果', async () => {
+  const searchXml = `<?xml version="1.0"?>
+<rss>
+  <channel>
+    <item>
+      <title><![CDATA[TCP 三次握手详解]]></title>
+      <link>https://example.com/tcp-handshake</link>
+      <description><![CDATA[解释 SYN、SYN-ACK 和 ACK 的作用。]]></description>
+    </item>
+    <item>
+      <title><![CDATA[今日厨房灵感]]></title>
+      <link>https://example.com/cooking</link>
+      <description><![CDATA[分享南瓜浓汤和黄油面包的制作方法。]]></description>
+    </item>
+    <item>
+      <title><![CDATA[前端配色趋势]]></title>
+      <link>https://example.com/design</link>
+      <description><![CDATA[总结今年流行的按钮渐变与卡片阴影。]]></description>
+    </item>
+  </channel>
+</rss>`;
+
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = String(input);
+
+    if (url.startsWith('https://www.bing.com/search?format=rss')) {
+      return new Response(searchXml, {
+        headers: {
+          'Content-Type': 'application/rss+xml; charset=utf-8',
+        },
+      });
+    }
+
+    return new Response('not found', { status: 404 });
+  };
+
+  const research = await collectWebResearch('TCP 三次握手', {
+    searchLimit: 3,
+    pageFetchLimit: 0,
+    fetchImpl,
+  });
+
+  assert.equal(research.strategy, 'local');
+  assert.deepEqual(
+    research.sources.map((source) => source.title),
+    ['TCP 三次握手详解'],
+  );
+});
+
 test('collectWebResearch 在原生联网失败后会回退到本地检索', async () => {
   const searchXml = `<?xml version="1.0"?>
 <rss>

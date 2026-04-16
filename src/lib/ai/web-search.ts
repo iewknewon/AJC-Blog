@@ -68,9 +68,38 @@ const PAGE_TIMEOUT_MS = 10_000;
 const NATIVE_SEARCH_TIMEOUT_MS = 30_000;
 const DEFAULT_SEARCH_LIMIT = 5;
 const DEFAULT_PAGE_FETCH_LIMIT = 3;
+const LOCAL_SEARCH_CANDIDATE_MULTIPLIER = 3;
+const LOCAL_SEARCH_PAGE_FETCH_MULTIPLIER = 2;
 const SNIPPET_LIMIT = 240;
 const EXCERPT_LIMIT = 1_200;
 const SUMMARY_LIMIT = 900;
+const GENERIC_QUERY_TERMS = new Set([
+  'the',
+  'and',
+  'for',
+  'with',
+  'from',
+  'into',
+  'what',
+  'when',
+  'where',
+  'why',
+  'how',
+  'latest',
+  'guide',
+  'overview',
+  'about',
+  '关于',
+  '如何',
+  '怎么',
+  '什么',
+  '最新',
+  '教程',
+  '指南',
+  '介绍',
+  '分析',
+  '总结',
+]);
 
 function collapseWhitespace(input: string) {
   return input.replace(/\s+/g, ' ').trim();
@@ -157,6 +186,14 @@ function normalizeBaseUrl(baseUrl: string) {
 
 function buildProviderUrl(baseUrl: string, path: string) {
   return `${normalizeBaseUrl(baseUrl)}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+function getBaseUrlHost(baseUrl: string) {
+  try {
+    return new URL(normalizeBaseUrl(baseUrl)).host;
+  } catch {
+    return '';
+  }
 }
 
 function extractCompletionText(content: ChatCompletionMessage['content']) {
@@ -370,19 +407,19 @@ function detectNativeSearchStrategy(baseUrl: string, model: string): NativeSearc
     return {
       type: 'chat-search-model',
       label: '模型原生联网',
-      provider: 'search model',
+      provider: isOpenAiBaseUrl(baseUrl)
+        ? 'OpenAI search model'
+        : `兼容 search model（${getBaseUrlHost(baseUrl) || 'custom endpoint'}）`,
     };
   }
 
-  if (isOpenAiBaseUrl(baseUrl)) {
-    return {
-      type: 'responses-web-search',
-      label: '模型原生联网',
-      provider: 'OpenAI Responses API',
-    };
-  }
-
-  return null;
+  return {
+    type: 'responses-web-search',
+    label: '模型原生联网',
+    provider: isOpenAiBaseUrl(baseUrl)
+      ? 'OpenAI Responses API'
+      : `兼容 Responses API（${getBaseUrlHost(baseUrl) || 'custom endpoint'}）`,
+  };
 }
 
 async function parseProviderError(response: Response) {
@@ -401,16 +438,116 @@ function buildNativeResearchPrompt(query: string) {
   return [
     '请联网检索下面这个主题，并整理成适合博客写作引用的资料摘要。',
     '必须优先使用联网检索，不要只依赖模型已有记忆。',
+    '如果第一轮搜索结果不够相关，请自行改写关键词继续检索，直到拿到直接相关的公开资料。',
     '请严格只返回 JSON，不要输出 Markdown、代码块或额外解释。',
     '输出格式：',
     '{"query":"原始检索词","summary":"2到4句中文总结","sources":[{"title":"来源标题","url":"来源链接","snippet":"一句中文摘要"}]}',
     '要求：',
     '- sources 保留 3 到 5 条最直接相关的网页来源。',
+    '- 如果没有足够相关的来源，sources 返回空数组，不要勉强凑结果。',
     '- url 必须是网页原始链接，不能留空。',
     '- summary 用中文写，适合后续直接喂给写作模型。',
     '- snippet 用中文浓缩每条来源的核心信息。',
     `检索主题：${query}`,
   ].join('\n');
+}
+
+function normalizeSearchText(input: string) {
+  return collapseWhitespace(htmlToPlainText(input)).toLowerCase();
+}
+
+function extractSearchTerms(query: string) {
+  const normalized = collapseWhitespace(query).toLowerCase();
+  const chunks = normalized.match(/[\p{L}\p{N}]+/gu) ?? [];
+  const terms: string[] = [];
+  const seen = new Set<string>();
+
+  chunks.forEach((chunk) => {
+    const term = chunk.trim();
+
+    if (!term || term.length < 2 || GENERIC_QUERY_TERMS.has(term) || seen.has(term)) {
+      return;
+    }
+
+    seen.add(term);
+    terms.push(term);
+  });
+
+  if (terms.length) {
+    return terms;
+  }
+
+  return normalized ? [normalized] : [];
+}
+
+function scoreSourceRelevance(query: string, source: WebResearchSource) {
+  const phrase = collapseWhitespace(query).toLowerCase();
+  const terms = extractSearchTerms(query);
+  const title = normalizeSearchText(source.title);
+  const snippet = normalizeSearchText(source.snippet);
+  const excerpt = normalizeSearchText(source.excerpt ?? '');
+  const combined = collapseWhitespace([title, snippet, excerpt].filter(Boolean).join(' '));
+
+  let score = 0;
+  let matchedTerms = 0;
+  let titleMatches = 0;
+  let hasStrongMatch = false;
+
+  if (phrase && title.includes(phrase)) {
+    score += 12;
+    hasStrongMatch = true;
+  } else if (phrase && combined.includes(phrase)) {
+    score += 8;
+    hasStrongMatch = true;
+  }
+
+  terms.forEach((term) => {
+    const inTitle = title.includes(term);
+    const inSnippet = snippet.includes(term);
+    const inExcerpt = excerpt.includes(term);
+
+    if (!inTitle && !inSnippet && !inExcerpt) {
+      return;
+    }
+
+    matchedTerms += 1;
+
+    if (inTitle) {
+      titleMatches += 1;
+      score += term.length >= 4 ? 6 : 4;
+
+      if (term.length >= 4) {
+        hasStrongMatch = true;
+      }
+    }
+
+    if (inSnippet) {
+      score += term.length >= 4 ? 3 : 2;
+    }
+
+    if (inExcerpt) {
+      score += term.length >= 4 ? 2 : 1;
+    }
+  });
+
+  const keep = hasStrongMatch || titleMatches > 0 || matchedTerms >= Math.min(2, terms.length || 1);
+
+  return {
+    keep,
+    score,
+  };
+}
+
+function filterRelevantLocalSources(query: string, sources: WebResearchSource[], limit: number) {
+  return sources
+    .map((source) => ({
+      source,
+      ...scoreSourceRelevance(query, source),
+    }))
+    .filter((item) => item.keep && item.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit)
+    .map((item) => item.source);
 }
 
 export function htmlToPlainText(input: string) {
@@ -519,6 +656,7 @@ async function collectLocalWebResearch(
 
   const searchLimit = Math.max(1, options.searchLimit ?? DEFAULT_SEARCH_LIMIT);
   const pageFetchLimit = Math.max(0, options.pageFetchLimit ?? DEFAULT_PAGE_FETCH_LIMIT);
+  const candidateLimit = Math.max(searchLimit, searchLimit * LOCAL_SEARCH_CANDIDATE_MULTIPLIER);
   const fetchImpl = options.fetchImpl ?? fetch;
   const response = await fetchWithTimeout(
     fetchImpl,
@@ -537,7 +675,7 @@ async function collectLocalWebResearch(
   }
 
   const xml = await response.text();
-  const baseSources = parseBingSearchResults(xml).slice(0, searchLimit);
+  const baseSources = parseBingSearchResults(xml).slice(0, candidateLimit);
 
   if (!baseSources.length) {
     return {
@@ -550,9 +688,13 @@ async function collectLocalWebResearch(
     };
   }
 
+  const pageEnrichmentLimit = Math.min(
+    baseSources.length,
+    Math.max(pageFetchLimit, pageFetchLimit * LOCAL_SEARCH_PAGE_FETCH_MULTIPLIER),
+  );
   const enrichedSources = await Promise.all(
     baseSources.map(async (source, index) => {
-      if (index >= pageFetchLimit) {
+      if (index >= pageEnrichmentLimit) {
         return source;
       }
 
@@ -564,10 +706,11 @@ async function collectLocalWebResearch(
       }
     }),
   );
+  const relevantSources = filterRelevantLocalSources(normalizedQuery, enrichedSources, searchLimit);
 
   return {
     query: normalizedQuery,
-    sources: enrichedSources,
+    sources: relevantSources,
     strategy: 'local',
     strategyLabel: options.fallbackReason ? '本地检索（原生联网回退）' : '本地检索',
     requestedMode: options.requestedMode,
@@ -634,7 +777,9 @@ async function collectResponsesApiWebResearch(
     strategy: 'native',
     strategyLabel: '模型原生联网',
     requestedMode: options.requestedMode,
-    provider: 'OpenAI Responses API',
+    provider: isOpenAiBaseUrl(options.baseUrl)
+      ? 'OpenAI Responses API'
+      : `兼容 Responses API（${getBaseUrlHost(options.baseUrl) || 'custom endpoint'}）`,
   };
 }
 
@@ -693,7 +838,9 @@ async function collectChatSearchModelResearch(
     strategy: 'native',
     strategyLabel: '模型原生联网',
     requestedMode: options.requestedMode,
-    provider: 'search model',
+    provider: isOpenAiBaseUrl(options.baseUrl)
+      ? 'OpenAI search model'
+      : `兼容 search model（${getBaseUrlHost(options.baseUrl) || 'custom endpoint'}）`,
   };
 }
 
