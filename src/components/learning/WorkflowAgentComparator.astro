@@ -1,0 +1,162 @@
+<div class="content-card learning-visual-card workflow-agent-card" data-learning-visual="workflow-vs-agent">
+  <div class="learning-visual-header">
+    <span class="tag">对照图</span>
+    <h3>Workflow 和 Agent 的区别，不在“谁更高级”，而在“谁更适合当前任务”</h3>
+    <p>切换场景后看左右对比，会更容易理解固定编排和目标驱动决策的真实分工。</p>
+  </div>
+
+  <div class="workflow-agent-tabs">
+    <button class="workflow-agent-tab is-active" type="button" data-compare-scenario="stable">路径已知</button>
+    <button class="workflow-agent-tab" type="button" data-compare-scenario="uncertain">路径不确定</button>
+    <button class="workflow-agent-tab" type="button" data-compare-scenario="mixed">混合系统</button>
+  </div>
+
+  <div class="workflow-agent-columns">
+    <article class="workflow-agent-column is-workflow">
+      <span class="tag">Workflow</span>
+      <h4 data-workflow-title>固定步骤先写好，系统按剧本执行</h4>
+      <p data-workflow-body>任务路径清晰、分支有限、每一步顺序都能提前确定时，Workflow 往往最稳。它的强项是可靠、可测、可控。</p>
+    </article>
+    <article class="workflow-agent-column is-agent">
+      <span class="tag">Agent</span>
+      <h4 data-agent-compare-title>面对不确定结果时，动态决定下一步动作</h4>
+      <p data-agent-compare-body>当中间结果会改变后续路线时，Agent 才真正有价值。它的强项是目标驱动决策，但代价通常是更难治理。</p>
+    </article>
+  </div>
+
+  <div class="workflow-agent-footer" data-compare-footer>
+    最成熟的系统通常不是二选一，而是用 Workflow 托住大框架，在局部不确定区间引入 Agent。
+  </div>
+</div>
+
+<script>
+  const root = document.querySelector('[data-learning-visual="workflow-vs-agent"]');
+
+  if (root) {
+    const copy = {
+      stable: {
+        workflowTitle: '固定步骤先写好，系统按剧本执行',
+        workflowBody: '任务路径清晰、分支有限、每一步顺序都能提前确定时，Workflow 往往最稳。它的强项是可靠、可测、可控。',
+        agentTitle: '在这种场景下，Agent 往往不是必须品',
+        agentBody: '如果任务本来就很确定，让 Agent 参与太多决策，反而可能引入不必要的抖动和治理成本。',
+        footer: '路径已知时，Workflow 常常是默认优选，因为它更像工程系统而不是自由发挥。',
+      },
+      uncertain: {
+        workflowTitle: '固定编排会开始变得僵硬',
+        workflowBody: '一旦中间结果经常改变路线，硬编码分支会越来越多，流程也会越来越像“在补漏洞”。',
+        agentTitle: 'Agent 适合根据结果重选下一步',
+        agentBody: '如果检索失败、工具返回不完整、计划需要重排，Agent 可以围绕目标重新决定下一步动作。',
+        footer: '路径不确定时，Agent 的决策弹性才真正体现出来。',
+      },
+      mixed: {
+        workflowTitle: '用 Workflow 托住稳定主线',
+        workflowBody: '例如统一做权限校验、上下文组装、结果保存、失败回退，这些都适合由 Workflow 稳定承接。',
+        agentTitle: '把 Agent 放到高不确定区间',
+        agentBody: '例如研究、拆解复杂任务、动态换检索策略，这些部分交给 Agent 决策更划算。',
+        footer: '现实系统里最常见的是混合式：稳定环节走 Workflow，灵活环节交给 Agent。',
+      },
+    };
+
+    const tabs = Array.from(root.querySelectorAll('[data-compare-scenario]'));
+    const workflowTitle = root.querySelector('[data-workflow-title]');
+    const workflowBody = root.querySelector('[data-workflow-body]');
+    const agentTitle = root.querySelector('[data-agent-compare-title]');
+    const agentBody = root.querySelector('[data-agent-compare-body]');
+    const footer = root.querySelector('[data-compare-footer]');
+
+    const render = (key) => {
+      tabs.forEach((tab) => {
+        tab.classList.toggle('is-active', tab.dataset.compareScenario === key);
+      });
+
+      const detail = copy[key];
+      if (!detail || !workflowTitle || !workflowBody || !agentTitle || !agentBody || !footer) {
+        return;
+      }
+
+      workflowTitle.textContent = detail.workflowTitle;
+      workflowBody.textContent = detail.workflowBody;
+      agentTitle.textContent = detail.agentTitle;
+      agentBody.textContent = detail.agentBody;
+      footer.textContent = detail.footer;
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => render(tab.dataset.compareScenario));
+    });
+  }
+</script>
+
+<style>
+  .workflow-agent-card {
+    gap: 1rem;
+  }
+
+  .workflow-agent-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .workflow-agent-tab {
+    border-radius: 999px;
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    background: rgba(248, 250, 255, 0.96);
+    padding: 0.68rem 0.88rem;
+    font: inherit;
+    font-weight: 700;
+    color: #1d4ed8;
+    cursor: pointer;
+  }
+
+  .workflow-agent-tab.is-active {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(14, 165, 233, 0.1));
+    border-color: rgba(37, 99, 235, 0.32);
+  }
+
+  .workflow-agent-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.95rem;
+  }
+
+  .workflow-agent-column {
+    border-radius: 1.15rem;
+    padding: 1rem 1.05rem;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  .workflow-agent-column.is-workflow {
+    background: linear-gradient(180deg, rgba(244, 248, 255, 0.98), rgba(255, 255, 255, 0.98));
+  }
+
+  .workflow-agent-column.is-agent {
+    background: linear-gradient(180deg, rgba(240, 253, 250, 0.98), rgba(255, 255, 255, 0.98));
+  }
+
+  .workflow-agent-column h4 {
+    margin: 0.55rem 0 0.45rem;
+    color: #0f172a;
+  }
+
+  .workflow-agent-column p,
+  .workflow-agent-footer {
+    margin: 0;
+    color: #334155;
+    line-height: 1.7;
+  }
+
+  .workflow-agent-footer {
+    border-radius: 1rem;
+    background: rgba(248, 250, 252, 0.96);
+    padding: 0.95rem 1rem;
+    border: 1px dashed rgba(37, 99, 235, 0.22);
+  }
+
+  @media (max-width: 800px) {
+    .workflow-agent-columns {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

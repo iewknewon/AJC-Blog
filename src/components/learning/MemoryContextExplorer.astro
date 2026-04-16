@@ -1,0 +1,131 @@
+<div class="content-card learning-visual-card memory-context-card" data-learning-visual="memory-context">
+  <div class="learning-visual-header">
+    <span class="tag">状态流转</span>
+    <h3>Context、摘要记忆、长期记忆，不是同一个“记住”</h3>
+    <p>试着把它们想成三层工作台：眼前正在用的、刚整理过的、存档待取回的。</p>
+  </div>
+
+  <div class="memory-context-board">
+    <button class="memory-context-node is-active" type="button" data-memory-layer="context">当前 Context</button>
+    <button class="memory-context-node" type="button" data-memory-layer="summary">摘要记忆</button>
+    <button class="memory-context-node" type="button" data-memory-layer="longterm">长期记忆</button>
+  </div>
+
+  <div class="memory-context-panel">
+    <strong data-memory-title>当前 Context：这轮推理时模型直接“看得到”的工作台</strong>
+    <p data-memory-body>它最贴近当下问题，但容量有限。窗口够大只能缓解眼前能放多少内容，不能自动替你管理长期状态。</p>
+    <div class="memory-context-tags" data-memory-tags>
+      <span class="tag">当前输入</span>
+      <span class="tag">窗口限制</span>
+      <span class="tag">即时可见</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const root = document.querySelector('[data-learning-visual="memory-context"]');
+
+  if (root) {
+    const copy = {
+      context: {
+        title: '当前 Context：这轮推理时模型直接“看得到”的工作台',
+        body: '它最贴近当下问题，但容量有限。窗口够大只能缓解眼前能放多少内容，不能自动替你管理长期状态。',
+        tags: ['当前输入', '窗口限制', '即时可见'],
+      },
+      summary: {
+        title: '摘要记忆：把长过程压缩成更便于继续推进的状态',
+        body: '摘要记忆解决的是“没法把所有历史都带上时，如何留下足够有用的关键信息”。它更像整理过的工作笔记。',
+        tags: ['摘要', '状态压缩', '续写'],
+      },
+      longterm: {
+        title: '长期记忆：需要时再取回，而不是一直摆在眼前',
+        body: '长期记忆更像资料库或档案柜。它不一定一直处于当前上下文里，而是靠检索、召回或匹配机制在需要时回填。',
+        tags: ['资料库', '召回', '外部存储'],
+      },
+    };
+
+    const buttons = Array.from(root.querySelectorAll('[data-memory-layer]'));
+    const title = root.querySelector('[data-memory-title]');
+    const body = root.querySelector('[data-memory-body]');
+    const tags = root.querySelector('[data-memory-tags]');
+
+    const render = (key) => {
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.memoryLayer === key);
+      });
+
+      const detail = copy[key];
+      if (!detail || !title || !body || !tags) {
+        return;
+      }
+
+      title.textContent = detail.title;
+      body.textContent = detail.body;
+      tags.innerHTML = detail.tags.map((tag) => `<span class="tag">${tag}</span>`).join('');
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => render(button.dataset.memoryLayer));
+    });
+  }
+</script>
+
+<style>
+  .memory-context-card {
+    gap: 1rem;
+  }
+
+  .memory-context-board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .memory-context-node {
+    border-radius: 1.15rem;
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    background: linear-gradient(180deg, rgba(248, 250, 255, 0.98), rgba(255, 255, 255, 0.98));
+    padding: 1rem 0.85rem;
+    font: inherit;
+    font-weight: 700;
+    color: #1d4ed8;
+    cursor: pointer;
+  }
+
+  .memory-context-node.is-active {
+    border-color: rgba(14, 165, 233, 0.3);
+    background: linear-gradient(180deg, rgba(224, 242, 254, 0.82), rgba(255, 255, 255, 0.98));
+  }
+
+  .memory-context-panel {
+    border-radius: 1.1rem;
+    padding: 1rem 1.05rem;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    background: rgba(255, 255, 255, 0.98);
+  }
+
+  .memory-context-panel strong {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: #0f172a;
+  }
+
+  .memory-context-panel p {
+    margin: 0;
+    color: #334155;
+    line-height: 1.7;
+  }
+
+  .memory-context-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.95rem;
+  }
+
+  @media (max-width: 760px) {
+    .memory-context-board {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

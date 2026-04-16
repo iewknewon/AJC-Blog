@@ -1,0 +1,168 @@
+<div class="content-card learning-visual-card mcp-flow-card" data-learning-visual="mcp-flow">
+  <div class="learning-visual-header">
+    <span class="tag">连接层</span>
+    <h3>MCP：把模型应用接外部能力的通路标准化</h3>
+    <p>按 Host -> Client -> MCP Server -> Tool / Resource 这条线看，MCP 会变得非常具体。</p>
+  </div>
+
+  <div class="mcp-flow-tabs">
+    <button class="mcp-flow-tab is-active" type="button" data-mcp-step="host">Host</button>
+    <button class="mcp-flow-tab" type="button" data-mcp-step="client">Client</button>
+    <button class="mcp-flow-tab" type="button" data-mcp-step="server">MCP Server</button>
+    <button class="mcp-flow-tab" type="button" data-mcp-step="resource">Resource</button>
+    <button class="mcp-flow-tab" type="button" data-mcp-step="tool">Tool</button>
+  </div>
+
+  <div class="mcp-flow-board">
+    <div class="mcp-flow-node is-active" data-mcp-node="host">Host<br /><span>真正被用户使用的应用外壳</span></div>
+    <div class="mcp-flow-link">→</div>
+    <div class="mcp-flow-node" data-mcp-node="client">Client<br /><span>在应用内发起 MCP 通信</span></div>
+    <div class="mcp-flow-link">→</div>
+    <div class="mcp-flow-node" data-mcp-node="server">MCP Server<br /><span>暴露能力和上下文</span></div>
+    <div class="mcp-flow-link">→</div>
+    <div class="mcp-flow-split">
+      <div class="mcp-flow-node" data-mcp-node="resource">Resource<br /><span>可读取资料</span></div>
+      <div class="mcp-flow-node" data-mcp-node="tool">Tool<br /><span>可执行动作</span></div>
+    </div>
+  </div>
+
+  <div class="learning-layer-panel">
+    <p class="learning-step-hint">当前角色在通路里的职责</p>
+    <strong data-mcp-title>Host：用户真正接触到的是应用，不是协议本身。</strong>
+    <p data-mcp-body>Host 可以是编辑器、终端、桌面应用或网页端。MCP 并不会替代产品外壳，它只是在外壳和外部能力之间提供更统一的连接方式。</p>
+  </div>
+</div>
+
+<script>
+  const root = document.querySelector('[data-learning-visual="mcp-flow"]');
+
+  if (root) {
+    const copy = {
+      host: {
+        title: 'Host：用户真正接触到的是应用，不是协议本身。',
+        body: 'Host 可以是编辑器、终端、桌面应用或网页端。MCP 并不会替代产品外壳，它只是在外壳和外部能力之间提供更统一的连接方式。',
+      },
+      client: {
+        title: 'Client：把应用内部的需求转成 MCP 通信。',
+        body: 'Client 负责在 Host 内与 MCP Server 打交道。没有这一层，应用就得为每一种能力各写一套连接方式。',
+      },
+      server: {
+        title: 'MCP Server：把能力和上下文整理成可被发现、可被调用的形式。',
+        body: '它像一个标准化适配层，让 Host 可以更一致地读取资源、发现工具和进行能力交换。',
+      },
+      resource: {
+        title: 'Resource：更偏“可读材料”，例如文档、知识、配置。',
+        body: '它不一定会触发动作，但能为当前任务补充上下文，是模型或代理理解环境的重要入口。',
+      },
+      tool: {
+        title: 'Tool：更偏“可执行动作”，例如搜索、文件、数据库操作。',
+        body: '它让模型应用不只是看资料，还能真的做事。是否调用、何时调用，仍然取决于上层逻辑。',
+      },
+    };
+
+    const tabs = Array.from(root.querySelectorAll('[data-mcp-step]'));
+    const nodes = Array.from(root.querySelectorAll('[data-mcp-node]'));
+    const title = root.querySelector('[data-mcp-title]');
+    const body = root.querySelector('[data-mcp-body]');
+
+    const render = (key) => {
+      tabs.forEach((tab) => {
+        tab.classList.toggle('is-active', tab.dataset.mcpStep === key);
+      });
+
+      nodes.forEach((node) => {
+        node.classList.toggle('is-active', node.dataset.mcpNode === key);
+      });
+
+      const detail = copy[key];
+      if (detail && title && body) {
+        title.textContent = detail.title;
+        body.textContent = detail.body;
+      }
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => render(tab.dataset.mcpStep));
+    });
+  }
+</script>
+
+<style>
+  .mcp-flow-card {
+    gap: 1rem;
+  }
+
+  .mcp-flow-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .mcp-flow-tab {
+    border: 1px solid rgba(59, 130, 246, 0.16);
+    border-radius: 999px;
+    background: rgba(245, 249, 255, 0.95);
+    padding: 0.68rem 0.84rem;
+    font: inherit;
+    font-weight: 700;
+    color: #1d4ed8;
+    cursor: pointer;
+  }
+
+  .mcp-flow-tab.is-active {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(8, 145, 178, 0.12));
+    border-color: rgba(37, 99, 235, 0.3);
+  }
+
+  .mcp-flow-board {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr auto 1.15fr;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .mcp-flow-node {
+    border-radius: 1rem;
+    padding: 0.9rem 0.8rem;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    text-align: center;
+    color: #0f172a;
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .mcp-flow-node span {
+    display: block;
+    margin-top: 0.32rem;
+    color: #475569;
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .mcp-flow-node.is-active {
+    border-color: rgba(37, 99, 235, 0.28);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  }
+
+  .mcp-flow-link {
+    color: #2563eb;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .mcp-flow-split {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  @media (max-width: 860px) {
+    .mcp-flow-board {
+      grid-template-columns: 1fr;
+    }
+
+    .mcp-flow-link {
+      transform: rotate(90deg);
+    }
+  }
+</style>

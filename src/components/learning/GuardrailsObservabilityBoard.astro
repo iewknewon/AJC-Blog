@@ -1,0 +1,81 @@
+<div class="content-card learning-visual-card guardrails-board-card" data-learning-visual="guardrails-observability">
+  <div class="learning-visual-header">
+    <span class="tag">治理层</span>
+    <h3>让 AI 系统可上线，不只靠“答得好”，还靠“能管得住”</h3>
+    <p>看生成前、执行中、输出后这三道防线，再配一层可观测性，你会更理解 Guardrails 和 Evals 的价值。</p>
+  </div>
+
+  <div class="guardrails-grid">
+    <article class="guardrails-stage">
+      <span class="tag">Before</span>
+      <strong>生成前</strong>
+      <p>任务约束、权限校验、参数边界、输入清洗。</p>
+    </article>
+    <article class="guardrails-stage">
+      <span class="tag">During</span>
+      <strong>执行中</strong>
+      <p>工具白名单、危险动作确认、速率限制、异常中止。</p>
+    </article>
+    <article class="guardrails-stage">
+      <span class="tag">After</span>
+      <strong>输出后</strong>
+      <p>格式校验、事实抽查、结果评分、回退与人工接管。</p>
+    </article>
+  </div>
+
+  <div class="guardrails-observability-shell">
+    <strong>Observability / Evals</strong>
+    <p>把“用了什么资料、调用了哪些工具、耗时多少、在哪一步失败”记录下来，系统才真正可诊断、可优化、可比较。</p>
+  </div>
+</div>
+
+<style>
+  .guardrails-board-card {
+    gap: 1rem;
+  }
+
+  .guardrails-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+
+  .guardrails-stage {
+    border-radius: 1.1rem;
+    padding: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(255, 255, 255, 0.96);
+  }
+
+  .guardrails-stage strong {
+    display: block;
+    margin: 0.48rem 0 0.4rem;
+    color: #0f172a;
+  }
+
+  .guardrails-stage p,
+  .guardrails-observability-shell p {
+    margin: 0;
+    color: #334155;
+    line-height: 1.7;
+  }
+
+  .guardrails-observability-shell {
+    border-radius: 1.15rem;
+    padding: 1rem 1.05rem;
+    border: 1px solid rgba(15, 118, 110, 0.16);
+    background: linear-gradient(135deg, rgba(236, 253, 245, 0.94), rgba(248, 250, 252, 0.98));
+  }
+
+  .guardrails-observability-shell strong {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: #0f172a;
+  }
+
+  @media (max-width: 860px) {
+    .guardrails-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

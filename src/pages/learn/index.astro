@@ -9,15 +9,16 @@ const subjects = getLearningSubjects();
 const lessonCount = subjects.reduce((total, subject) => total + subject.lessons.length, 0);
 ---
 
-<BaseLayout title={`学习中心 | ${siteConfig.title}`} description="用更通俗、更可视化的方式学习计算机网络和计算机组成原理。" pathname="/learn">
+<BaseLayout title={`学习中心 | ${siteConfig.title}`} description="用更通俗、更可视化的方式学习计算机网络、计算机组成原理和 AI / Agent 工程基础。" pathname="/learn">
   <section class="section">
     <div class="container">
       <PageHero
         kicker="Learning Center"
         title="公开学习中心"
-        description="第一期先把计算机网络和计算机组成原理讲明白：不是只给结论，而是通过图解、轻动画和课内追问，把抽象概念真正讲透。"
+        description="这里不只放文章，而是把抽象概念拆成可直观看懂的课时：从计算机网络、计算机组成原理，到 AI / Agent 工程基础，都尽量讲到“看完就能解释给别人听”。"
         actions={[
-          { href: '/learn/networking', label: '从网络开始', primary: true },
+          { href: '/learn/ai-agent-engineering', label: '看 AI 工程', primary: true },
+          { href: '/learn/networking', label: '从网络开始' },
           { href: '/learn/computer-organization', label: '看组成原理' },
         ]}
         stats={[

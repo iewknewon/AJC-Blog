@@ -393,4 +393,680 @@ export const learningCatalog: LearningSubject[] = [
       },
     ],
   },
+  {
+    slug: 'ai-agent-engineering',
+    title: 'AI / Agent 工程基础',
+    shortTitle: 'AI 工程',
+    description: '把 Agent、Skill、Tool、MCP、RAG、Memory、Workflow 这些热门概念放回同一张工程地图里，讲清它们分别是什么、彼此如何协作，以及真实系统里该放在哪一层。',
+    eyebrow: 'Learning Track',
+    colorToken: 'ai-agent',
+    icon: 'AG',
+    learningPath: [
+      '先用一张全景图建立 AI / Agent 工程地图',
+      '再拆开 Agent、Tool、Skill、MCP、RAG、Memory 等关键概念',
+      '最后建立多代理协作、评测、防护和可观测性的系统视角',
+    ],
+    lessons: [
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'agent-landscape',
+        title: '一张图看懂 AI / Agent 工程全景',
+        description: '先把模型、提示词、工具、代理、工作流、记忆、检索、防护放在一张图里，建立完整地图。',
+        order: 1,
+        estimatedMinutes: 14,
+        objectives: [
+          '知道 Model、Prompt、Tool、Agent、Workflow、Memory、RAG、Guardrails 各自处在哪一层',
+          '理解为什么这些词不能混成一个模糊的“AI 系统”',
+          '为后续拆解课建立统一的概念坐标系',
+        ],
+        keywords: ['AI Agent', 'Agent', 'Workflow', 'Tool Use', 'Memory', 'RAG', 'Guardrails', 'Evals'],
+        chatContextSummary: '本课是 AI / Agent 工程专题的总览课，重点是把模型、提示词、工具、工作流、代理、记忆、检索、防护和评测放进同一张工程地图中。',
+        relatedLessonSlugs: ['what-is-an-agent', 'workflow-vs-agent', 'memory-context-window'],
+        animation: 'ai-agent-landscape',
+        heroSummary: '先把地图搭对，再看细节。很多人觉得这些词都在讲“AI 能力”，但它们真正区分的是系统里的不同层和不同职责。',
+        sections: [
+          {
+            title: '为什么一开始就要先看全景图',
+            paragraphs: [
+              '如果一上来就直接学 MCP、RAG、Agent Loop 这些局部名词，用户很容易只记住定义，却不知道它们在系统里到底处在哪一层，于是后面一遇到真实架构图就会乱。',
+              '先看全景图的目的，是把“模型负责生成、工具负责连接外部能力、工作流负责固定编排、代理负责围绕目标循环决策、记忆负责保留状态、检索负责补知识、防护负责控风险”这套边界先搭起来。',
+            ],
+          },
+          {
+            title: '这些热门词分别在解决什么问题',
+            paragraphs: [
+              'Prompt 解决的是“如何更清楚地表达任务与约束”；Tool / Function Calling 解决的是“模型如何触发外部能力”；Workflow 解决的是“怎样把固定步骤稳定串起来”；Agent 解决的是“在不确定路径中怎样决定下一步动作”。',
+              'Memory 解决的是“系统如何跨轮记住状态”；RAG 解决的是“怎样把外部知识补进当前上下文”；Guardrails 和 Evals 解决的是“系统如何更可控、更可测、更可观察”。',
+            ],
+          },
+          {
+            title: '从产品视角看，它们不是同一个东西',
+            paragraphs: [
+              '一个只会生成答案的聊天框，和一个能查资料、做计划、调用工具、根据结果继续决策的代理系统，在工程上不是同一类东西。它们可能都由大模型驱动，但外层系统设计差异非常大。',
+              '所以理解 AI / Agent 工程，关键不是背更多热词，而是把这些词放回系统层级里，知道谁是底座、谁是接口、谁是行为模式、谁是治理手段。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: '只要用了大模型，整个系统就自动算 Agent。',
+            clarification: '大模型只是底座能力。是否是 Agent，要看系统是否围绕目标持续感知状态、决定动作并执行，而不是只看底层用了什么模型。',
+          },
+          {
+            myth: 'Prompt、RAG、Tool、Agent、MCP 都差不多，只是不同厂商的说法。',
+            clarification: '这些词分别对应不同工程层。把它们混在一起，会导致系统设计既不清晰也不稳定。',
+          },
+        ],
+        quiz: [
+          {
+            question: '下面哪项最适合描述 RAG 的核心作用？',
+            options: ['控制模型语气', '给当前回答补充外部检索到的知识', '决定 UI 配色', '替代数据库'],
+            answerIndex: 1,
+            explanation: 'RAG 的核心价值是把外部检索结果拼装进当前上下文，让模型在回答时拥有更贴近当前问题的资料。',
+          },
+        ],
+        quickPrompts: ['把这些词放进一张工程图里', '先给我一个最白话的全景解释', '这些概念分别属于哪一层'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'what-is-an-agent',
+        title: '什么是 AI Agent',
+        description: '把“会调用工具的大模型”和“真正的代理系统”分开看，建立 Agent 的最小定义。',
+        order: 2,
+        estimatedMinutes: 12,
+        objectives: [
+          '区分模型回答、工具调用和代理执行循环',
+          '理解 Agent 至少需要目标、状态、决策和执行',
+          '知道为什么不是所有聊天机器人都算 Agent',
+        ],
+        keywords: ['AI Agent', 'Agent', 'Agent Loop', 'Goal', 'State', 'Tool Use', 'Workflow'],
+        chatContextSummary: '本课聚焦 AI Agent 的最小定义、目标驱动执行循环、状态感知和与普通工具调用系统的边界。',
+        relatedLessonSlugs: ['agent-landscape', 'workflow-vs-agent', 'planning-reasoning-execution'],
+        animation: 'ai-agent-landscape',
+        heroSummary: 'Agent 不是“会聊天的模型”，而是“能围绕目标不断判断下一步该做什么的系统”。',
+        sections: [
+          {
+            title: 'Agent 的最小定义',
+            paragraphs: [
+              '如果一个系统只是在收到输入后直接生成一个回答，那么它更接近“模型问答”。如果它能够围绕目标保留状态、决定下一步动作、调用工具、根据结果继续前进，那才更接近 Agent。',
+              '所以 Agent 的关键不是“有没有工具”，而是“有没有以目标为中心的决策循环”。',
+            ],
+          },
+          {
+            title: '为什么目标和状态这么重要',
+            paragraphs: [
+              '没有目标，系统就不知道该朝什么方向推进；没有状态，系统就不知道自己已经做到了哪一步。很多伪 Agent 系统的问题，恰恰是只会随机调用工具，却没有稳定追踪当前进度。',
+              '你可以把 Agent 想成一个会看地图、会记位置、会选下一步路线的人，而不是一台只会回答单个问题的自动售货机。',
+            ],
+          },
+          {
+            title: '会用工具，不等于一定是 Agent',
+            paragraphs: [
+              '一个模型收到“请帮我查今天的天气”，然后调用一次天气工具再返回答案，这更像带工具调用的问答系统。只有当系统会根据中间结果继续规划、继续决策，它才真正往 Agent 靠近。',
+              '所以“Tool Use”是 Agent 常见能力之一，但不是 Agent 的唯一判定标准。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: '只要能 function calling，它就是 Agent。',
+            clarification: 'Function calling 是能力接口，不是系统形态。真正的 Agent 还需要目标、状态、决策循环和执行推进。',
+          },
+          {
+            myth: 'Agent 必须非常复杂，能自己做几十步任务才算。',
+            clarification: 'Agent 可以强也可以弱。关键不是步数多少，而是是否存在围绕目标持续决定下一步动作的机制。',
+          },
+        ],
+        quiz: [
+          {
+            question: '下面哪种系统最符合 Agent 的定义？',
+            options: ['收到问题直接生成回答', '调用一次搜索工具后立即返回结果', '围绕目标保留状态、决定动作、执行并根据结果继续推进', '只把数据库内容原样返回'],
+            answerIndex: 2,
+            explanation: 'Agent 的核心是目标驱动的执行循环，而不是单次生成或单次工具调用。',
+          },
+        ],
+        quickPrompts: ['Agent 和普通聊天机器人差在哪', '再给一个现实生活类比', '为什么工具调用不等于 Agent'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'skill-tool-function-calling',
+        title: 'Skill、Tool、Function Calling 到底是什么关系',
+        description: '把技能封装、工具能力和模型调用接口分层拆开，避免把它们混成一个词。',
+        order: 3,
+        estimatedMinutes: 13,
+        objectives: [
+          '分清 Skill、Tool、Function Calling 分别对应什么层次',
+          '理解为什么 Function Calling 更像接口，而 Skill 更像能力封装',
+          '知道在系统设计中应该把哪个概念放在哪一层',
+        ],
+        keywords: ['Skill', 'Tool', 'Function Calling', 'Structured Output', 'Tool Use', 'Capability Wrapper'],
+        chatContextSummary: '本课专门区分 Skill、Tool 和 Function Calling 的层次关系：Skill 是能力封装，Tool 是外部能力单元，Function Calling 是模型触发工具的接口方式。',
+        relatedLessonSlugs: ['what-is-an-agent', 'mcp-explained', 'prompt-engineering-boundaries'],
+        animation: 'skill-tool-function',
+        heroSummary: 'Function Calling 更像“模型怎样发起调用”，Tool 更像“能被调用的外部能力”，Skill 则更像“围绕某类任务打包好的能力组合”。',
+        sections: [
+          {
+            title: 'Function Calling 更接近协议接口',
+            paragraphs: [
+              'Function Calling 的重点，不是定义业务本身，而是让模型用结构化方式表达“我现在想调用哪个函数、传什么参数”。它解决的是接口触发问题。',
+              '所以你可以把它理解成模型和外部系统之间的一种标准化说话方式，而不是一个完整功能本身。',
+            ],
+          },
+          {
+            title: 'Tool 是外部能力单元',
+            paragraphs: [
+              'Tool 可能是搜索、数据库查询、发送邮件、读写文件，也可能是一个更复杂的业务 API。它解决的是“系统外部到底能做什么”。',
+              'Tool 自己不等于会被好好用起来，因为是否调用、何时调用、调用顺序如何，往往还取决于上层逻辑。',
+            ],
+          },
+          {
+            title: 'Skill 是更高层的能力封装',
+            paragraphs: [
+              'Skill 往往不是一个底层接口，而是一套围绕某类任务整理好的提示词、步骤、工具使用习惯和约束。例如“小说写作技能”“代码审查技能”更像把经验打成一个可复用能力包。',
+              '因此 Skill 往往站在 Tool 之上，对具体任务给出更稳定的执行方式。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: 'Skill 和 Tool 只是两个名字，本质完全一样。',
+            clarification: 'Tool 更像外部能力单元，Skill 更像围绕任务打包出的能力模板，它们处于不同抽象层。',
+          },
+          {
+            myth: 'Function Calling 会自动保证工具一定被正确使用。',
+            clarification: 'Function Calling 只提供结构化调用入口，是否调用合理、参数是否合适、结果如何处理，仍然取决于上层系统设计。',
+          },
+        ],
+        quiz: [
+          {
+            question: '下面哪项最适合描述 Function Calling？',
+            options: ['一个长期记忆系统', '模型触发结构化外部调用的接口方式', '数据库本身', '页面样式系统'],
+            answerIndex: 1,
+            explanation: 'Function Calling 的核心是让模型以结构化方式表达外部调用意图，而不是直接代表某个业务能力本身。',
+          },
+        ],
+        quickPrompts: ['Skill 和 Tool 再白话一点', 'Function Calling 为什么是接口层', '举一个三者配合的例子'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'mcp-explained',
+        title: 'MCP 是什么，为什么它会火',
+        description: '把 MCP 放回 Host、Client、Server、Tool、Resource 的通路里，理解它在标准化连接层上到底解决了什么。',
+        order: 4,
+        estimatedMinutes: 13,
+        objectives: [
+          '理解 MCP 主要解决的是模型应用和外部能力之间的标准化连接问题',
+          '知道 Host、Client、MCP Server、Tool、Resource 分别扮演什么角色',
+          '理解为什么 MCP 的流行与 Agent 工程的生态化有关',
+        ],
+        keywords: ['MCP', 'Model Context Protocol', 'MCP Server', 'Resource', 'Tool', 'Host', 'Client'],
+        chatContextSummary: '本课讲解 MCP 的角色划分、连接路径、为什么它在 AI 工程生态中很火，以及它与普通 API 包装的区别。',
+        relatedLessonSlugs: ['skill-tool-function-calling', 'workflow-vs-agent', 'agent-landscape'],
+        animation: 'mcp-flow',
+        heroSummary: 'MCP 之所以火，不是因为它让模型突然变聪明了，而是因为它让“接不同能力”这件事更像接标准插座，而不是每次都手搓一套线。',
+        sections: [
+          {
+            title: 'MCP 在解决什么问题',
+            paragraphs: [
+              '过去每接一个工具、数据库、文件系统、知识源，很多应用都要各自定义一套连接方式、权限模型和调用格式，结果生态很碎，迁移成本很高。',
+              'MCP 想做的是把这层连接方式标准化，让 Host 和不同的 MCP Server 之间可以用更统一的方式交换工具、资源和上下文。',
+            ],
+          },
+          {
+            title: 'Host、Client、Server、Tool、Resource 怎么分',
+            paragraphs: [
+              'Host 是用户真正使用的应用外壳，Client 负责在 Host 内与 MCP Server 通信，MCP Server 则把具体能力暴露出来。被暴露出来的内容可能是 Tool，也可能是 Resource。',
+              'Tool 更偏“可执行动作”，例如搜索、写文件、查数据库；Resource 更偏“可读取上下文”，例如文档、知识条目、配置说明。',
+            ],
+          },
+          {
+            title: '为什么它会火',
+            paragraphs: [
+              '因为 AI 应用越来越像一层“会协调很多外部能力的中枢”，而不是一段单纯的文本生成逻辑。连接层一旦标准化，生态协作速度就会明显变快。',
+              'MCP 让“接更多外部能力”从定制开发，逐步变成更像搭积木的体验，所以它自然会成为 Agent 工程里的热门词。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: '用了 MCP，模型就会自动拥有这些外部能力。',
+            clarification: 'MCP 只是标准化连接层。是否调用、如何调用、权限是否放开，仍然由具体应用和上层代理逻辑决定。',
+          },
+          {
+            myth: 'MCP 只是换了个名字的普通 REST API。',
+            clarification: 'API 是能力本身的接口，MCP 关注的是模型应用如何标准化地发现、读取和调用这些能力。',
+          },
+        ],
+        quiz: [
+          {
+            question: '在 MCP 语境下，哪类对象更偏“可读取的上下文材料”？',
+            options: ['Resource', 'Guardrail', 'Prompt', 'Eval'],
+            answerIndex: 0,
+            explanation: 'Resource 更偏可读取的上下文材料，而 Tool 更偏可执行动作。',
+          },
+        ],
+        quickPrompts: ['MCP 和普通 API 差在哪', 'Host、Client、Server 再串起来讲讲', '为什么大家都在提 MCP'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'workflow-vs-agent',
+        title: 'Workflow 和 Agent 有什么区别',
+        description: '把固定编排和目标驱动决策分开看，避免把任何自动化流程都叫成 Agent。',
+        order: 5,
+        estimatedMinutes: 12,
+        objectives: [
+          '理解 Workflow 的核心是预先编排好的固定步骤',
+          '理解 Agent 的核心是面对不确定路径时的动态决策',
+          '知道什么时候用 Workflow 更稳，什么时候需要 Agent',
+        ],
+        keywords: ['Workflow', 'Agent', 'Orchestration', 'Decision Loop', 'Automation'],
+        chatContextSummary: '本课聚焦 Workflow 与 Agent 的边界：前者偏固定编排，后者偏目标驱动决策。重点是场景适配，而不是概念抬高。',
+        relatedLessonSlugs: ['what-is-an-agent', 'planning-reasoning-execution', 'multi-agent-collaboration'],
+        animation: 'workflow-vs-agent',
+        heroSummary: 'Workflow 更像按剧本走的流程，Agent 更像在路上边看情况边做决定的人。',
+        sections: [
+          {
+            title: 'Workflow 的强项是稳定和可控',
+            paragraphs: [
+              '如果任务步骤已知、分支有限、顺序明确，那么 Workflow 往往更可靠、更好测、更好治理。例如固定的数据清洗链路、内容审核流程、模板化报告生成都很适合 Workflow。',
+              '它的价值在于可预测，而不是显得更“智能”。',
+            ],
+          },
+          {
+            title: 'Agent 的价值在于处理不确定路径',
+            paragraphs: [
+              '当系统需要根据中间结果动态决定下一步做什么时，例如检索失败要不要换策略、工具结果不完整要不要追问、任务拆分后要不要重新规划，这类情况才更适合 Agent。',
+              'Agent 强在决策弹性，但代价通常是更难控、更难测。',
+            ],
+          },
+          {
+            title: '真实系统里常常是两者组合',
+            paragraphs: [
+              '很多成熟系统并不是二选一，而是用 Workflow 托住大框架，再在局部高不确定区间引入 Agent 决策。这样既能保住稳定性，又能给系统留出灵活度。',
+              '所以不要把 Workflow 看成落后方案，也不要把 Agent 神化成万能方案。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: '只要是自动化流程，就应该升级成 Agent。',
+            clarification: '如果任务本身路径明确，Agent 反而可能增加不必要的不确定性和治理成本。',
+          },
+          {
+            myth: 'Workflow 不智能，Agent 才高级。',
+            clarification: '两者解决的问题不同。Workflow 的价值在于稳，Agent 的价值在于应对不确定。',
+          },
+        ],
+        quiz: [
+          {
+            question: '哪种场景通常更适合 Workflow 而不是 Agent？',
+            options: ['步骤固定、结果格式明确的自动报告生成', '需要根据多轮检索结果动态调整策略的研究任务', '需要边执行边重规划的长任务', '需要在未知分支里不断选择下一步'],
+            answerIndex: 0,
+            explanation: '步骤固定、结果明确的场景更适合 Workflow，因为它更可控、更稳定。',
+          },
+        ],
+        quickPrompts: ['Workflow 和 Agent 用一个类比讲讲', '真实系统里怎么组合两者', '为什么不是所有流程都要 Agent'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'prompt-engineering-boundaries',
+        title: 'Prompt Engineering 到底解决什么，不解决什么',
+        description: '把提示词放回它该在的位置，既不过度神化，也不低估它的作用。',
+        order: 6,
+        estimatedMinutes: 11,
+        objectives: [
+          '理解 Prompt Engineering 更偏任务表达与约束设计',
+          '知道为什么很多系统问题不能只靠改提示词解决',
+          '能分辨提示词问题与数据、工具、记忆、流程问题',
+        ],
+        keywords: ['Prompt Engineering', 'System Prompt', 'User Prompt', 'Prompt Design', 'Constraint'],
+        chatContextSummary: '本课聚焦提示词工程的边界：它擅长表达目标、约束和格式要求，但不能替代检索、记忆、工具和系统治理。',
+        relatedLessonSlugs: ['skill-tool-function-calling', 'memory-context-window', 'rag-knowledge-retrieval'],
+        animation: 'skill-tool-function',
+        heroSummary: '提示词很重要，但它更像“把任务说清楚”，不是“把系统所有短板一把补齐”。',
+        sections: [
+          {
+            title: 'Prompt 真正擅长的是什么',
+            paragraphs: [
+              'Prompt 最擅长的是明确目标、角色、语气、格式、约束和输出标准，让模型更清楚当前任务想要什么、不想要什么。',
+              '它像给一个能力很强但读心术不稳定的同事写任务说明书，说明得越具体，执行偏差通常越小。',
+            ],
+          },
+          {
+            title: '哪些问题不能只靠 Prompt 修',
+            paragraphs: [
+              '如果模型没有最新知识、没有外部数据、没有工具能力、没有长期记忆、没有稳定工作流，那么你再怎么写 Prompt，也很难凭空补齐这些系统能力。',
+              '很多“我再调调提示词应该就好了”的情况，本质上是数据层、检索层、工具层或流程层的问题。',
+            ],
+          },
+          {
+            title: '怎么判断该改 Prompt 还是改系统',
+            paragraphs: [
+              '如果问题主要体现在输出风格不稳定、格式经常不对、任务意图理解偏差大，优先检查 Prompt；如果问题是信息缺失、事实陈旧、工具不用、跨轮失忆、结果不可测，优先检查系统层。',
+              '这是 AI 工程里非常重要的一种诊断思维。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: 'Prompt Engineering 是 AI 系统表现好坏的唯一关键。',
+            clarification: 'Prompt 很重要，但它只是系统中的一层。很多能力差异来自检索、工具、记忆、流程和防护设计。',
+          },
+          {
+            myth: '只要不断堆更多提示词，系统就会越来越稳。',
+            clarification: '过度堆叠提示词反而可能让目标变混乱。提示词需要清楚，不是越长越好。',
+          },
+        ],
+        quiz: [
+          {
+            question: '下面哪类问题最可能优先通过改 Prompt 来改善？',
+            options: ['模型缺少最新行业数据', '输出格式总是偏离要求', '没有接入搜索工具', '系统无法跨会话记住项目设定'],
+            answerIndex: 1,
+            explanation: '输出格式偏离通常是任务表达和约束不够清晰，优先检查 Prompt 会更合理。',
+          },
+        ],
+        quickPrompts: ['Prompt 工程最容易被夸大的地方是什么', '怎么判断该改 Prompt 还是改系统', '系统提示词和用户提示词怎么分工'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'memory-context-window',
+        title: 'Memory、Context、Context Window',
+        description: '把当前上下文、短期记忆和长期记忆放在一起看，理解 AI 系统为什么会“记得住”或“忘得快”。',
+        order: 7,
+        estimatedMinutes: 13,
+        objectives: [
+          '区分当前上下文、摘要记忆、长期资料存储的角色',
+          '理解 Context Window 为什么会限制单轮可带入的信息量',
+          '知道为什么长任务需要摘要、检索或外部记忆机制',
+        ],
+        keywords: ['Memory', 'Context', 'Context Window', 'Long-term Memory', 'Short-term Context', 'Summarization'],
+        chatContextSummary: '本课解释上下文窗口、短时上下文、摘要记忆和长期记忆之间的区别，以及为什么长任务需要额外的状态管理机制。',
+        relatedLessonSlugs: ['prompt-engineering-boundaries', 'rag-knowledge-retrieval', 'multi-agent-collaboration'],
+        animation: 'memory-context',
+        heroSummary: '模型眼前能看到的只是“当前窗口里的内容”，而系统记不记得更早的事情，往往取决于你有没有额外设计记忆机制。',
+        sections: [
+          {
+            title: 'Context 更像当前工作台',
+            paragraphs: [
+              '当前上下文就是模型这一次真正能“看到”的输入材料。它像一张工作台，能摆的信息有限，摆进去什么、怎样组织，都会影响这一轮输出。',
+              'Context Window 则决定了这张工作台能装多少内容。超出窗口的信息，不会自动被模型继续保有。',
+            ],
+          },
+          {
+            title: 'Memory 不是同一个东西',
+            paragraphs: [
+              '很多系统把上一轮对话原样拼回去，这更像“延长上下文”；而真正的长期记忆往往需要摘要、结构化存储或检索机制，保证系统能在需要时重新把关键信息取回来。',
+              '所以 Memory 更像“系统如何保留和找回状态”，而不只是“把历史消息一直往前堆”。',
+            ],
+          },
+          {
+            title: '为什么长任务必须管理记忆',
+            paragraphs: [
+              '一旦任务足够长，信息量就会超过窗口，系统如果没有摘要、分层记忆或检索回填机制，就会出现前文设定丢失、目标漂移、上下文污染等问题。',
+              '这也是为什么做长篇小说、长期项目助理或多阶段任务时，记忆设计非常关键。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: '只要模型窗口够大，就不需要记忆系统。',
+            clarification: '窗口大只能缓解单轮承载问题，不能替代摘要、筛选、结构化状态和长期找回机制。',
+          },
+          {
+            myth: 'Memory 就是简单保存全部历史消息。',
+            clarification: '真正有用的 Memory 更关注“如何在需要时取回正确的信息”，而不是机械地把一切历史都塞回去。',
+          },
+        ],
+        quiz: [
+          {
+            question: '下面哪项最适合描述 Context Window？',
+            options: ['数据库大小', '模型本轮可直接看到的信息容量范围', '模型训练总语料量', '浏览器缓存大小'],
+            answerIndex: 1,
+            explanation: 'Context Window 说的是模型这一次推理时能直接接触到的输入范围。',
+          },
+        ],
+        quickPrompts: ['上下文和记忆再白话一点', '为什么长任务会失忆', '窗口大是不是就够了'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'rag-knowledge-retrieval',
+        title: 'RAG、知识库、检索增强',
+        description: '把“去哪里找资料、怎么选资料、怎么塞回上下文”这条链路拆开看，理解 RAG 真正发挥作用的地方。',
+        order: 8,
+        estimatedMinutes: 13,
+        objectives: [
+          '理解 RAG 不只是“搜一下再回答”，而是一条完整资料回填链路',
+          '知道检索、筛选、重排、拼装上下文分别解决什么问题',
+          '区分模型已有知识与当前检索到的外部知识',
+        ],
+        keywords: ['RAG', 'Retrieval Augmented Generation', 'Knowledge Base', 'Retrieval', 'Rerank', 'Context Assembly'],
+        chatContextSummary: '本课聚焦 RAG 的完整管线，包括查询、检索、重排、上下文拼装和回答生成，重点解释为什么 RAG 不是简单搜索。',
+        relatedLessonSlugs: ['memory-context-window', 'prompt-engineering-boundaries', 'guardrails-evals-observability'],
+        animation: 'rag-pipeline',
+        heroSummary: 'RAG 的关键，不只是“找到资料”，而是“把最相关的资料以可消费的方式放回当前上下文里”。',
+        sections: [
+          {
+            title: 'RAG 到底在做什么',
+            paragraphs: [
+              'RAG 的目标，是在回答前先去外部资料源里找和当前问题最相关的信息，再把这些信息拼进当前上下文，让模型基于更贴近当前问题的材料作答。',
+              '所以它本质上是在补“当前可见知识”，而不是改写模型本身的长期参数。',
+            ],
+          },
+          {
+            title: '为什么不是搜一下就完事',
+            paragraphs: [
+              '如果搜到一堆结果就全塞给模型，通常会导致噪声太大、上下文污染、重点不清。真正有效的 RAG 往往还需要筛选、重排和上下文拼装。',
+              '这就像做研究时不是把整柜资料都丢给同事，而是先帮他挑最相关的几页，再按问题组织好重点。',
+            ],
+          },
+          {
+            title: '知识库和 RAG 不是一回事',
+            paragraphs: [
+              '知识库是资料的存储与组织方式；RAG 是“怎样从这些资料里为当前问题取回、筛选和回填内容”的方法链。',
+              '你可以有知识库但没有好 RAG，也可以有 RAG 但资料源并不理想，最终效果都不会太稳。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: 'RAG 就是给模型加一个搜索框。',
+            clarification: '真正的 RAG 还包括查询表达、检索策略、重排、摘要或上下文拼装，不只是单纯搜索。',
+          },
+          {
+            myth: '有了知识库，回答就一定可靠。',
+            clarification: '资料能不能被正确取回、筛得准不准、最终拼进上下文的方式好不好，都会影响结果质量。',
+          },
+        ],
+        quiz: [
+          {
+            question: 'RAG 中 rerank 的主要作用是什么？',
+            options: ['训练模型参数', '重新排序候选资料，优先保留最相关结果', '清空上下文', '关闭工具调用'],
+            answerIndex: 1,
+            explanation: 'Rerank 的重点是对候选资料做二次排序，尽量让最相关内容排到前面进入最终上下文。',
+          },
+        ],
+        quickPrompts: ['RAG 为什么不是简单搜索', '知识库和 RAG 的关系', '检索和重排分别干什么'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'planning-reasoning-execution',
+        title: 'Planning、Reasoning、Execution',
+        description: '把计划、推理和执行分开，理解为什么很多长任务失败，不是因为模型不会答，而是因为系统不会推进。',
+        order: 9,
+        estimatedMinutes: 12,
+        objectives: [
+          '区分 Planning、Reasoning、Execution 的职责',
+          '理解为什么长任务需要显式计划而不是一直临场生成',
+          '知道执行反馈为什么会反过来影响后续推理和计划',
+        ],
+        keywords: ['Planning', 'Reasoning', 'Execution', 'Agent Loop', 'Task Decomposition', 'Feedback'],
+        chatContextSummary: '本课聚焦计划、推理和执行三个阶段的分工，以及为什么执行反馈会不断反哺下一步决策。',
+        relatedLessonSlugs: ['what-is-an-agent', 'workflow-vs-agent', 'multi-agent-collaboration'],
+        animation: 'ai-agent-landscape',
+        heroSummary: '会推理不等于会完成任务。真正长任务里，更难的是“怎样把目标拆开、执行出去、再根据结果继续前进”。',
+        sections: [
+          {
+            title: 'Planning 是决定大方向',
+            paragraphs: [
+              'Planning 更关注“这件事整体应该怎么拆、先做什么后做什么、哪些步骤依赖前置结果”，它像任务地图。',
+              '没有规划的系统很容易一上来就盯着局部问题回答得很热闹，但整体推进效率很差。',
+            ],
+          },
+          {
+            title: 'Reasoning 是判断当下',
+            paragraphs: [
+              'Reasoning 更像在当前节点上做判断：这个结果可信吗、下一步最合理的动作是什么、是否需要换策略。',
+              '它通常发生在局部决策点，不一定直接代表整条任务路线已经被安排好了。',
+            ],
+          },
+          {
+            title: 'Execution 会把想法变成现实反馈',
+            paragraphs: [
+              'Execution 才是真正去调用工具、访问资源、写文件、发请求、产出结果的阶段。只停留在“想得很对”，任务是不会完成的。',
+              '而且执行结果常常会反过来修正原来的计划，所以真正的代理循环里，这三者是不断往返的。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: '推理能力强，就一定能把长任务做好。',
+            clarification: '长任务还依赖计划拆解、状态追踪和执行反馈。只会答题式推理，不一定会稳定推进任务。',
+          },
+          {
+            myth: 'Planning 只要做一次，后面不用再改。',
+            clarification: '很多真实任务在执行后会暴露新信息，所以计划常常需要动态修正。',
+          },
+        ],
+        quiz: [
+          {
+            question: '下面哪项最适合归入 Execution？',
+            options: ['判断当前结果是否可信', '把一个大任务拆成多个子任务', '真正调用搜索、文件或 API 去执行动作', '给系统定义角色语气'],
+            answerIndex: 2,
+            explanation: 'Execution 关注的是把决策真正执行出去，而不是只停留在判断或拆解层。',
+          },
+        ],
+        quickPrompts: ['Planning 和 Reasoning 差在哪', '为什么执行反馈很重要', '长任务为什么需要显式计划'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'multi-agent-collaboration',
+        title: 'Multi-Agent、并发、协作',
+        description: '从单代理走到多代理，理解任务切分、并发执行和汇总整合在什么场景下真的有价值。',
+        order: 10,
+        estimatedMinutes: 12,
+        objectives: [
+          '理解多代理系统的核心价值在于任务拆分和并发推进',
+          '知道什么时候适合多代理，什么时候会只增加复杂度',
+          '理解主代理、子代理、汇总层之间的关系',
+        ],
+        keywords: ['Multi-Agent', 'Parallelism', 'Coordination', 'Subagent', 'Delegation', 'Orchestration'],
+        chatContextSummary: '本课讲解多代理协作的价值、边界和典型结构，重点解释为什么并发不等于随便多开几个代理。',
+        relatedLessonSlugs: ['planning-reasoning-execution', 'workflow-vs-agent', 'guardrails-evals-observability'],
+        animation: 'workflow-vs-agent',
+        heroSummary: '多代理真正有价值的时候，是任务可以拆、彼此相对独立、汇总层清晰；否则它只会把复杂度翻倍。',
+        sections: [
+          {
+            title: '多代理为什么会有吸引力',
+            paragraphs: [
+              '因为很多任务天然可以拆分，例如一个代理做研究，一个代理做实现，一个代理做审查，一个代理做汇总。这种情况下，并发可以换时间。',
+              '尤其在信息收集、代码分区修改、内容切片生成等场景，多代理往往能明显提速。',
+            ],
+          },
+          {
+            title: '什么时候不该用多代理',
+            paragraphs: [
+              '如果任务本身强耦合、所有步骤都依赖同一份持续变化的上下文，那么多代理反而会增加同步成本和整合成本。',
+              '并发不是免费午餐。每多一个代理，你就多了一次协同、冲突和汇总的成本。',
+            ],
+          },
+          {
+            title: '主代理和子代理如何分工',
+            paragraphs: [
+              '主代理更像调度者：负责理解目标、拆任务、分配边界、回收结果并整合。子代理更像执行单元：只在自己负责的范围内完成具体子任务。',
+              '所以一个多代理系统的核心不只是“代理数量”，而是拆分是否合理、边界是否清晰、汇总是否有序。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: '多代理一定比单代理更强。',
+            clarification: '如果任务拆不干净，多代理很可能只是制造更多同步和冲突问题。',
+          },
+          {
+            myth: '并发就是同时开更多代理，不需要额外设计。',
+            clarification: '真正有效的并发依赖明确的任务边界、结果格式和整合机制。',
+          },
+        ],
+        quiz: [
+          {
+            question: '下面哪种情况最适合尝试多代理并行？',
+            options: ['所有步骤必须共享同一份实时上下文', '研究、实现、审查可以相对独立拆开', '整个任务只有一步固定流程', '任务结果不需要整合'],
+            answerIndex: 1,
+            explanation: '当研究、实现、审查等子任务可以相对独立推进时，多代理并发才真正有价值。',
+          },
+        ],
+        quickPrompts: ['并发和多代理是一个意思吗', '什么时候别用多代理', '主代理和子代理怎么分工'],
+      },
+      {
+        subject: 'ai-agent-engineering',
+        lessonSlug: 'guardrails-evals-observability',
+        title: 'Guardrails、权限、评测、可观测性',
+        description: '从“让系统可用”走到“让系统可控”，理解为什么防护、评测和观测是 AI 工程的后半场。',
+        order: 11,
+        estimatedMinutes: 13,
+        objectives: [
+          '理解 Guardrails、权限控制、评测和可观测性分别解决什么问题',
+          '知道为什么只看最终输出不够，必须看中间链路',
+          '建立生成前、生成中、生成后的治理视角',
+        ],
+        keywords: ['Guardrails', 'Permissions', 'Evals', 'Observability', 'Monitoring', 'Retry', 'Fallback'],
+        chatContextSummary: '本课聚焦 AI 系统的治理层：生成前约束、执行中权限控制、结果评测、日志与可观测性，以及失败后的重试与回退。',
+        relatedLessonSlugs: ['rag-knowledge-retrieval', 'multi-agent-collaboration', 'agent-landscape'],
+        animation: 'guardrails-observability',
+        heroSummary: '真正可上线的 AI 系统，不只是“偶尔答得很惊艳”，而是“出了问题你知道为什么、能拦、能测、能回退”。',
+        sections: [
+          {
+            title: 'Guardrails 关注的是别跑偏',
+            paragraphs: [
+              'Guardrails 可以发生在任务开始前、执行过程中和结果输出后。例如敏感操作要不要二次确认、某些参数范围要不要约束、某些结果格式要不要校验，都属于 Guardrails 的范畴。',
+              '它关注的不是让模型更聪明，而是让系统别轻易越界。',
+            ],
+          },
+          {
+            title: 'Evals 和 Observability 为什么不能少',
+            paragraphs: [
+              '如果你只看最终回答对不对，却看不到它用了哪些资料、调用了哪些工具、在哪一步失败、为什么回退，那系统一旦不稳就很难诊断。',
+              'Evals 让你能系统性测质量，Observability 让你能在运行中看见链路。',
+            ],
+          },
+          {
+            title: '权限、重试和回退是上线层思维',
+            paragraphs: [
+              '真正的工程系统不能假设每次都成功，所以要考虑权限边界、失败后的重试策略、彻底失败后的回退方案。',
+              '这类设计往往不显眼，但决定了系统能不能从演示走向稳定使用。',
+            ],
+          },
+        ],
+        misconceptions: [
+          {
+            myth: '只要模型能力够强，Guardrails 和 Evals 可以后面再补。',
+            clarification: '如果一开始不考虑治理，后期补救会非常痛苦，尤其当系统已经接了真实用户和真实工具之后。',
+          },
+          {
+            myth: '可观测性只是运维层的事，和 AI 产品体验无关。',
+            clarification: 'AI 系统的问题很多发生在中间链路，可观测性直接决定你是否能快速定位质量和行为问题。',
+          },
+        ],
+        quiz: [
+          {
+            question: '下面哪项最适合归入 Observability？',
+            options: ['记录系统调用了哪些工具、花了多久、在哪一步失败', '只改系统提示词', '把所有数据都删掉', '增加更多营销文案'],
+            answerIndex: 0,
+            explanation: 'Observability 的重点是让系统运行链路可见，便于排障、评测和治理。',
+          },
+        ],
+        quickPrompts: ['Guardrails、Evals、Observability 分别管什么', '为什么上线系统一定要考虑权限和回退', '怎么理解生成前中后的防线'],
+      },
+    ],
+  },
 ];

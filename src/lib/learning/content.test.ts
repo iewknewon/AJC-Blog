@@ -12,8 +12,8 @@ import {
 test('getLearningSubjects returns the built-in learning catalog', () => {
   const subjects = getLearningSubjects();
 
-  assert.equal(subjects.length, 2);
-  assert.deepEqual(subjects.map((subject) => subject.slug), ['networking', 'computer-organization']);
+  assert.equal(subjects.length, 3);
+  assert.deepEqual(subjects.map((subject) => subject.slug), ['networking', 'computer-organization', 'ai-agent-engineering']);
 });
 
 test('getLearningLesson resolves lesson and subject by slug', () => {
@@ -41,4 +41,13 @@ test('getAllLearningLessons exposes searchable lesson metadata', () => {
   assert.ok(lesson);
   assert.equal(lesson?.subjectTitle, '计算机组成原理');
   assert.match(lesson?.plainText ?? '', /取指/);
+});
+
+test('getAllLearningLessons exposes AI / Agent lessons for search', () => {
+  const lessons = getAllLearningLessons();
+  const lesson = lessons.find((item) => item.lessonSlug === 'what-is-an-agent');
+
+  assert.ok(lesson);
+  assert.equal(lesson?.subjectTitle, 'AI / Agent 工程基础');
+  assert.match(lesson?.plainText ?? '', /MCP|Tool|Agent|Workflow/);
 });

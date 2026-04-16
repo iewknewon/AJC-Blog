@@ -1,0 +1,230 @@
+<div class="content-card learning-visual-card ai-agent-landscape-card" data-learning-visual="ai-agent-landscape">
+  <div class="learning-visual-header">
+    <span class="tag">概念全景</span>
+    <h3>从模型到底层治理，一张图看 AI / Agent 工程</h3>
+    <p>点击任意一层，看看它在系统里到底负责什么，以及为什么它不能和旁边的概念混着用。</p>
+  </div>
+
+  <div class="ai-agent-landscape-map">
+    <button class="ai-agent-layer is-active" type="button" data-agent-layer="model">Model</button>
+    <button class="ai-agent-layer" type="button" data-agent-layer="prompt">Prompt</button>
+    <button class="ai-agent-layer" type="button" data-agent-layer="tool">Tool</button>
+    <button class="ai-agent-layer" type="button" data-agent-layer="agent">Agent</button>
+    <button class="ai-agent-layer" type="button" data-agent-layer="workflow">Workflow</button>
+    <button class="ai-agent-layer" type="button" data-agent-layer="memory">Memory</button>
+    <button class="ai-agent-layer" type="button" data-agent-layer="guardrails">Guardrails</button>
+  </div>
+
+  <div class="ai-agent-visual-stack">
+    <div class="ai-agent-stack-board">
+      <article class="ai-agent-stack-node is-active" data-agent-node="model">
+        <strong>Model</strong>
+        <span>生成、推理、理解，是底层“会想会写”的能力。</span>
+      </article>
+      <article class="ai-agent-stack-node" data-agent-node="prompt">
+        <strong>Prompt</strong>
+        <span>把任务、约束、格式和角色说清楚，不负责补知识。</span>
+      </article>
+      <article class="ai-agent-stack-node" data-agent-node="tool">
+        <strong>Tool</strong>
+        <span>搜索、文件、数据库、API 这些外部能力插口。</span>
+      </article>
+      <article class="ai-agent-stack-node" data-agent-node="agent">
+        <strong>Agent</strong>
+        <span>围绕目标感知状态、决定动作、执行并继续推进。</span>
+      </article>
+      <article class="ai-agent-stack-node" data-agent-node="workflow">
+        <strong>Workflow</strong>
+        <span>用固定步骤托住稳定路径，不靠每一步都临场发挥。</span>
+      </article>
+      <article class="ai-agent-stack-node" data-agent-node="memory">
+        <strong>Memory</strong>
+        <span>保留状态和资料，让长任务不至于一路失忆。</span>
+      </article>
+      <article class="ai-agent-stack-node" data-agent-node="guardrails">
+        <strong>Guardrails</strong>
+        <span>权限、评测、日志、回退，负责把系统从演示拉到可控。</span>
+      </article>
+    </div>
+
+    <div class="ai-agent-detail-panel">
+      <p class="learning-step-hint">当前高亮层解决的问题</p>
+      <h4 data-agent-title>Model：先有底层能力，后面的一切才有意义</h4>
+      <p data-agent-body>模型负责生成、理解和推理，但它本身不会自动拥有外部工具、长期记忆或权限控制。很多系统问题不是模型变笨，而是外层没搭好。</p>
+      <div class="ai-agent-detail-tags" data-agent-tags>
+        <span class="tag">生成</span>
+        <span class="tag">推理</span>
+        <span class="tag">底座</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const root = document.querySelector('[data-learning-visual="ai-agent-landscape"]');
+
+  if (root) {
+    const copy = {
+      model: {
+        title: 'Model：先有底层能力，后面的一切才有意义',
+        body: '模型负责生成、理解和推理，但它本身不会自动拥有外部工具、长期记忆或权限控制。很多系统问题不是模型变笨，而是外层没搭好。',
+        tags: ['生成', '推理', '底座'],
+      },
+      prompt: {
+        title: 'Prompt：把任务说清楚，而不是替系统补洞',
+        body: 'Prompt 最擅长明确目标、格式和限制。它能减少表达偏差，但不能代替检索、工具调用或长期记忆。',
+        tags: ['任务表达', '格式约束', '角色设定'],
+      },
+      tool: {
+        title: 'Tool：模型接外部世界的插座',
+        body: '搜索、数据库、文件和业务 API 都属于 Tool。它们让系统不再只能“想”，而是能真正“做”或“查”。',
+        tags: ['搜索', '文件', 'API'],
+      },
+      agent: {
+        title: 'Agent：围绕目标持续决定下一步动作',
+        body: 'Agent 的关键不是会不会调用工具，而是会不会围绕目标、状态和中间结果不断决定下一步要做什么。',
+        tags: ['目标', '状态', '决策循环'],
+      },
+      workflow: {
+        title: 'Workflow：把已知路径走稳',
+        body: 'Workflow 更像有明确剧本的固定流程。真实系统里，很多高质量 AI 产品其实是 Workflow 和 Agent 混合使用。',
+        tags: ['编排', '稳定', '可控'],
+      },
+      memory: {
+        title: 'Memory：让系统不会一转头就忘',
+        body: 'Memory 关注的是如何保留、筛选和找回状态，而不是把全部历史都机械地塞回上下文窗口。',
+        tags: ['上下文', '摘要', '长期资料'],
+      },
+      guardrails: {
+        title: 'Guardrails：让系统可上线、可观察、可回退',
+        body: 'Guardrails 把权限、评测、日志和回退机制放进系统，让 AI 产品不仅能回答，还能在出错时被及时发现和控制。',
+        tags: ['权限', '评测', '回退'],
+      },
+    };
+
+    const buttons = Array.from(root.querySelectorAll('[data-agent-layer]'));
+    const nodes = Array.from(root.querySelectorAll('[data-agent-node]'));
+    const title = root.querySelector('[data-agent-title]');
+    const body = root.querySelector('[data-agent-body]');
+    const tagWrap = root.querySelector('[data-agent-tags]');
+
+    const render = (key) => {
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.agentLayer === key);
+      });
+
+      nodes.forEach((node) => {
+        node.classList.toggle('is-active', node.dataset.agentNode === key);
+      });
+
+      const detail = copy[key];
+
+      if (!detail || !title || !body || !tagWrap) {
+        return;
+      }
+
+      title.textContent = detail.title;
+      body.textContent = detail.body;
+      tagWrap.innerHTML = detail.tags.map((tag) => `<span class="tag">${tag}</span>`).join('');
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        render(button.dataset.agentLayer);
+      });
+    });
+  }
+</script>
+
+<style>
+  .ai-agent-landscape-card {
+    gap: 1rem;
+  }
+
+  .ai-agent-landscape-map {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+    gap: 0.6rem;
+  }
+
+  .ai-agent-layer {
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    border-radius: 999px;
+    background: rgba(244, 248, 255, 0.9);
+    padding: 0.72rem 0.8rem;
+    font: inherit;
+    font-weight: 700;
+    color: #174ea6;
+    cursor: pointer;
+    transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+  }
+
+  .ai-agent-layer.is-active {
+    background: linear-gradient(135deg, rgba(8, 145, 178, 0.16), rgba(37, 99, 235, 0.18));
+    border-color: rgba(37, 99, 235, 0.35);
+    transform: translateY(-2px);
+  }
+
+  .ai-agent-visual-stack {
+    display: grid;
+    grid-template-columns: 1.2fr 0.9fr;
+    gap: 1rem;
+  }
+
+  .ai-agent-stack-board {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .ai-agent-stack-node {
+    border-radius: 1.1rem;
+    padding: 0.9rem 1rem;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(244, 248, 255, 0.94));
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    opacity: 0.55;
+    transform: scale(0.985);
+    transition: opacity 160ms ease, transform 160ms ease, border-color 160ms ease;
+  }
+
+  .ai-agent-stack-node strong,
+  .ai-agent-detail-panel h4 {
+    display: block;
+    margin-bottom: 0.34rem;
+    color: #0f172a;
+  }
+
+  .ai-agent-stack-node span,
+  .ai-agent-detail-panel p {
+    display: block;
+    color: #334155;
+    line-height: 1.7;
+  }
+
+  .ai-agent-stack-node.is-active {
+    opacity: 1;
+    transform: scale(1);
+    border-color: rgba(37, 99, 235, 0.28);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+  }
+
+  .ai-agent-detail-panel {
+    border-radius: 1.3rem;
+    padding: 1.1rem 1.15rem;
+    background: radial-gradient(circle at top left, rgba(8, 145, 178, 0.12), transparent 42%),
+      linear-gradient(180deg, rgba(243, 248, 255, 0.98), rgba(255, 255, 255, 0.98));
+    border: 1px solid rgba(37, 99, 235, 0.18);
+  }
+
+  .ai-agent-detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.95rem;
+  }
+
+  @media (max-width: 860px) {
+    .ai-agent-visual-stack {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

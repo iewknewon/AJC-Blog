@@ -16,6 +16,11 @@ const firstLesson = [...subject.lessons].sort((left, right) => left.order - righ
   </div>
   <h3 class="learning-subject-title">{subject.title}</h3>
   <p class="learning-subject-description">{subject.description}</p>
+  <div class="tags learning-lesson-card-tags">
+    <span class="tag">{subject.shortTitle}</span>
+    <span class="tag">{subject.lessons.length} 节课</span>
+    <span class="tag">图解学习</span>
+  </div>
   <div class="learning-subject-path">
     {subject.learningPath.map((item) => (
       <p class="learning-subject-path-item">{item}</p>

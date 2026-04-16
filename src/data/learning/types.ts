@@ -1,4 +1,7 @@
-export type LearningSubjectSlug = 'networking' | 'computer-organization';
+export type LearningSubjectSlug =
+  | 'networking'
+  | 'computer-organization'
+  | 'ai-agent-engineering';
 
 export type LearningAnimationKind =
   | 'protocol-stack'
@@ -6,7 +9,14 @@ export type LearningAnimationKind =
   | 'tcp-flow'
   | 'system-architecture'
   | 'instruction-cycle'
-  | 'cache-locality';
+  | 'cache-locality'
+  | 'ai-agent-landscape'
+  | 'skill-tool-function'
+  | 'mcp-flow'
+  | 'workflow-vs-agent'
+  | 'memory-context'
+  | 'rag-pipeline'
+  | 'guardrails-observability';
 
 export type LearningLessonSection = {
   title: string;

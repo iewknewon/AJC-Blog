@@ -6,6 +6,13 @@ import TcpFlowAnimator from './TcpFlowAnimator.astro';
 import SystemArchitectureMap from './SystemArchitectureMap.astro';
 import InstructionCycleExplorer from './InstructionCycleExplorer.astro';
 import CacheLocalityDemo from './CacheLocalityDemo.astro';
+import AiAgentLandscape from './AiAgentLandscape.astro';
+import SkillToolFunctionMap from './SkillToolFunctionMap.astro';
+import McpFlowExplorer from './McpFlowExplorer.astro';
+import WorkflowAgentComparator from './WorkflowAgentComparator.astro';
+import MemoryContextExplorer from './MemoryContextExplorer.astro';
+import RagPipelineExplorer from './RagPipelineExplorer.astro';
+import GuardrailsObservabilityBoard from './GuardrailsObservabilityBoard.astro';
 
 interface Props {
   kind: LearningAnimationKind;
@@ -20,3 +27,10 @@ const { kind } = Astro.props;
 {kind === 'system-architecture' ? <SystemArchitectureMap /> : null}
 {kind === 'instruction-cycle' ? <InstructionCycleExplorer /> : null}
 {kind === 'cache-locality' ? <CacheLocalityDemo /> : null}
+{kind === 'ai-agent-landscape' ? <AiAgentLandscape /> : null}
+{kind === 'skill-tool-function' ? <SkillToolFunctionMap /> : null}
+{kind === 'mcp-flow' ? <McpFlowExplorer /> : null}
+{kind === 'workflow-vs-agent' ? <WorkflowAgentComparator /> : null}
+{kind === 'memory-context' ? <MemoryContextExplorer /> : null}
+{kind === 'rag-pipeline' ? <RagPipelineExplorer /> : null}
+{kind === 'guardrails-observability' ? <GuardrailsObservabilityBoard /> : null}

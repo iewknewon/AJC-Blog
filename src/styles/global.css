@@ -2306,6 +2306,10 @@ body::after {
   background: radial-gradient(circle, rgba(194, 111, 54, 0.18), transparent 72%);
 }
 
+.learning-subject-card.is-ai-agent::after {
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.2), transparent 72%);
+}
+
 .learning-subject-top,
 .learning-lesson-card-top,
 .learning-visual-header,
@@ -2335,6 +2339,10 @@ body::after {
 
 .learning-subject-card.is-architecture .learning-subject-icon {
   background: linear-gradient(135deg, #b45309, #f59e0b);
+}
+
+.learning-subject-card.is-ai-agent .learning-subject-icon {
+  background: linear-gradient(135deg, #0f766e, #2563eb);
 }
 
 .learning-subject-eyebrow {

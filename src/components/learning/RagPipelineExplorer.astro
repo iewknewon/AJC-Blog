@@ -1,0 +1,132 @@
+<div class="content-card learning-visual-card rag-pipeline-card" data-learning-visual="rag-pipeline">
+  <div class="learning-visual-header">
+    <span class="tag">管线图</span>
+    <h3>RAG 不是“搜一下就完了”，而是一条完整的回填链</h3>
+    <p>依次点开 query、retrieval、rerank、assembly、answer，会看到每一步分别在修什么问题。</p>
+  </div>
+
+  <div class="rag-pipeline-steps">
+    <button class="rag-pipeline-step is-active" type="button" data-rag-step="query">Query</button>
+    <button class="rag-pipeline-step" type="button" data-rag-step="retrieval">Retrieval</button>
+    <button class="rag-pipeline-step" type="button" data-rag-step="rerank">Rerank</button>
+    <button class="rag-pipeline-step" type="button" data-rag-step="assembly">Assembly</button>
+    <button class="rag-pipeline-step" type="button" data-rag-step="answer">Answer</button>
+  </div>
+
+  <div class="rag-pipeline-bar">
+    <div class="rag-pipeline-fill" data-rag-fill style="width: 20%;"></div>
+  </div>
+
+  <div class="learning-layer-panel">
+    <p class="learning-step-hint">当前阶段的职责</p>
+    <strong data-rag-title>Query：先把问题表达成更适合检索的形式</strong>
+    <p data-rag-body>如果查询词太模糊，后面检索到的资料通常也会偏。RAG 的第一步不是“去搜”，而是“先把要搜什么说清楚”。</p>
+  </div>
+</div>
+
+<script>
+  const root = document.querySelector('[data-learning-visual="rag-pipeline"]');
+
+  if (root) {
+    const copy = {
+      query: {
+        title: 'Query：先把问题表达成更适合检索的形式',
+        body: '如果查询词太模糊，后面检索到的资料通常也会偏。RAG 的第一步不是“去搜”，而是“先把要搜什么说清楚”。',
+        width: '20%',
+      },
+      retrieval: {
+        title: 'Retrieval：从外部资料里捞出候选结果',
+        body: '这一层更像广撒网，目标是先把可能相关的材料捞出来，但这时通常还不够精。',
+        width: '40%',
+      },
+      rerank: {
+        title: 'Rerank：从候选里挑出最值得保留的几条',
+        body: '如果不做重排，系统很容易把噪声也一起塞回上下文，导致回答被无关信息污染。',
+        width: '60%',
+      },
+      assembly: {
+        title: 'Assembly：把资料组织成模型真正能消费的上下文',
+        body: '不是找到资料就够了，关键是怎样把资料拼成清晰的当前上下文，减少噪声、突出重点。',
+        width: '80%',
+      },
+      answer: {
+        title: 'Answer：基于回填后的上下文生成回答',
+        body: '到这一步，模型才真正开始“带着刚检索回来的资料”去回答。所以回答质量往往受前面每一层共同影响。',
+        width: '100%',
+      },
+    };
+
+    const buttons = Array.from(root.querySelectorAll('[data-rag-step]'));
+    const fill = root.querySelector('[data-rag-fill]');
+    const title = root.querySelector('[data-rag-title]');
+    const body = root.querySelector('[data-rag-body]');
+
+    const render = (key) => {
+      buttons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.ragStep === key);
+      });
+
+      const detail = copy[key];
+      if (!detail || !fill || !title || !body) {
+        return;
+      }
+
+      fill.style.width = detail.width;
+      title.textContent = detail.title;
+      body.textContent = detail.body;
+    };
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => render(button.dataset.ragStep));
+    });
+  }
+</script>
+
+<style>
+  .rag-pipeline-card {
+    gap: 1rem;
+  }
+
+  .rag-pipeline-steps {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .rag-pipeline-step {
+    border-radius: 999px;
+    border: 1px solid rgba(14, 165, 233, 0.16);
+    background: rgba(240, 249, 255, 0.96);
+    padding: 0.68rem 0.55rem;
+    font: inherit;
+    font-weight: 700;
+    color: #0369a1;
+    cursor: pointer;
+  }
+
+  .rag-pipeline-step.is-active {
+    border-color: rgba(37, 99, 235, 0.3);
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(37, 99, 235, 0.14));
+  }
+
+  .rag-pipeline-bar {
+    width: 100%;
+    height: 1rem;
+    border-radius: 999px;
+    background: rgba(226, 232, 240, 0.7);
+    overflow: hidden;
+  }
+
+  .rag-pipeline-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #0ea5e9, #2563eb);
+    transition: width 180ms ease;
+  }
+
+  @media (max-width: 860px) {
+    .rag-pipeline-steps {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

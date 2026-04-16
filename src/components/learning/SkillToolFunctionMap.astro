@@ -1,0 +1,151 @@
+<div class="content-card learning-visual-card skill-tool-function-card" data-learning-visual="skill-tool-function">
+  <div class="learning-visual-header">
+    <span class="tag">概念分层</span>
+    <h3>Skill、Tool、Function Calling 不是同一个层级</h3>
+    <p>这里最容易混。按“任务封装 -> 外部能力 -> 结构化调用接口”来理解，会清楚很多。</p>
+  </div>
+
+  <div class="skill-tool-layers">
+    <button class="skill-tool-layer is-active" type="button" data-skill-tool-layer="skill">Skill</button>
+    <button class="skill-tool-layer" type="button" data-skill-tool-layer="tool">Tool</button>
+    <button class="skill-tool-layer" type="button" data-skill-tool-layer="function">Function Calling</button>
+  </div>
+
+  <div class="skill-tool-board">
+    <article class="skill-tool-card is-active" data-skill-tool-card="skill">
+      <span class="tag">任务层</span>
+      <strong>Skill</strong>
+      <p>围绕某类任务打包出的能力模板，通常会包含提示词、步骤习惯、约束和工具使用策略。</p>
+    </article>
+    <div class="skill-tool-arrow">↓</div>
+    <article class="skill-tool-card" data-skill-tool-card="tool">
+      <span class="tag">能力层</span>
+      <strong>Tool</strong>
+      <p>搜索、文件、数据库、浏览器、代码执行等外部能力单元，负责“真的做事”。</p>
+    </article>
+    <div class="skill-tool-arrow">↓</div>
+    <article class="skill-tool-card" data-skill-tool-card="function">
+      <span class="tag">接口层</span>
+      <strong>Function Calling</strong>
+      <p>让模型用结构化参数表达“我要调用哪个工具”的接口协议，本身不等于业务能力。</p>
+    </article>
+  </div>
+
+  <div class="learning-layer-panel">
+    <p class="learning-step-hint">当前高亮层的关键句</p>
+    <strong data-skill-tool-title>Skill 更像“把一类任务经验打成能力包”。</strong>
+    <p data-skill-tool-body>它经常站在 Tool 之上，替同类任务提供更稳定的执行方式，例如写作技能、代码审查技能、研究技能。</p>
+  </div>
+</div>
+
+<script>
+  const root = document.querySelector('[data-learning-visual="skill-tool-function"]');
+
+  if (root) {
+    const copy = {
+      skill: {
+        title: 'Skill 更像“把一类任务经验打成能力包”。',
+        body: '它经常站在 Tool 之上，替同类任务提供更稳定的执行方式，例如写作技能、代码审查技能、研究技能。',
+      },
+      tool: {
+        title: 'Tool 是被系统拿来直接调用的外部能力。',
+        body: '它负责查询、读写、执行和访问外部世界。没有 Tool，很多代理系统仍然只能“想”，很难真正推进任务。',
+      },
+      function: {
+        title: 'Function Calling 更像“模型怎样发起结构化调用”。',
+        body: '它是一层协议接口，让模型把调用意图表达清楚，但不自动等于会调用合理、会整合结果。',
+      },
+    };
+
+    const tabs = Array.from(root.querySelectorAll('[data-skill-tool-layer]'));
+    const cards = Array.from(root.querySelectorAll('[data-skill-tool-card]'));
+    const title = root.querySelector('[data-skill-tool-title]');
+    const body = root.querySelector('[data-skill-tool-body]');
+
+    const render = (key) => {
+      tabs.forEach((tab) => {
+        tab.classList.toggle('is-active', tab.dataset.skillToolLayer === key);
+      });
+
+      cards.forEach((card) => {
+        card.classList.toggle('is-active', card.dataset.skillToolCard === key);
+      });
+
+      const detail = copy[key];
+      if (detail && title && body) {
+        title.textContent = detail.title;
+        body.textContent = detail.body;
+      }
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => render(tab.dataset.skillToolLayer));
+    });
+  }
+</script>
+
+<style>
+  .skill-tool-function-card {
+    gap: 1rem;
+  }
+
+  .skill-tool-layers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .skill-tool-layer {
+    border: 1px solid rgba(8, 145, 178, 0.18);
+    border-radius: 999px;
+    background: rgba(244, 252, 252, 0.96);
+    padding: 0.68rem 0.88rem;
+    font: inherit;
+    font-weight: 700;
+    color: #0f766e;
+    cursor: pointer;
+  }
+
+  .skill-tool-layer.is-active {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(37, 99, 235, 0.12));
+    border-color: rgba(37, 99, 235, 0.28);
+  }
+
+  .skill-tool-board {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .skill-tool-card {
+    border-radius: 1.1rem;
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(255, 255, 255, 0.96);
+    opacity: 0.58;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .skill-tool-card.is-active {
+    opacity: 1;
+    transform: translateX(4px);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  }
+
+  .skill-tool-card strong {
+    display: block;
+    margin: 0.4rem 0 0.35rem;
+    color: #0f172a;
+  }
+
+  .skill-tool-card p {
+    margin: 0;
+    color: #334155;
+    line-height: 1.7;
+  }
+
+  .skill-tool-arrow {
+    text-align: center;
+    color: #0f766e;
+    font-weight: 800;
+  }
+</style>
