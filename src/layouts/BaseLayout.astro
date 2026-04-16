@@ -3,7 +3,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
 import { siteConfig } from '../data/site';
-import { isEditorialRoute } from '../lib/editorial/routes';
+import { getEditorialRouteKind } from '../lib/editorial/routes';
 import { serializeInlineJson } from '../lib/utils/inline-json';
 import { getCanonicalUrl } from '../utils/posts';
 
@@ -22,7 +22,8 @@ const {
 } = Astro.props;
 const canonical = getCanonicalUrl(pathname, siteConfig.siteUrl);
 const imageUrl = new URL(image, siteConfig.siteUrl).toString();
-const editorial = isEditorialRoute(pathname);
+const editorialKind = getEditorialRouteKind(pathname);
+const editorial = editorialKind !== 'none';
 ---
 
 <!doctype html>
@@ -109,8 +110,12 @@ const editorial = isEditorialRoute(pathname);
       }
     </script>
   </head>
-  <body class:list={[editorial && 'site-body-editorial']}>
-    <Header editorial={editorial} />
+  <body class:list={[
+    editorial && 'site-body-editorial',
+    editorialKind === 'home' && 'site-body-editorial-home',
+    editorialKind === 'article' && 'site-body-editorial-article',
+  ]}>
+    <Header editorial={editorial} editorialKind={editorialKind} />
     <main class:list={['page-shell', editorial && 'page-shell-editorial']}>
       <slot />
     </main>
