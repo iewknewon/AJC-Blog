@@ -9,28 +9,28 @@ interface Props {
 const { previous, next } = Astro.props;
 ---
 
-<div class="post-nav post-nav-editorial">
+<div class="post-nav">
   {previous ? (
-    <a class="content-card post-nav-card post-nav-card-editorial" href={`/blog/${previous.slug}/`}>
-      <p class="meta">Previous</p>
+    <a class="content-card post-nav-card" href={`/blog/${previous.slug}/`}>
+      <p class="meta">上一篇</p>
       <h3>{previous.title}</h3>
-      <p class="muted">Continue reading the previous article in the timeline.</p>
+      <p class="muted">继续顺着时间线阅读上一篇内容。</p>
     </a>
   ) : (
-    <div class="empty-state post-nav-card post-nav-card-editorial">
-      <p>This is the earliest article.</p>
+    <div class="empty-state post-nav-card">
+      <p>已经是最早的一篇文章了。</p>
     </div>
   )}
 
   {next ? (
-    <a class="content-card post-nav-card post-nav-card-editorial" href={`/blog/${next.slug}/`}>
-      <p class="meta">Next</p>
+    <a class="content-card post-nav-card" href={`/blog/${next.slug}/`}>
+      <p class="meta">下一篇</p>
       <h3>{next.title}</h3>
-      <p class="muted">Continue to the next article update.</p>
+      <p class="muted">继续查看后续更新的相关文章。</p>
     </a>
   ) : (
-    <div class="empty-state post-nav-card post-nav-card-editorial">
-      <p>This is the latest article.</p>
+    <div class="empty-state post-nav-card">
+      <p>已经是最新的一篇文章了。</p>
     </div>
   )}
 </div>

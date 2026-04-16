@@ -1,35 +1,22 @@
 ---
 import ThemeToggle from './ThemeToggle.astro';
 import { navigation, siteConfig } from '../data/site';
-import type { EditorialRouteKind } from '../lib/editorial/routes';
 
-interface Props {
-  editorial?: boolean;
-  editorialKind?: EditorialRouteKind;
-}
-
-const { editorial = false, editorialKind = 'none' } = Astro.props;
 const currentPath = Astro.url.pathname;
 ---
 
-<header class:list={[
-  'site-header',
-  editorial && 'site-header-editorial',
-  editorialKind === 'home' && 'site-header-editorial-home',
-  editorialKind === 'article' && 'site-header-editorial-article',
-]}>
-  {editorialKind === 'home' ? (
-    <div class="masthead-shell">
-      <div class="masthead-meta">
-        <span>Independent Notes</span>
-        <span>Essays & Learning</span>
-        <span>Dispatches & Archives</span>
-      </div>
-      <a class="masthead-brand" href="/" aria-label={siteConfig.title}>
-        <span class="masthead-title">AJC JOURNAL</span>
+<header class="site-header">
+  <div class="container">
+    <div class="header-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">AJC</span>
+        <span class="brand-copy">
+          <strong>{siteConfig.title}</strong>
+          <span>{siteConfig.brand.headerTagline}</span>
+        </span>
       </a>
-      <div class="masthead-nav-row">
-        <nav class="nav masthead-nav">
+      <div class="header-actions">
+        <nav class="nav">
           {navigation.map((item) => {
             const isActive = item.href === '/' ? currentPath === '/' : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
 
@@ -43,52 +30,5 @@ const currentPath = Astro.url.pathname;
         <ThemeToggle />
       </div>
     </div>
-  ) : editorialKind === 'article' ? (
-    <div class="container">
-      <div class="editorial-article-bar">
-        <a class="editorial-article-brand" href="/" aria-label={siteConfig.title}>
-          <span class="editorial-article-brand-mark">AJC</span>
-          <span class="editorial-article-brand-copy">Journal</span>
-        </a>
-        <nav class="nav editorial-article-nav" aria-label="Article navigation">
-          {navigation.map((item) => {
-            const isActive = item.href === '/' ? currentPath === '/' : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
-
-            return (
-              <a class:list={["nav-link", isActive && 'is-active']} href={item.href}>
-                {item.label}
-              </a>
-            );
-          })}
-        </nav>
-        <ThemeToggle />
-      </div>
-    </div>
-  ) : (
-    <div class="container">
-      <div class="header-inner">
-        <a class="brand" href="/">
-          <span class="brand-mark">AJC</span>
-          <span class="brand-copy">
-            <strong>{siteConfig.title}</strong>
-            <span>{siteConfig.brand.headerTagline}</span>
-          </span>
-        </a>
-        <div class="header-actions">
-          <nav class="nav">
-            {navigation.map((item) => {
-              const isActive = item.href === '/' ? currentPath === '/' : currentPath === item.href || currentPath.startsWith(`${item.href}/`);
-
-              return (
-                <a class:list={["nav-link", isActive && 'is-active']} href={item.href}>
-                  {item.label}
-                </a>
-              );
-            })}
-          </nav>
-          <ThemeToggle />
-        </div>
-      </div>
-    </div>
-  )}
+  </div>
 </header>
