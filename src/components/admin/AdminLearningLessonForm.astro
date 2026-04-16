@@ -1,0 +1,177 @@
+---
+import type { ManagedLearningLesson } from '../../lib/learning/types';
+
+interface Props {
+  action: string;
+  submitLabel: string;
+  lesson?: Partial<ManagedLearningLesson>;
+  error?: string;
+  formId?: string;
+  backHref?: string;
+  backLabel?: string;
+  deleteLabel?: string;
+  deleteConfirmMessage?: string;
+}
+
+const {
+  action,
+  submitLabel,
+  lesson,
+  error,
+  formId = 'learning-lesson-form',
+  backHref = '/admin/learning',
+  backLabel = '返回专题',
+  deleteLabel = '删除课时',
+  deleteConfirmMessage = '确认要删除这节课吗？删除后不会自动恢复。',
+} = Astro.props;
+
+const objectives = lesson?.objectives?.join('\n') ?? '';
+const keywords = lesson?.keywords?.join('\n') ?? '';
+const relatedLessonSlugs = lesson?.relatedLessonSlugs?.join('\n') ?? '';
+const quickPrompts = lesson?.quickPrompts?.join('\n') ?? '再通俗一点\n举个现实例子\n和上一课有什么关系\n出两道检测题';
+const sections = lesson?.sections ? JSON.stringify(lesson.sections, null, 2) : '';
+const misconceptions = lesson?.misconceptions ? JSON.stringify(lesson.misconceptions, null, 2) : '';
+const quiz = lesson?.quiz ? JSON.stringify(lesson.quiz, null, 2) : '';
+const status = lesson?.status ?? 'draft';
+const animation = lesson?.animation ?? 'workflow-vs-agent';
+
+const animationOptions = [
+  { value: 'protocol-stack', label: '协议栈分层' },
+  { value: 'http-lifecycle', label: 'HTTP 请求生命周期' },
+  { value: 'tcp-flow', label: 'TCP 流程' },
+  { value: 'system-architecture', label: '系统架构总览' },
+  { value: 'instruction-cycle', label: '指令执行周期' },
+  { value: 'cache-locality', label: '缓存与局部性' },
+  { value: 'ai-agent-landscape', label: 'AI / Agent 全景图' },
+  { value: 'skill-tool-function', label: 'Skill / Tool / Function' },
+  { value: 'mcp-flow', label: 'MCP 流程' },
+  { value: 'workflow-vs-agent', label: 'Workflow 与 Agent' },
+  { value: 'memory-context', label: '记忆与上下文' },
+  { value: 'rag-pipeline', label: 'RAG 流程' },
+  { value: 'guardrails-observability', label: 'Guardrails / 观测' },
+  { value: 'reverse-landscape', label: '逆向全景图' },
+  { value: 'pe-anatomy', label: 'PE 结构' },
+  { value: 'register-flow', label: '寄存器与指令' },
+  { value: 'debugger-flow', label: '调试流程' },
+  { value: 'memory-stack-frame', label: '内存与栈帧' },
+  { value: 'reverse-case-trace', label: '逆向案例追踪' },
+] as const;
+---
+
+<div class="admin-form-layout">
+  <form id={formId} class="admin-form card" action={action} method="post">
+    {error ? <div class="admin-alert">{error}</div> : null}
+
+    <div class="grid two">
+      <label class="admin-field">
+        <span>课时 Slug</span>
+        <input class="search-input admin-input-rect" type="text" name="lessonSlug" value={lesson?.lessonSlug ?? ''} placeholder="session-basics" required />
+      </label>
+
+      <label class="admin-field">
+        <span>课时标题</span>
+        <input class="search-input admin-input-rect" type="text" name="title" value={lesson?.title ?? ''} placeholder="Session 基础" required />
+      </label>
+    </div>
+
+    <label class="admin-field">
+      <span>课时简介</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="description" placeholder="说明这节课会讲明白什么。" required>{lesson?.description ?? ''}</textarea>
+    </label>
+
+    <div class="grid three">
+      <label class="admin-field">
+        <span>排序</span>
+        <input class="search-input admin-input-rect" type="number" min="1" name="order" value={lesson?.order ?? 1} required />
+      </label>
+
+      <label class="admin-field">
+        <span>预计分钟</span>
+        <input class="search-input admin-input-rect" type="number" min="1" name="estimatedMinutes" value={lesson?.estimatedMinutes ?? 12} required />
+      </label>
+
+      <label class="admin-field">
+        <span>状态</span>
+        <select class="search-input admin-input-rect" name="status">
+          <option value="draft" selected={status === 'draft'}>草稿</option>
+          <option value="published" selected={status === 'published'}>已发布</option>
+        </select>
+      </label>
+    </div>
+
+    <label class="admin-field">
+      <span>动画类型</span>
+      <select class="search-input admin-input-rect" name="animation">
+        {animationOptions.map((option) => (
+          <option value={option.value} selected={option.value === animation}>{option.label}</option>
+        ))}
+      </select>
+    </label>
+
+    <label class="admin-field">
+      <span>Hero 摘要</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="heroSummary" placeholder="用一句更直观的话告诉学习者，这节课为什么值得看。" required>{lesson?.heroSummary ?? ''}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>聊天上下文摘要</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="chatContextSummary" placeholder="课内问答时，需要始终围绕哪些重点回答。" required>{lesson?.chatContextSummary ?? ''}</textarea>
+    </label>
+
+    <div class="grid two">
+      <label class="admin-field">
+        <span>学习目标</span>
+        <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="objectives" placeholder="每行一条目标" required>{objectives}</textarea>
+      </label>
+
+      <label class="admin-field">
+        <span>关键词</span>
+        <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="keywords" placeholder="每行一个关键词">{keywords}</textarea>
+      </label>
+    </div>
+
+    <div class="grid two">
+      <label class="admin-field">
+        <span>推荐追问</span>
+        <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="quickPrompts" placeholder="每行一个推荐追问">{quickPrompts}</textarea>
+      </label>
+
+      <label class="admin-field">
+        <span>相关课时 Slug</span>
+        <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="relatedLessonSlugs" placeholder="每行一个 lesson slug">{relatedLessonSlugs}</textarea>
+      </label>
+    </div>
+
+    <div class="content-card" style="padding: 1rem; box-shadow: none; background: var(--surface-muted);">
+      <h3 style="margin-bottom: 0.5rem;">结构化内容说明</h3>
+      <p class="admin-insight-meta" style="margin: 0;">下方 3 个大字段使用 JSON，适合先由 AI 生成，再手动微调。</p>
+    </div>
+
+    <label class="admin-field">
+      <span>正文 Sections JSON</span>
+      <textarea class="search-input admin-input-rect admin-textarea" name="sections" placeholder='[{"title":"先建立直觉","paragraphs":["第一段","第二段"]}]' required>{sections}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>常见误区 JSON</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="misconceptions" placeholder='[{"myth":"误区","clarification":"澄清"}]'>{misconceptions}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>小测 JSON</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="quiz" placeholder='[{"question":"问题","options":["A","B"],"answerIndex":0,"explanation":"解释"}]' required>{quiz}</textarea>
+    </label>
+
+    <div class="hero-actions">
+      <button class="button button-primary" type="submit">{submitLabel}</button>
+      <a class="button" href={backHref}>{backLabel}</a>
+    </div>
+  </form>
+
+  {lesson?.id ? (
+    <form class="inline-form" action={action} method="post" onsubmit={`return confirm(${JSON.stringify(deleteConfirmMessage)})`}>
+      <input type="hidden" name="intent" value="delete" />
+      <button class="button button-danger" type="submit">{deleteLabel}</button>
+    </form>
+  ) : null}
+</div>

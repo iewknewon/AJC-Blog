@@ -1,0 +1,135 @@
+---
+import type { LearningStageDefinition } from '../../data/learning/stages';
+import type { ManagedLearningSubject } from '../../lib/learning/types';
+
+interface Props {
+  action: string;
+  submitLabel: string;
+  track?: Partial<ManagedLearningSubject>;
+  stages: LearningStageDefinition[];
+  error?: string;
+  formId?: string;
+  backHref?: string;
+  backLabel?: string;
+  deleteLabel?: string;
+  deleteConfirmMessage?: string;
+}
+
+const {
+  action,
+  submitLabel,
+  track,
+  stages,
+  error,
+  formId = 'learning-track-form',
+  backHref = '/admin/learning',
+  backLabel = '返回专题列表',
+  deleteLabel = '删除专题',
+  deleteConfirmMessage = '确认要删除这个学习专题吗？它下面的课时也会一起删除。',
+} = Astro.props;
+
+const learningPath = track?.learningPath?.join('\n') ?? '';
+const conceptOverview = track?.conceptOverview ? JSON.stringify(track.conceptOverview, null, 2) : '';
+const status = track?.status ?? 'draft';
+const pageVariant = track?.pageVariant ?? 'default';
+const stageSlug = track?.stageSlug ?? 'special-topics';
+---
+
+<div class="admin-form-layout">
+  <form id={formId} class="admin-form card" action={action} method="post">
+    {error ? <div class="admin-alert">{error}</div> : null}
+
+    <label class="admin-field">
+      <span>专题 Slug</span>
+      <input class="search-input admin-input-rect" type="text" name="slug" value={track?.slug ?? ''} placeholder="token-security" required />
+    </label>
+
+    <div class="grid two">
+      <label class="admin-field">
+        <span>专题标题</span>
+        <input class="search-input admin-input-rect" type="text" name="title" value={track?.title ?? ''} placeholder="Token 安全专题" required />
+      </label>
+
+      <label class="admin-field">
+        <span>短标题</span>
+        <input class="search-input admin-input-rect" type="text" name="shortTitle" value={track?.shortTitle ?? ''} placeholder="Token 安全" required />
+      </label>
+    </div>
+
+    <label class="admin-field">
+      <span>专题简介</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="description" placeholder="用一句话说明这条学习线会解决什么问题。" required>{track?.description ?? ''}</textarea>
+    </label>
+
+    <div class="grid two">
+      <label class="admin-field">
+        <span>所属阶段</span>
+        <select class="search-input admin-input-rect" name="stageSlug">
+          {stages.map((stage) => (
+            <option value={stage.slug} selected={stage.slug === stageSlug}>{stage.title}</option>
+          ))}
+        </select>
+      </label>
+
+      <label class="admin-field">
+        <span>状态</span>
+        <select class="search-input admin-input-rect" name="status">
+          <option value="draft" selected={status === 'draft'}>草稿</option>
+          <option value="published" selected={status === 'published'}>已发布</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid three">
+      <label class="admin-field">
+        <span>Eyebrow</span>
+        <input class="search-input admin-input-rect" type="text" name="eyebrow" value={track?.eyebrow ?? 'Learning Track'} placeholder="Learning Track" />
+      </label>
+
+      <label class="admin-field">
+        <span>颜色 Token</span>
+        <input class="search-input admin-input-rect" type="text" name="colorToken" value={track?.colorToken ?? 'learning'} placeholder="security" />
+      </label>
+
+      <label class="admin-field">
+        <span>图标缩写</span>
+        <input class="search-input admin-input-rect" type="text" name="icon" value={track?.icon ?? 'LR'} placeholder="TK" />
+      </label>
+    </div>
+
+    <label class="admin-field">
+      <span>页面变体</span>
+      <select class="search-input admin-input-rect" name="pageVariant">
+        <option value="default" selected={pageVariant === 'default'}>默认专题页</option>
+        <option value="timeline" selected={pageVariant === 'timeline'}>时间轴专题页</option>
+      </select>
+    </label>
+
+    <label class="admin-field">
+      <span>学习路径</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="learningPath" placeholder="每行一条，例如：&#10;先知道问题是什么&#10;再理解核心概念&#10;最后进入真实场景" required>{learningPath}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>概念总览 JSON</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="conceptOverview" placeholder='{"title":"什么是 Token 安全","summary":"...","pillars":["身份","状态","密钥"],"safetyNotes":["默认强调防御性理解。"]}'>{conceptOverview}</textarea>
+    </label>
+
+    <label class="admin-field">
+      <span>来源提示词</span>
+      <textarea class="search-input admin-input-rect admin-textarea admin-textarea-sm" name="sourcePrompt" placeholder="如果这条专题来自 AI quickstart，可以在这里保留原始需求。">{track?.sourcePrompt ?? ''}</textarea>
+    </label>
+
+    <div class="hero-actions">
+      <button class="button button-primary" type="submit">{submitLabel}</button>
+      <a class="button" href={backHref}>{backLabel}</a>
+    </div>
+  </form>
+
+  {track?.id ? (
+    <form class="inline-form" action={action} method="post" onsubmit={`return confirm(${JSON.stringify(deleteConfirmMessage)})`}>
+      <input type="hidden" name="intent" value="delete" />
+      <button class="button button-danger" type="submit">{deleteLabel}</button>
+    </form>
+  ) : null}
+</div>

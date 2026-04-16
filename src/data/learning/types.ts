@@ -2,7 +2,8 @@ export type LearningSubjectSlug =
   | 'networking'
   | 'computer-organization'
   | 'ai-agent-engineering'
-  | 'reverse-engineering';
+  | 'reverse-engineering'
+  | (string & {});
 
 export type LearningAnimationKind =
   | 'protocol-stack'

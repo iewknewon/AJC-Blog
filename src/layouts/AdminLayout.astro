@@ -7,7 +7,7 @@ interface Props {
   description?: string;
 }
 
-const { title, description = 'AJC 博客后台' } = Astro.props;
+const { title, description = 'AJC 后台管理' } = Astro.props;
 ---
 
 <!doctype html>
@@ -24,11 +24,12 @@ const { title, description = 'AJC 博客后台' } = Astro.props;
       <aside class="admin-sidebar">
         <a class="admin-brand" href="/admin">{siteConfig.title} 后台</a>
         <nav class="admin-nav">
-          <a class:list={["admin-nav-link", Astro.url.pathname === '/admin' && 'is-active']} href="/admin">概览</a>
-          <a class:list={["admin-nav-link", Astro.url.pathname.startsWith('/admin/posts') && 'is-active']} href="/admin/posts">文章管理</a>
-          <a class:list={["admin-nav-link", Astro.url.pathname.startsWith('/admin/novels') && 'is-active']} href="/admin/novels">小说连载</a>
-          <a class:list={["admin-nav-link", Astro.url.pathname === '/admin/stats' && 'is-active']} href="/admin/stats">访问统计</a>
-          <a class:list={["admin-nav-link", Astro.url.pathname === '/admin/ai' && 'is-active']} href="/admin/ai">AI 写作</a>
+          <a class:list={['admin-nav-link', Astro.url.pathname === '/admin' && 'is-active']} href="/admin">概览</a>
+          <a class:list={['admin-nav-link', Astro.url.pathname.startsWith('/admin/posts') && 'is-active']} href="/admin/posts">博客</a>
+          <a class:list={['admin-nav-link', Astro.url.pathname.startsWith('/admin/novels') && 'is-active']} href="/admin/novels">小说</a>
+          <a class:list={['admin-nav-link', Astro.url.pathname.startsWith('/admin/learning') && 'is-active']} href="/admin/learning">学习</a>
+          <a class:list={['admin-nav-link', Astro.url.pathname === '/admin/stats' && 'is-active']} href="/admin/stats">统计</a>
+          <a class:list={['admin-nav-link', Astro.url.pathname === '/admin/ai' && 'is-active']} href="/admin/ai">AI 配置</a>
           <a class="admin-nav-link" href="/" target="_blank" rel="noreferrer">查看前台</a>
         </nav>
         <form action="/api/admin/logout" method="post" style="margin-top: auto;">

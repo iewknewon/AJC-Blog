@@ -1,6 +1,6 @@
 import { siteConfig } from '../data/site';
 import { getAllTags, getPublishedPosts, paginatePosts } from '../utils/posts';
-import { getAllLearningLessons, getLearningSubjects } from '../lib/learning/content';
+import { getMergedAllLearningLessons, getMergedLearningSubjects } from '../lib/learning/content';
 import {
   getPublishedNovelChapterSummariesByProjectId,
   getPublishedNovelProjects,
@@ -22,8 +22,8 @@ export async function GET(context) {
       })),
     )
     : [];
-  const learningSubjects = getLearningSubjects();
-  const learningLessons = getAllLearningLessons();
+  const learningSubjects = await getMergedLearningSubjects(db);
+  const learningLessons = await getMergedAllLearningLessons(db);
 
   const urls = [
     '/',

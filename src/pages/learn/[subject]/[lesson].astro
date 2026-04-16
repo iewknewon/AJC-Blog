@@ -6,10 +6,16 @@ import LearningVisual from '../../../components/learning/LearningVisual.astro';
 import LearningQuiz from '../../../components/learning/LearningQuiz.astro';
 import LearningChat from '../../../components/learning/LearningChat.astro';
 import { siteConfig } from '../../../data/site';
-import { getAdjacentLearningLessons, getLearningLesson, getRelatedLearningLessons } from '../../../lib/learning/content';
+import {
+  getAdjacentLearningLessons,
+  getMergedLearningLesson,
+  getRelatedLearningLessons,
+} from '../../../lib/learning/content';
 
-const { subject, lesson } = Astro.params;
-const resolved = subject && lesson ? getLearningLesson(subject, lesson) : null;
+const db = Astro.locals.runtime?.env?.DB;
+const subjectSlug = Astro.params.subject ?? '';
+const lessonSlug = Astro.params.lesson ?? '';
+const resolved = subjectSlug && lessonSlug ? await getMergedLearningLesson(subjectSlug, lessonSlug, db) : null;
 
 if (!resolved) {
   return Astro.redirect('/learn');
@@ -19,7 +25,6 @@ const { subject: currentSubject, lesson: currentLesson } = resolved;
 const adjacent = getAdjacentLearningLessons(currentSubject, currentLesson.lessonSlug);
 const relatedLessons = getRelatedLearningLessons(currentSubject, currentLesson);
 const orderedLessons = [...currentSubject.lessons].sort((left, right) => left.order - right.order);
-const watchPoints = currentLesson.objectives.slice(0, 3);
 const chatEnabled = Boolean(
   String(Astro.locals.runtime?.env?.LEARNING_AI_BASE_URL ?? '').trim()
   && String(Astro.locals.runtime?.env?.LEARNING_AI_API_KEY ?? '').trim()
@@ -39,55 +44,33 @@ const chatEnabled = Boolean(
         title={currentLesson.title}
         description={currentLesson.heroSummary}
         actions={[
-          { href: `/learn/${currentSubject.slug}`, label: '返回课程总览' },
-          adjacent.next ? { href: `/learn/${currentSubject.slug}/${adjacent.next.lessonSlug}`, label: '下一课', primary: true } : { href: '/learn', label: '返回学习中心', primary: true },
+          { href: `/learn/${currentSubject.slug}`, label: '返回专题页' },
+          adjacent.next
+            ? { href: `/learn/${currentSubject.slug}/${adjacent.next.lessonSlug}`, label: '下一课', primary: true }
+            : { href: '/learn', label: '返回学习中心', primary: true },
         ]}
         stats={[
           { label: '预计时长', value: `${currentLesson.estimatedMinutes} 分钟` },
-          { label: '互动能力', value: chatEnabled ? '图解 + 课内追问' : '图解 + 静态讲解' },
+          { label: '课内问答', value: chatEnabled ? '已启用' : '未启用' },
         ]}
       />
 
       <div class="learning-lesson-layout">
         <article class="article-shell learning-lesson-shell">
-          <div class="content-card learning-objectives-card">
-            <h2 class="section-title" style="font-size: 1.35rem;">本课目标</h2>
+          <section class="content-card">
+            <h2 class="section-title" style="font-size: 1.35rem;">这节课学什么</h2>
             <div class="learning-objectives-list">
               {currentLesson.objectives.map((objective) => (
                 <p class="learning-objective-item">{objective}</p>
               ))}
             </div>
-          </div>
-
-          <div class="grid two learning-focus-grid">
-            <div class="content-card learning-focus-card">
-              <h2 class="section-title" style="font-size: 1.2rem;">看动画前，先盯住这几个问题</h2>
-              <div class="learning-objectives-list">
-                {watchPoints.map((item) => (
-                  <p class="learning-objective-item">{item}</p>
-                ))}
-              </div>
-            </div>
-            <div class="content-card learning-focus-card is-highlight">
-              <h2 class="section-title" style="font-size: 1.2rem;">先抓一句最重要的话</h2>
-              <p class="learning-focus-summary">{currentLesson.heroSummary}</p>
-            </div>
-          </div>
+          </section>
 
           <LearningVisual kind={currentLesson.animation} />
 
-          <div class="content-card learning-focus-card">
-            <h2 class="section-title" style="font-size: 1.2rem;">看完动画后，你应该能直接说清</h2>
-            <div class="learning-objectives-list">
-              {currentLesson.objectives.map((objective) => (
-                <p class="learning-objective-item">{objective}</p>
-              ))}
-            </div>
-          </div>
-
           {currentLesson.sections.map((section) => (
             <section class="content-card learning-section-card">
-              <h2 class="section-title" style="font-size: 1.45rem;">{section.title}</h2>
+              <h2 class="section-title" style="font-size: 1.35rem;">{section.title}</h2>
               <div class="learning-section-prose">
                 {section.paragraphs.map((paragraph) => (
                   <p>{paragraph}</p>
@@ -96,8 +79,8 @@ const chatEnabled = Boolean(
             </section>
           ))}
 
-          <section class="content-card learning-misconception-card">
-            <h2 class="section-title" style="font-size: 1.45rem;">常见误区</h2>
+          <section class="content-card">
+            <h2 class="section-title" style="font-size: 1.35rem;">常见误区</h2>
             <div class="learning-misconception-list">
               {currentLesson.misconceptions.map((item) => (
                 <article class="learning-misconception-item">
@@ -120,7 +103,7 @@ const chatEnabled = Boolean(
 
         <aside class="toc learning-sidebar">
           <div class="content-card">
-            <h3 class="toc-heading">课程进度</h3>
+            <h3 class="toc-heading">专题导航</h3>
             <p class="muted" style="margin: 0.5rem 0 0;">第 {currentLesson.order} / {orderedLessons.length} 课</p>
             <div class="learning-related-list" style="margin-top: 0.85rem;">
               {orderedLessons.map((item) => (
@@ -135,14 +118,6 @@ const chatEnabled = Boolean(
           </div>
 
           <div class="content-card">
-            <h3 class="toc-heading">课时导航</h3>
-            <div class="learning-sidebar-links">
-              {adjacent.previous ? <a class="button" href={`/learn/${currentSubject.slug}/${adjacent.previous.lessonSlug}`}>上一课</a> : null}
-              {adjacent.next ? <a class="button button-primary" href={`/learn/${currentSubject.slug}/${adjacent.next.lessonSlug}`}>下一课</a> : null}
-            </div>
-          </div>
-
-          <div class="content-card">
             <h3 class="toc-heading">关键词</h3>
             <div class="tags" style="margin-top: 0.75rem;">
               {currentLesson.keywords.map((keyword) => (
@@ -152,7 +127,15 @@ const chatEnabled = Boolean(
           </div>
 
           <div class="content-card">
-            <h3 class="toc-heading">关联课时</h3>
+            <h3 class="toc-heading">前后衔接</h3>
+            <div class="learning-sidebar-links">
+              {adjacent.previous ? <a class="button" href={`/learn/${currentSubject.slug}/${adjacent.previous.lessonSlug}`}>上一课</a> : null}
+              {adjacent.next ? <a class="button button-primary" href={`/learn/${currentSubject.slug}/${adjacent.next.lessonSlug}`}>下一课</a> : null}
+            </div>
+          </div>
+
+          <div class="content-card">
+            <h3 class="toc-heading">相关课时</h3>
             {relatedLessons.length > 0 ? (
               <div class="learning-related-list">
                 {relatedLessons.map((item) => (
@@ -160,7 +143,7 @@ const chatEnabled = Boolean(
                 ))}
               </div>
             ) : (
-              <EmptyState title="暂无关联课时" description="这一节课已经是当前学习链路里的关键节点。" />
+              <EmptyState title="暂无相关课时" description="等这个专题继续扩展后，这里会补充推荐跳转。" />
             )}
           </div>
         </aside>

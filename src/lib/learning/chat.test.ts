@@ -9,8 +9,8 @@ import {
 
 test('trimLearningChatMessages keeps only valid recent messages', () => {
   const messages = trimLearningChatMessages([
-    { role: 'user', content: '什么是 TCP？' },
-    { role: 'assistant', content: 'TCP 是可靠传输协议。' },
+    { role: 'user', content: 'What is TCP?' },
+    { role: 'assistant', content: 'TCP is a reliable transport protocol.' },
     { role: 'system', content: 'ignored' },
     null,
   ]);
@@ -25,13 +25,14 @@ test('buildLearningChatPrompt binds responses to the current lesson', () => {
     subject: 'networking',
     lessonSlug: 'protocol-stack',
     messages: [
-      { role: 'user', content: '为什么一定要分层？' },
+      { role: 'user', content: 'Explain the protocol stack simply.' },
     ],
   });
 
-  assert.match(prompt, /当前课程：计算机网络/);
-  assert.match(prompt, /当前课时：分层模型与协议栈/);
-  assert.match(prompt, /只回答与当前课时内容直接相关的问题/);
+  assert.match(prompt, /Track:/);
+  assert.match(prompt, /Lesson:/);
+  assert.match(prompt, /Objectives:/);
+  assert.match(prompt, /Conversation:/);
 });
 
 test('getLearningChatRateLimit counts hourly and daily usage', async () => {

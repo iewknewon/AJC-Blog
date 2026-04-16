@@ -1,0 +1,63 @@
+---
+import AdminLearningLessonForm from '../../../../../components/admin/AdminLearningLessonForm.astro';
+import AdminLayout from '../../../../../layouts/AdminLayout.astro';
+import { isAdminAuthenticated } from '../../../../../lib/auth/guards';
+import { getLearningLessonById, getLearningTrackById } from '../../../../../lib/learning/repository';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const { id, lessonId } = Astro.params;
+
+if (!id || !lessonId) {
+  return Astro.redirect('/admin/learning');
+}
+
+const db = Astro.locals.runtime?.env?.DB;
+
+if (!db) {
+  return Astro.redirect('/admin/learning');
+}
+
+const [track, lesson] = await Promise.all([
+  getLearningTrackById(db, id),
+  getLearningLessonById(db, lessonId),
+]);
+
+if (!track || !lesson || lesson.trackId !== track.id) {
+  return Astro.redirect('/admin/learning');
+}
+
+const error = Astro.url.searchParams.get('error');
+---
+
+<AdminLayout title={`编辑课时：${lesson.title}`} description={`当前专题：${track.title}`}>
+  <section class="grid three" style="padding-top: 0;">
+    <article class="content-card">
+      <h3>专题</h3>
+      <p class="admin-stat-value" style="font-size: 1.2rem;">{track.shortTitle}</p>
+    </article>
+    <article class="content-card">
+      <h3>排序</h3>
+      <p class="admin-stat-value">{lesson.order}</p>
+    </article>
+    <article class="content-card">
+      <h3>状态</h3>
+      <p class="admin-stat-value" style="font-size: 1.2rem;">{lesson.status === 'published' ? '已发布' : '草稿'}</p>
+    </article>
+  </section>
+
+  <section class="section" style="padding-top: 1.5rem;">
+    <AdminLearningLessonForm
+      action={`/api/admin/learning/${track.id}/lessons/${lesson.id}`}
+      submitLabel="保存课时"
+      lesson={lesson}
+      error={error ? '课时保存失败，请检查 JSON 结构和必填字段。' : undefined}
+      backHref={`/admin/learning/${track.id}`}
+      backLabel="返回专题"
+    />
+  </section>
+</AdminLayout>

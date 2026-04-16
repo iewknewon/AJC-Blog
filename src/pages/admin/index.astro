@@ -2,6 +2,7 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { ensureAnalyticsSchema, getAnalyticsSummary } from '../../lib/analytics/repository';
 import { isAdminAuthenticated } from '../../lib/auth/guards';
+import { getLearningTracks } from '../../lib/learning/repository';
 import { getNovelChapterPostIds, getNovelProjects } from '../../lib/novels/repository';
 import { getAdminPosts } from '../../lib/posts/repository';
 
@@ -12,13 +13,23 @@ if (!authenticated) {
 }
 
 const db = Astro.locals.runtime?.env?.DB;
-const posts = db ? await getAdminPosts(db) : [];
-const novelChapterPostIds = db ? await getNovelChapterPostIds(db) : [];
-const novelProjects = db ? await getNovelProjects(db) : [];
+
+const [posts, novelChapterPostIds, novelProjects, learningTracks] = db
+  ? await Promise.all([
+    getAdminPosts(db),
+    getNovelChapterPostIds(db),
+    getNovelProjects(db),
+    getLearningTracks(db),
+  ])
+  : [[], [], [], []];
+
 const chapterPostIdSet = new Set(novelChapterPostIds);
 const standalonePosts = posts.filter((post) => !chapterPostIdSet.has(post.id));
 const novelProjectCount = novelProjects.length;
 const novelChapterCount = novelProjects.reduce((total, project) => total + project.chaptersCount, 0);
+const learningTrackCount = learningTracks.length;
+const draftCount = standalonePosts.filter((post) => post.status === 'draft').length;
+const publishedCount = standalonePosts.filter((post) => post.status === 'published').length;
 
 let analyticsUnavailable = false;
 let analyticsSummary = {
@@ -39,19 +50,16 @@ try {
   analyticsUnavailable = true;
   console.error('Failed to load admin overview analytics summary', error);
 }
-
-const draftCount = standalonePosts.filter((post) => post.status === 'draft').length;
-const publishedCount = standalonePosts.filter((post) => post.status === 'published').length;
 ---
 
-<AdminLayout title="后台概览" description="集中管理博客文章、小说连载、AI 写作和站点访问情况。">
+<AdminLayout title="后台概览" description="从这里进入博客、小说、学习专题、统计和 AI 配置。">
   <section class="grid four">
     <article class="content-card">
       <h3>博客文章</h3>
       <p class="admin-stat-value">{standalonePosts.length}</p>
     </article>
     <article class="content-card">
-      <h3>文章草稿</h3>
+      <h3>博客草稿</h3>
       <p class="admin-stat-value">{draftCount}</p>
     </article>
     <article class="content-card">
@@ -59,34 +67,34 @@ const publishedCount = standalonePosts.filter((post) => post.status === 'publish
       <p class="admin-stat-value">{novelProjectCount}</p>
     </article>
     <article class="content-card">
-      <h3>已写章节</h3>
-      <p class="admin-stat-value">{novelChapterCount}</p>
+      <h3>学习专题</h3>
+      <p class="admin-stat-value">{learningTrackCount}</p>
     </article>
   </section>
 
   <section class="grid four" style="padding-top: 1.25rem;">
     <article class="content-card">
-      <h3>文章已发布</h3>
+      <h3>已发布博客</h3>
       <p class="admin-stat-value">{publishedCount}</p>
     </article>
     <article class="content-card">
-      <h3>累计访问</h3>
+      <h3>小说章节</h3>
+      <p class="admin-stat-value">{novelChapterCount}</p>
+    </article>
+    <article class="content-card">
+      <h3>总访问量</h3>
       <p class="admin-stat-value">{analyticsSummary.totalViews}</p>
     </article>
     <article class="content-card">
       <h3>独立访客</h3>
       <p class="admin-stat-value">{analyticsSummary.uniqueVisitors}</p>
     </article>
-    <article class="content-card">
-      <h3>文章访问</h3>
-      <p class="admin-stat-value">{analyticsSummary.articleViews}</p>
-    </article>
   </section>
 
   {analyticsUnavailable ? (
     <section class="section" style="padding-bottom: 0;">
       <div class="empty-state">
-        访问统计摘要暂时不可用，但文章管理不受影响。通常等 Cloudflare 完成统计表初始化后，刷新一次就会恢复。
+        当前统计数据不可用。通常是本地开发环境没有 Cloudflare 运行时绑定，或者统计表还没有初始化。
       </div>
     </section>
   ) : null}
@@ -94,15 +102,16 @@ const publishedCount = standalonePosts.filter((post) => post.status === 'publish
   <section class="section" style="padding-bottom: 0;">
     <div class="archive-toolbar">
       <div>
-        <h2 class="section-title">开始管理内容</h2>
-        <p class="section-description">从这里继续写作、整理文章、维护小说项目，或者查看访客来自哪些地区。</p>
+        <h2 class="section-title">常用入口</h2>
+        <p class="section-description">直接进入你最常操作的几个后台模块。</p>
       </div>
       <div class="hero-actions">
-        <a class="button button-primary" href="/admin/posts/new">新建文章</a>
-        <a class="button" href="/admin/posts">管理文章</a>
-        <a class="button" href="/admin/novels">小说连载</a>
-        <a class="button" href="/admin/stats">访问统计</a>
-        <a class="button" href="/admin/ai">AI 写作</a>
+        <a class="button button-primary" href="/admin/posts/new">新建博客</a>
+        <a class="button" href="/admin/posts">管理博客</a>
+        <a class="button" href="/admin/novels">管理小说</a>
+        <a class="button" href="/admin/learning">管理学习</a>
+        <a class="button" href="/admin/stats">查看统计</a>
+        <a class="button" href="/admin/ai">AI 配置</a>
       </div>
     </div>
   </section>

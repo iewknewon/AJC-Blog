@@ -30,6 +30,9 @@ function createDbMock() {
 
               return null;
             },
+            async all() {
+              return { results: [] };
+            },
             async run() {
               return { success: true };
             },
@@ -44,7 +47,7 @@ function createDbMock() {
 
 test('POST /api/learn/chat returns 503 when learning AI is not configured', async () => {
   const response = await POST({
-    request: new Request('https://gisgis.eu.cc/api/learn/chat', {
+    request: new Request('https://example.com/api/learn/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -52,7 +55,7 @@ test('POST /api/learn/chat returns 503 when learning AI is not configured', asyn
       body: JSON.stringify({
         subject: 'networking',
         lessonSlug: 'protocol-stack',
-        messages: [{ role: 'user', content: '什么是协议栈？' }],
+        messages: [{ role: 'user', content: 'Explain the protocol stack.' }],
       }),
     }),
     locals: {
@@ -73,7 +76,7 @@ test('POST /api/learn/chat returns a lesson-bound reply', async () => {
     choices: [
       {
         message: {
-          content: '分层的好处是降低复杂度，让每一层都只关心自己的职责。',
+          content: 'The protocol stack splits network work into layers so each layer focuses on one job.',
         },
       },
     ],
@@ -85,7 +88,7 @@ test('POST /api/learn/chat returns a lesson-bound reply', async () => {
 
   try {
     const response = await POST({
-      request: new Request('https://gisgis.eu.cc/api/learn/chat', {
+      request: new Request('https://example.com/api/learn/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,7 +97,7 @@ test('POST /api/learn/chat returns a lesson-bound reply', async () => {
         body: JSON.stringify({
           subject: 'networking',
           lessonSlug: 'protocol-stack',
-          messages: [{ role: 'user', content: '为什么网络要分层？' }],
+          messages: [{ role: 'user', content: 'Explain the protocol stack simply.' }],
         }),
       }),
       locals: {
@@ -116,8 +119,8 @@ test('POST /api/learn/chat returns a lesson-bound reply', async () => {
       message?: string;
     };
 
-    assert.match(payload.reply ?? '', /降低复杂度/);
-    assert.match(payload.message ?? '', /分层模型与协议栈/);
+    assert.match(payload.reply ?? '', /layers|network/i);
+    assert.match(payload.message ?? '', /protocol-stack|协议|lesson/i);
   } finally {
     globalThis.fetch = originalFetch;
   }

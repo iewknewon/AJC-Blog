@@ -1,0 +1,264 @@
+---
+import AdminLearningForm from '../../../components/admin/AdminLearningForm.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { learningStages } from '../../../data/learning/stages';
+import { isAdminAuthenticated } from '../../../lib/auth/guards';
+import { serializeInlineJson } from '../../../lib/utils/inline-json';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const error = Astro.url.searchParams.get('error');
+const pageData = serializeInlineJson({
+  quickstartApiUrl: '/api/admin/learning/quickstart',
+  loadModelsApiUrl: '/api/admin/ai/models',
+});
+---
+
+<AdminLayout title="新建学习专题" description="一句需求自动生成专题与课时，或者手动从零开始创建。">
+  <section class="grid two" style="padding-top: 0; align-items: start;">
+    <article class="content-card">
+      <h2 class="section-title">AI Quickstart</h2>
+      <p class="section-description">
+        输入一句需求，AI 会先生成专题元数据，再拆课时大纲，并自动写出每节课的初稿。
+      </p>
+
+      <form id="learning-quickstart-form" class="admin-form">
+        <label class="admin-field">
+          <span>专题标题</span>
+          <input class="search-input admin-input-rect" type="text" name="title" placeholder="可选，例如：Token 安全专题" />
+        </label>
+
+        <label class="admin-field">
+          <span>学习需求</span>
+          <textarea
+            class="search-input admin-input-rect admin-textarea admin-textarea-sm"
+            name="prompt"
+            placeholder="例如：做一条给前端开发者看的 token 安全学习线，重点讲 session、token、refresh token、secret 管理和常见风险。"
+            required
+          ></textarea>
+        </label>
+
+        <div class="content-card" style="padding: 1rem; background: var(--surface-muted); box-shadow: none;">
+          <h3 style="margin-bottom: 0.5rem;">AI 配置</h3>
+          <div class="admin-form">
+            <label class="admin-field">
+              <span>Base URL</span>
+              <input id="learning-quickstart-base-url" class="search-input admin-input-rect" type="text" placeholder="https://api.openai.com/v1" />
+            </label>
+
+            <label class="admin-field">
+              <span>API Key</span>
+              <input id="learning-quickstart-api-key" class="search-input admin-input-rect" type="password" placeholder="输入可用的 API Key" />
+            </label>
+
+            <div class="hero-actions">
+              <button id="learning-quickstart-load-models" class="button" type="button">获取模型</button>
+            </div>
+
+            <label class="admin-field">
+              <span>模型</span>
+              <select id="learning-quickstart-model" class="search-input admin-input-rect">
+                <option value="">先加载模型列表</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="hero-actions">
+          <button id="learning-quickstart-submit" class="button button-primary" type="submit">生成学习专题</button>
+          <a class="button" href="/admin/learning">返回专题列表</a>
+        </div>
+      </form>
+    </article>
+
+    <div class="admin-form" style="gap: 1.25rem;">
+      <article class="content-card">
+        <h2 class="section-title">生成进度</h2>
+        <p id="learning-quickstart-status" class="muted">等待开始生成。</p>
+        <div id="learning-quickstart-actions" class="hero-actions" style="margin-top: 1rem;"></div>
+      </article>
+
+      <article class="content-card">
+        <h2 class="section-title">手动创建</h2>
+        <p class="section-description">如果你想自己控制专题元数据，也可以直接手动创建。</p>
+        <AdminLearningForm
+          action="/api/admin/learning"
+          submitLabel="创建学习专题"
+          stages={learningStages}
+          error={error ? '创建学习专题失败，请检查 slug、标题和学习路径后重试。' : undefined}
+        />
+      </article>
+    </div>
+  </section>
+
+  <script type="application/json" id="learning-quickstart-page-data" set:html={pageData}></script>
+  <script is:inline>
+    const STORAGE_KEYS = {
+      baseUrl: 'ajc.ai.baseUrl',
+      apiKey: 'ajc.ai.apiKey',
+      model: 'ajc.ai.model',
+    };
+    const pageDataNode = document.querySelector('#learning-quickstart-page-data');
+    const PAGE_DATA = JSON.parse(pageDataNode?.textContent || '{}');
+    const form = document.querySelector('#learning-quickstart-form');
+    const submitButton = document.querySelector('#learning-quickstart-submit');
+    const statusNode = document.querySelector('#learning-quickstart-status');
+    const actionsNode = document.querySelector('#learning-quickstart-actions');
+    const baseUrlInput = document.querySelector('#learning-quickstart-base-url');
+    const apiKeyInput = document.querySelector('#learning-quickstart-api-key');
+    const modelSelect = document.querySelector('#learning-quickstart-model');
+    const loadModelsButton = document.querySelector('#learning-quickstart-load-models');
+
+    const setStatus = (message, isError = false) => {
+      statusNode.textContent = message;
+      statusNode.className = isError ? 'admin-status-text is-error' : 'admin-status-text';
+    };
+
+    const restoreStoredConfig = () => {
+      try {
+        baseUrlInput.value = localStorage.getItem(STORAGE_KEYS.baseUrl) || '';
+        apiKeyInput.value = localStorage.getItem(STORAGE_KEYS.apiKey) || '';
+      } catch {
+        baseUrlInput.value = '';
+        apiKeyInput.value = '';
+      }
+    };
+
+    const saveStoredConfig = () => {
+      try {
+        localStorage.setItem(STORAGE_KEYS.baseUrl, baseUrlInput?.value?.trim() || '');
+        localStorage.setItem(STORAGE_KEYS.apiKey, apiKeyInput?.value?.trim() || '');
+        localStorage.setItem(STORAGE_KEYS.model, modelSelect?.value?.trim() || '');
+      } catch {
+        // Ignore localStorage failures.
+      }
+    };
+
+    const fillModels = (models) => {
+      const storedModel = localStorage.getItem(STORAGE_KEYS.model) || '';
+      modelSelect.innerHTML = '';
+
+      if (!Array.isArray(models) || models.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = '没有获取到模型';
+        modelSelect.append(option);
+        return;
+      }
+
+      models.forEach((model) => {
+        const option = document.createElement('option');
+        option.value = model.id || '';
+        option.textContent = model.id || '未命名模型';
+        if (storedModel && storedModel === option.value) {
+          option.selected = true;
+        }
+        modelSelect.append(option);
+      });
+    };
+
+    const appendResultActions = (data) => {
+      actionsNode.innerHTML = '';
+
+      if (data?.track?.adminUrl) {
+        const trackLink = document.createElement('a');
+        trackLink.className = 'button button-primary';
+        trackLink.href = data.track.adminUrl;
+        trackLink.textContent = '进入专题编辑页';
+        actionsNode.append(trackLink);
+      }
+    };
+
+    restoreStoredConfig();
+
+    loadModelsButton?.addEventListener('click', async () => {
+      const baseUrl = baseUrlInput?.value?.trim();
+      const apiKey = apiKeyInput?.value?.trim();
+
+      if (!baseUrl || !apiKey) {
+        setStatus('请先填写 Base URL 和 API Key。', true);
+        return;
+      }
+
+      loadModelsButton.disabled = true;
+      setStatus('正在获取模型列表...');
+
+      try {
+        const response = await fetch(PAGE_DATA.loadModelsApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ baseUrl, apiKey }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || '获取模型失败。');
+        }
+
+        fillModels(data.models || []);
+        saveStoredConfig();
+        setStatus(`已获取 ${data.models?.length ?? 0} 个模型。`);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '获取模型失败。', true);
+      } finally {
+        loadModelsButton.disabled = false;
+      }
+    });
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      actionsNode.innerHTML = '';
+
+      const formData = new FormData(form);
+      const baseUrl = baseUrlInput?.value?.trim();
+      const apiKey = apiKeyInput?.value?.trim();
+      const model = modelSelect?.value?.trim();
+
+      if (!baseUrl || !apiKey || !model) {
+        setStatus('请先完成 AI 配置并选择模型。', true);
+        return;
+      }
+
+      saveStoredConfig();
+      submitButton.disabled = true;
+      setStatus('正在生成专题蓝图、课时大纲和课时初稿，这一步通常需要一点时间...');
+
+      try {
+        const response = await fetch(PAGE_DATA.quickstartApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: String(formData.get('title') ?? ''),
+            prompt: String(formData.get('prompt') ?? ''),
+            baseUrl,
+            apiKey,
+            model,
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          appendResultActions(data);
+          throw new Error(data.message || '生成学习专题失败。');
+        }
+
+        setStatus(data.message || '学习专题已生成。');
+        appendResultActions(data);
+
+        if (data.track?.adminUrl) {
+          setTimeout(() => {
+            window.location.href = data.track.adminUrl;
+          }, 1200);
+        }
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : '生成学习专题失败。', true);
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+  </script>
+</AdminLayout>

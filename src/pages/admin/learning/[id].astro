@@ -1,0 +1,171 @@
+---
+import AdminLearningForm from '../../../components/admin/AdminLearningForm.astro';
+import AdminLearningLessonForm from '../../../components/admin/AdminLearningLessonForm.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { learningStages } from '../../../data/learning/stages';
+import { isAdminAuthenticated } from '../../../lib/auth/guards';
+import { getLearningTrackById } from '../../../lib/learning/repository';
+import { formatDate } from '../../../utils/format';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect('/admin/learning');
+}
+
+const db = Astro.locals.runtime?.env?.DB;
+
+if (!db) {
+  return Astro.redirect('/admin/learning');
+}
+
+const track = await getLearningTrackById(db, id);
+
+if (!track) {
+  return Astro.redirect('/admin/learning');
+}
+
+const stageLabelMap = new Map(learningStages.map((stage) => [stage.slug, stage.title]));
+const lessons = [...track.lessons].sort((left, right) => left.order - right.order);
+const nextOrder = lessons.length ? Math.max(...lessons.map((lesson) => lesson.order)) + 1 : 1;
+const error = Astro.url.searchParams.get('error');
+---
+
+<AdminLayout title={`编辑专题：${track.title}`} description="维护专题元数据，并继续往这条学习线里添加新课时。">
+  <section class="grid three" style="padding-top: 0;">
+    <article class="content-card">
+      <h3>状态</h3>
+      <p class="admin-stat-value" style="font-size: 1.3rem;">{track.status === 'published' ? '已发布' : '草稿'}</p>
+    </article>
+    <article class="content-card">
+      <h3>所在阶段</h3>
+      <p class="admin-stat-value" style="font-size: 1.3rem;">{stageLabelMap.get(track.stageSlug) ?? track.stageSlug}</p>
+    </article>
+    <article class="content-card">
+      <h3>课时数量</h3>
+      <p class="admin-stat-value">{track.lessonsCount}</p>
+    </article>
+  </section>
+
+  <section class="grid two" style="padding-top: 1.5rem; align-items: start;">
+    <div>
+      <AdminLearningForm
+        action={`/api/admin/learning/${track.id}`}
+        submitLabel="保存专题"
+        track={track}
+        stages={learningStages}
+        error={error === '1' ? '专题保存失败，请检查表单字段后重试。' : undefined}
+      />
+    </div>
+
+    <div class="admin-form" style="gap: 1.25rem;">
+      <article class="content-card">
+        <h2 class="section-title">快速信息</h2>
+        <div class="admin-insight-list">
+          <div class="admin-insight-row">
+            <div>
+              <p class="admin-insight-title">专题 Slug</p>
+              <p class="admin-insight-meta">{track.slug}</p>
+            </div>
+          </div>
+          <div class="admin-insight-row">
+            <div>
+              <p class="admin-insight-title">最近更新</p>
+              <p class="admin-insight-meta">{formatDate(track.updatedAt)}</p>
+            </div>
+          </div>
+          <div class="admin-insight-row">
+            <div>
+              <p class="admin-insight-title">前台地址</p>
+              <p class="admin-insight-meta">/learn/{track.slug}</p>
+            </div>
+          </div>
+        </div>
+        <div class="hero-actions" style="margin-top: 1rem;">
+          <a class="button" href="/admin/learning">返回专题列表</a>
+          {track.status === 'published' ? (
+            <a class="button" href={`/learn/${track.slug}`} target="_blank" rel="noreferrer">查看前台</a>
+          ) : null}
+        </div>
+      </article>
+
+      <article class="content-card">
+        <h2 class="section-title">添加新课时</h2>
+        <p class="section-description">新增课时会先保存为草稿，你可以创建后继续进入详情页慢慢调整。</p>
+        <AdminLearningLessonForm
+          action={`/api/admin/learning/${track.id}/lessons/new`}
+          submitLabel="创建课时"
+          backHref={`/admin/learning/${track.id}`}
+          backLabel="留在当前页"
+          error={error === 'lesson' ? '课时创建失败，请检查 JSON 和必填字段。' : undefined}
+          lesson={{
+            order: nextOrder,
+            estimatedMinutes: 12,
+            status: 'draft',
+            animation: 'workflow-vs-agent',
+          }}
+        />
+      </article>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top: 1.5rem;">
+    <div class="archive-toolbar" style="margin-bottom: 1rem;">
+      <div>
+        <h2 class="section-title">现有课时</h2>
+        <p class="section-description">按顺序查看和编辑这条学习线下的每节课。</p>
+      </div>
+    </div>
+
+    {lessons.length > 0 ? (
+      <div class="admin-table-wrapper card">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>课时</th>
+              <th>Slug</th>
+              <th>状态</th>
+              <th>时长</th>
+              <th>更新于</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lessons.map((lesson) => (
+              <tr>
+                <td>
+                  <div class="admin-table-title">第 {lesson.order} 课：{lesson.title}</div>
+                  <p class="admin-insight-meta" style="margin-top: 0.25rem;">{lesson.description}</p>
+                </td>
+                <td>{lesson.lessonSlug}</td>
+                <td>
+                  <span class:list={['admin-status-badge', `is-${lesson.status}`]}>
+                    {lesson.status === 'published' ? '已发布' : '草稿'}
+                  </span>
+                </td>
+                <td>{lesson.estimatedMinutes} 分钟</td>
+                <td>{formatDate(lesson.updatedAt)}</td>
+                <td>
+                  <div class="hero-actions" style="margin-top: 0;">
+                    <a class="button" href={`/admin/learning/${track.id}/lessons/${lesson.id}`}>编辑</a>
+                    {lesson.status === 'published' ? (
+                      <a class="button" href={`/learn/${track.slug}/${lesson.lessonSlug}`} target="_blank" rel="noreferrer">前台</a>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <div class="empty-state">这个专题还没有课时，先从右侧创建第一节课。</div>
+    )}
+  </section>
+</AdminLayout>

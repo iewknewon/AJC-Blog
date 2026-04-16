@@ -3,7 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import PageHero from '../components/PageHero.astro';
 import EmptyState from '../components/EmptyState.astro';
 import { siteConfig } from '../data/site';
-import { getAllLearningLessons } from '../lib/learning/content';
+import { getMergedAllLearningLessons } from '../lib/learning/content';
 import { serializeInlineJson } from '../lib/utils/inline-json';
 import { formatDate } from '../utils/format';
 import { getPublishedPosts, renderPost } from '../utils/posts';
@@ -23,7 +23,7 @@ const articleIndex = renderedPosts.map((post) => ({
   content: post.plainText,
 }));
 
-const learningIndex = getAllLearningLessons().map((lesson) => ({
+const learningIndex = (await getMergedAllLearningLessons(db)).map((lesson) => ({
   kind: 'lesson',
   href: lesson.href,
   slug: lesson.lessonSlug,

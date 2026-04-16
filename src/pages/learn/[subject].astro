@@ -4,10 +4,11 @@ import PageHero from '../../components/PageHero.astro';
 import LearningLessonCard from '../../components/learning/LearningLessonCard.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import { siteConfig } from '../../data/site';
-import { getLearningSubjectBySlug } from '../../lib/learning/content';
+import { getMergedLearningSubjectBySlug } from '../../lib/learning/content';
 
-const { subject } = Astro.params;
-const currentSubject = subject ? getLearningSubjectBySlug(subject) : null;
+const db = Astro.locals.runtime?.env?.DB;
+const subjectSlug = Astro.params.subject ?? '';
+const currentSubject = subjectSlug ? await getMergedLearningSubjectBySlug(subjectSlug, db) : null;
 
 if (!currentSubject) {
   return Astro.redirect('/learn');
@@ -15,8 +16,8 @@ if (!currentSubject) {
 
 const sortedLessons = [...currentSubject.lessons].sort((left, right) => left.order - right.order);
 const firstLesson = sortedLessons[0];
-const conceptOverview = currentSubject.conceptOverview;
 const isTimelineSubject = currentSubject.pageVariant === 'timeline';
+const conceptOverview = currentSubject.conceptOverview;
 ---
 
 <BaseLayout title={`${currentSubject.title} | 学习中心 | ${siteConfig.title}`} description={currentSubject.description} pathname={`/learn/${currentSubject.slug}`}>
@@ -28,249 +29,158 @@ const isTimelineSubject = currentSubject.pageVariant === 'timeline';
         description={currentSubject.description}
         actions={[
           { href: '/learn', label: '返回学习中心' },
-          firstLesson ? { href: `/learn/${currentSubject.slug}/${firstLesson.lessonSlug}`, label: '直接开始', primary: true } : { href: '/learn', label: '查看全部专题', primary: true },
+          firstLesson
+            ? { href: `/learn/${currentSubject.slug}/${firstLesson.lessonSlug}`, label: '开始第一课', primary: true }
+            : { href: '/learn', label: '查看其它专题', primary: true },
         ]}
         stats={[
-          { label: '课时数量', value: `${sortedLessons.length} 节` },
-          { label: '学习方式', value: isTimelineSubject ? '概念总览 + 学习轴 + 图解' : '图解 + 互动 + 追问' },
+          { label: '课时数', value: `${sortedLessons.length}` },
+          { label: '学习方式', value: isTimelineSubject ? '概念总览 + 学习轴' : '学习路径 + 课时列表' },
         ]}
       />
 
-      {isTimelineSubject ? (
-        <>
-          {conceptOverview ? (
-            <section class="content-card reverse-overview-card">
-              <div class="reverse-overview-main">
-                <p class="eyebrow">Concept Overview</p>
-                <h2 class="section-title" style="font-size: 1.6rem;">{conceptOverview.title}</h2>
-                <p class="reverse-overview-summary">{conceptOverview.summary}</p>
-              </div>
-              <div class="reverse-overview-grid">
-                <article class="reverse-overview-column">
-                  <h3>你会先建立什么视角</h3>
-                  <div class="learning-objectives-list">
-                    {conceptOverview.pillars.map((item) => (
-                      <p class="learning-objective-item">{item}</p>
-                    ))}
-                  </div>
-                </article>
-                <article class="reverse-overview-column is-muted">
-                  <h3>学习边界</h3>
-                  <div class="learning-objectives-list">
-                    {conceptOverview.safetyNotes.map((item) => (
-                      <p class="learning-objective-item">{item}</p>
-                    ))}
-                  </div>
-                </article>
-              </div>
-            </section>
-          ) : null}
-
-          <section class="content-card" style="margin-top: 1.5rem;">
-            <h2 class="section-title" style="font-size: 1.45rem;">学习轴</h2>
-            <p class="muted" style="margin: 0.55rem 0 0;">从“程序文件是什么”一路走到“如何用证据链定位关键逻辑”，每一站都对应一节完整课时。</p>
-          </section>
-
-          {sortedLessons.length > 0 ? (
-            <section class="learning-timeline-shell">
-              <div class="learning-timeline-axis">
-                {sortedLessons.map((lesson) => (
-                  <article class="content-card learning-timeline-node">
-                    <div class="learning-timeline-marker">
-                      <span>第 {lesson.order} 课</span>
-                      <strong>{String(lesson.order).padStart(2, '0')}</strong>
-                    </div>
-                    <div class="learning-timeline-body">
-                      <p class="eyebrow">Learning Milestone</p>
-                      <h2 class="learning-timeline-title">{lesson.title}</h2>
-                      <p class="learning-timeline-description">{lesson.description}</p>
-                      <div class="learning-timeline-meta">
-                        <span class="tag">{lesson.estimatedMinutes} 分钟</span>
-                        {lesson.keywords.slice(0, 3).map((keyword) => (
-                          <span class="tag">{keyword}</span>
-                        ))}
-                      </div>
-                      <div class="hero-actions" style="margin-top: 0.5rem;">
-                        <a class="button button-primary" href={`/learn/${currentSubject.slug}/${lesson.lessonSlug}`}>进入课时</a>
-                      </div>
-                    </div>
-                  </article>
+      {conceptOverview ? (
+        <section class="content-card learning-overview-card">
+          <div class="learning-overview-main">
+            <p class="eyebrow">Concept Overview</p>
+            <h2 class="section-title">{conceptOverview.title}</h2>
+            <p class="section-description">{conceptOverview.summary}</p>
+          </div>
+          <div class="grid two">
+            <article class="content-card learning-overview-subcard">
+              <h3 class="section-title" style="font-size: 1.1rem;">这条线会重点讲什么</h3>
+              <div class="learning-objectives-list">
+                {conceptOverview.pillars.map((item) => (
+                  <p class="learning-objective-item">{item}</p>
                 ))}
               </div>
-            </section>
-          ) : (
-            <div style="margin-top: 1.75rem;">
-              <EmptyState title="当前课程还没有课时" description="后续会继续补充更多课时内容。" />
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <section class="content-card" style="margin-top: 1.75rem;">
-            <h2 class="section-title" style="font-size: 1.5rem;">学习路径</h2>
-            <div class="learning-path-list">
-              {currentSubject.learningPath.map((item, index) => (
-                <p class="learning-path-item">
-                  <strong>Step {index + 1}.</strong> {item}
-                </p>
-              ))}
-            </div>
-          </section>
+            </article>
+            <article class="content-card learning-overview-subcard">
+              <h3 class="section-title" style="font-size: 1.1rem;">边界与提醒</h3>
+              <div class="learning-objectives-list">
+                {conceptOverview.safetyNotes.map((item) => (
+                  <p class="learning-objective-item">{item}</p>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
+      ) : null}
 
-          {sortedLessons.length > 0 ? (
-            <div class="grid two learning-lesson-grid">
-              {sortedLessons.map((lesson) => (
-                <LearningLessonCard lesson={lesson} subjectTitle={currentSubject.title} />
-              ))}
-            </div>
-          ) : (
-            <div style="margin-top: 1.75rem;">
-              <EmptyState title="当前课程还没有课时" description="后续会继续补充更多课时内容。" />
-            </div>
-          )}
-        </>
+      {!isTimelineSubject ? (
+        <section class="content-card" style="margin-top: 1.5rem;">
+          <h2 class="section-title" style="font-size: 1.3rem;">学习路径</h2>
+          <div class="learning-path-list">
+            {currentSubject.learningPath.map((item, index) => (
+              <p class="learning-path-item">
+                <strong>Step {index + 1}.</strong> {item}
+              </p>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {sortedLessons.length > 0 ? (
+        isTimelineSubject ? (
+          <section class="learning-timeline-list learning-timeline-axis">
+            {sortedLessons.map((lesson) => (
+              <article class="content-card learning-timeline-node">
+                <div class="learning-timeline-number">{String(lesson.order).padStart(2, '0')}</div>
+                <div class="learning-timeline-body">
+                  <p class="eyebrow">Lesson {lesson.order}</p>
+                  <h2 class="section-title" style="font-size: 1.35rem;">{lesson.title}</h2>
+                  <p class="section-description">{lesson.description}</p>
+                  <div class="tags" style="margin-top: 0.35rem;">
+                    <span class="tag">{lesson.estimatedMinutes} 分钟</span>
+                    {lesson.keywords.slice(0, 3).map((keyword) => (
+                      <span class="tag">{keyword}</span>
+                    ))}
+                  </div>
+                  <div class="hero-actions" style="margin-top: 0.75rem;">
+                    <a class="button button-primary" href={`/learn/${currentSubject.slug}/${lesson.lessonSlug}`}>进入这节课</a>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </section>
+        ) : (
+          <div class="grid two learning-lesson-grid">
+            {sortedLessons.map((lesson) => (
+              <LearningLessonCard lesson={lesson} subjectTitle={currentSubject.title} />
+            ))}
+          </div>
+        )
+      ) : (
+        <div style="margin-top: 1.5rem;">
+          <EmptyState title="这个专题还没有课时" description="等后台生成或补充课时后，这里会自动展示。" />
+        </div>
       )}
     </div>
   </section>
 </BaseLayout>
 
 <style>
-  .reverse-overview-card {
-    margin-top: 1.75rem;
-    gap: 1.2rem;
-    background:
-      radial-gradient(circle at top right, rgba(37, 99, 235, 0.1), transparent 30%),
-      linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, white 6%), color-mix(in srgb, var(--surface-muted) 84%, white 16%));
-  }
-
-  .reverse-overview-summary,
-  .learning-timeline-description {
-    margin: 0;
-    color: var(--text-muted);
-  }
-
-  .reverse-overview-grid {
+  .learning-overview-card {
+    margin-top: 1.5rem;
     display: grid;
     gap: 1rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .reverse-overview-column {
-    display: grid;
-    gap: 0.8rem;
+  .learning-overview-subcard {
     padding: 1rem;
-    border-radius: 20px;
-    border: 1px solid color-mix(in srgb, var(--border) 78%, white 22%);
-    background: color-mix(in srgb, var(--surface) 88%, white 12%);
+    background: color-mix(in srgb, var(--surface-muted) 84%, white 16%);
+    box-shadow: none;
   }
 
-  .reverse-overview-column.is-muted {
-    background: color-mix(in srgb, var(--surface-muted) 86%, white 14%);
-  }
-
-  .reverse-overview-column h3 {
-    margin: 0;
-    font-size: 1.05rem;
-  }
-
-  .learning-timeline-shell {
+  .learning-timeline-list {
     position: relative;
+    display: grid;
+    gap: 1rem;
     margin-top: 1.5rem;
   }
 
-  .learning-timeline-shell::before {
-    content: "";
+  .learning-timeline-axis::before {
+    content: '';
     position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 3rem;
+    left: 2.5rem;
+    top: 0.5rem;
+    bottom: 0.5rem;
     width: 2px;
-    background: linear-gradient(180deg, rgba(37, 99, 235, 0.3), rgba(15, 23, 42, 0.08));
-  }
-
-  .learning-timeline-axis {
-    display: grid;
-    gap: 1.1rem;
+    background: color-mix(in srgb, var(--brand) 26%, var(--border) 74%);
+    opacity: 0.85;
   }
 
   .learning-timeline-node {
+    position: relative;
     display: grid;
-    grid-template-columns: 6rem minmax(0, 1fr);
-    gap: 1.1rem;
+    grid-template-columns: 5rem minmax(0, 1fr);
+    gap: 1rem;
     align-items: start;
-    position: relative;
   }
 
-  .learning-timeline-marker {
-    position: relative;
+  .learning-timeline-number {
     display: grid;
-    gap: 0.2rem;
-    justify-items: center;
-    text-align: center;
-  }
-
-  .learning-timeline-marker::after {
-    content: "";
-    width: 14px;
-    height: 14px;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #2563eb, #0f172a);
-    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.12);
-  }
-
-  .learning-timeline-marker span {
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .learning-timeline-marker strong {
-    font-size: 1.55rem;
-    font-family: var(--display-font);
+    place-items: center;
+    min-height: 4.5rem;
+    border-radius: 1rem;
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: color-mix(in srgb, var(--brand) 14%, var(--surface) 86%);
+    color: var(--text);
   }
 
   .learning-timeline-body {
     display: grid;
-    gap: 0.65rem;
+    gap: 0.45rem;
   }
 
-  .learning-timeline-title {
-    margin: 0;
-    font-family: var(--display-font);
-    font-size: 1.45rem;
-    letter-spacing: -0.02em;
-  }
-
-  .learning-timeline-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-  }
-
-  @media (max-width: 900px) {
-    .reverse-overview-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .learning-timeline-shell::before {
-      left: 1.15rem;
+  @media (max-width: 720px) {
+    .learning-timeline-axis::before {
+      display: none;
     }
 
     .learning-timeline-node {
       grid-template-columns: 1fr;
-      padding-left: 2.2rem;
-    }
-
-    .learning-timeline-marker {
-      justify-items: start;
-      text-align: left;
-    }
-
-    .learning-timeline-marker::after {
-      position: absolute;
-      left: -1.65rem;
-      top: 0.65rem;
     }
   }
 </style>

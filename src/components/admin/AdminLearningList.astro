@@ -1,0 +1,60 @@
+---
+import EmptyState from '../EmptyState.astro';
+import { learningStages } from '../../data/learning/stages';
+import type { ManagedLearningSubject } from '../../lib/learning/types';
+import { formatDate } from '../../utils/format';
+
+interface Props {
+  tracks: ManagedLearningSubject[];
+}
+
+const { tracks } = Astro.props;
+const stageLabelMap = new Map(learningStages.map((stage) => [stage.slug, stage.title]));
+---
+
+{tracks.length > 0 ? (
+  <div class="admin-table-wrapper card">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>专题</th>
+          <th>Slug</th>
+          <th>阶段</th>
+          <th>状态</th>
+          <th>课时</th>
+          <th>更新于</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {tracks.map((track) => (
+          <tr>
+            <td>
+              <div class="admin-table-title">{track.title}</div>
+              <p class="admin-insight-meta" style="margin-top: 0.25rem;">{track.description}</p>
+            </td>
+            <td>{track.slug}</td>
+            <td>{stageLabelMap.get(track.stageSlug) ?? track.stageSlug}</td>
+            <td>
+              <span class:list={['admin-status-badge', `is-${track.status}`]}>
+                {track.status === 'published' ? '已发布' : '草稿'}
+              </span>
+            </td>
+            <td>{track.lessonsCount}</td>
+            <td>{formatDate(track.updatedAt)}</td>
+            <td>
+              <div class="hero-actions" style="margin-top: 0;">
+                <a class="button" href={`/admin/learning/${track.id}`}>编辑</a>
+                {track.status === 'published' ? (
+                  <a class="button" href={`/learn/${track.slug}`} target="_blank" rel="noreferrer">前台</a>
+                ) : null}
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+) : (
+  <EmptyState title="还没有学习专题" description="先创建一个专题，或者用 AI quickstart 直接生成一整条学习线。" />
+)}

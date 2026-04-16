@@ -1,5 +1,5 @@
 import { generateCompatibleText } from '../ai/openai-generic';
-import { getLearningLesson } from './content';
+import { getLearningLesson, getMergedLearningLesson } from './content';
 
 export type LearningChatMessage = {
   role: 'user' | 'assistant';
@@ -10,10 +10,6 @@ type LearningChatRateLimit = {
   hourlyCount: number;
   dailyCount: number;
   allowed: boolean;
-};
-
-type CloudflareRequest = Request & {
-  cf?: Partial<IncomingRequestCfProperties>;
 };
 
 const learningChatSchemaReady = new WeakSet<D1Database>();
@@ -204,6 +200,13 @@ export async function recordLearningChatRequest(
     .run());
 }
 
+function formatTranscript(messages: LearningChatMessage[]) {
+  return messages.map((message) => {
+    const roleLabel = message.role === 'user' ? 'User' : 'Assistant';
+    return `${roleLabel}: ${message.content}`;
+  }).join('\n');
+}
+
 export function buildLearningChatPrompt(input: {
   subject: string;
   lessonSlug: string;
@@ -212,34 +215,69 @@ export function buildLearningChatPrompt(input: {
   const resolved = getLearningLesson(input.subject, input.lessonSlug);
 
   if (!resolved) {
-    throw new Error('未找到对应的学习课时。');
+    throw new Error('Unknown learning lesson.');
   }
 
   const { subject, lesson } = resolved;
-  const transcript = input.messages.map((message) => {
-    const roleLabel = message.role === 'user' ? '学员' : '助教';
-    return `${roleLabel}：${message.content}`;
-  }).join('\n');
 
   return [
-    `当前课程：${subject.title}`,
-    `当前课时：${lesson.title}`,
-    `课时目标：${lesson.objectives.join('；')}`,
-    `重点关键词：${lesson.keywords.join(' / ')}`,
-    `课时摘要：${lesson.chatContextSummary}`,
-    `常见误区：${lesson.misconceptions.map((item) => `${item.myth} -> ${item.clarification}`).join('；')}`,
-    '要求：',
-    '- 只回答与当前课时内容直接相关的问题与自然延伸。',
-    '- 如果用户问题明显脱离当前课时，就温和提醒回到本课主题，不要扩展成泛化聊天。',
-    '- 用中文回答，优先通俗、形象、循序渐进。',
-    '- 如果用户要求更简单，使用类比；如果用户要求更深入，再增加细节。',
-    '- 不要假装已经展示了不存在的图表或动画，但可以引用当前课的知识点。',
-    '当前会话记录：',
-    transcript || '学员刚进入本课，暂时还没有历史对话。',
+    `Track: ${subject.title}`,
+    `Lesson: ${lesson.title}`,
+    `Objectives: ${lesson.objectives.join(' | ')}`,
+    `Keywords: ${lesson.keywords.join(' / ')}`,
+    `Lesson summary: ${lesson.chatContextSummary}`,
+    `Common misconceptions: ${lesson.misconceptions.map((item) => `${item.myth} -> ${item.clarification}`).join(' | ')}`,
+    'Rules:',
+    '- Answer only within the scope of the current lesson and nearby follow-up ideas.',
+    '- Be clear, concrete, and beginner-friendly.',
+    '- If the learner asks something adjacent, connect it back to this lesson before expanding.',
+    '- Do not invent details that are outside the current lesson context.',
+    'Conversation:',
+    formatTranscript(input.messages) || 'No prior conversation.',
+  ].join('\n');
+}
+
+export async function getLearningChatLessonEntry(input: {
+  db?: D1Database;
+  subject: string;
+  lessonSlug: string;
+}) {
+  return getMergedLearningLesson(input.subject, input.lessonSlug, input.db);
+}
+
+export async function buildManagedLearningChatPrompt(input: {
+  db?: D1Database;
+  subject: string;
+  lessonSlug: string;
+  messages: LearningChatMessage[];
+}) {
+  const resolved = await getLearningChatLessonEntry(input);
+
+  if (!resolved) {
+    throw new Error('Unknown learning lesson.');
+  }
+
+  const { subject, lesson } = resolved;
+
+  return [
+    `Track: ${subject.title}`,
+    `Lesson: ${lesson.title}`,
+    `Objectives: ${lesson.objectives.join(' | ')}`,
+    `Keywords: ${lesson.keywords.join(' / ')}`,
+    `Lesson summary: ${lesson.chatContextSummary}`,
+    `Common misconceptions: ${lesson.misconceptions.map((item) => `${item.myth} -> ${item.clarification}`).join(' | ')}`,
+    'Rules:',
+    '- Answer only within the scope of the current lesson and nearby follow-up ideas.',
+    '- Be clear, concrete, and beginner-friendly.',
+    '- If the learner asks something adjacent, connect it back to this lesson before expanding.',
+    '- Do not invent details that are outside the current lesson context.',
+    'Conversation:',
+    formatTranscript(input.messages) || 'No prior conversation.',
   ].join('\n');
 }
 
 export async function generateLearningChatReply(input: {
+  db?: D1Database;
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -247,13 +285,8 @@ export async function generateLearningChatReply(input: {
   lessonSlug: string;
   messages: LearningChatMessage[];
 }) {
-  const resolved = getLearningLesson(input.subject, input.lessonSlug);
-
-  if (!resolved) {
-    throw new Error('未找到对应的学习课时。');
-  }
-
-  const prompt = buildLearningChatPrompt({
+  const prompt = await buildManagedLearningChatPrompt({
+    db: input.db,
     subject: input.subject,
     lessonSlug: input.lessonSlug,
     messages: input.messages,
@@ -261,9 +294,9 @@ export async function generateLearningChatReply(input: {
 
   const reply = await generateCompatibleText(input.baseUrl, input.apiKey, input.model, {
     systemPrompt: [
-      '你是一名计算机基础课程助教。',
-      '你只围绕当前课时内容回答问题，帮助用户用更通俗、更形象的方式理解知识。',
-      '回答要简洁清晰，必要时分点说明，但不要写成长篇论文。',
+      'You are a lesson-bound learning assistant for the public learning center.',
+      'Keep answers grounded in the current lesson, explain concepts clearly, and stay honest about uncertainty.',
+      'If the learner asks something nearby but broader, bridge from the current lesson before expanding.',
     ].join('\n'),
     userPrompt: prompt,
     temperature: 0.4,

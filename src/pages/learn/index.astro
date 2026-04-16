@@ -2,36 +2,103 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PageHero from '../../components/PageHero.astro';
 import LearningSubjectCard from '../../components/learning/LearningSubjectCard.astro';
+import EmptyState from '../../components/EmptyState.astro';
 import { siteConfig } from '../../data/site';
-import { getLearningSubjects } from '../../lib/learning/content';
+import { getLearningStageGroups } from '../../lib/learning/content';
 
-const subjects = getLearningSubjects();
-const lessonCount = subjects.reduce((total, subject) => total + subject.lessons.length, 0);
+const db = Astro.locals.runtime?.env?.DB;
+const stageGroups = await getLearningStageGroups(db);
+const subjectCount = stageGroups.reduce((total, group) => total + group.subjects.length, 0);
+const lessonCount = stageGroups.reduce((total, group) => total + group.lessonCount, 0);
 ---
 
-<BaseLayout title={`学习中心 | ${siteConfig.title}`} description="用更通俗、更可视化的方式学习计算机网络、计算机组成原理和 AI / Agent 工程基础。" pathname="/learn">
+<BaseLayout title={`学习中心 | ${siteConfig.title}`} description="围绕固定学习轴组织公开教程，支持静态专题与后台新建专题混合展示。" pathname="/learn">
   <section class="section">
     <div class="container">
       <PageHero
         kicker="Learning Center"
-        title="公开学习中心"
-        description="这里不只放文章，而是把抽象概念拆成可直观看懂的课时：从计算机网络、计算机组成原理，到 AI / Agent 工程基础，都尽量讲到“看完就能解释给别人听”。"
+        title="学习中心"
+        description="这里按固定学习轴组织内容：先搭概念，再补基础，再做专题和实战。旧专题保留，后续也可以从后台持续生成新专题。"
         actions={[
-          { href: '/learn/ai-agent-engineering', label: '看 AI 工程', primary: true },
-          { href: '/learn/networking', label: '从网络开始' },
-          { href: '/learn/computer-organization', label: '看组成原理' },
+          { href: '/', label: '返回首页' },
+          { href: '/search', label: '搜索学习内容', primary: true },
         ]}
         stats={[
-          { label: '学习专题', value: `${subjects.length} 条` },
-          { label: '首发课时', value: `${lessonCount} 节` },
+          { label: '学习阶段', value: `${stageGroups.length}` },
+          { label: '专题数', value: `${subjectCount}` },
+          { label: '课时数', value: `${lessonCount}` },
         ]}
       />
 
-      <div class="grid two learning-subject-grid">
-        {subjects.map((subject) => (
-          <LearningSubjectCard subject={subject} />
+      <div class="learning-stage-stack">
+        {stageGroups.map((group) => (
+          <section class="content-card learning-stage-card">
+            <div class="learning-stage-header">
+              <div>
+                <p class="eyebrow">Stage</p>
+                <h2 class="section-title">{group.title}</h2>
+                <p class="section-description">{group.description}</p>
+              </div>
+              <div class="learning-stage-stats">
+                <span class="tag">{group.subjects.length} 个专题</span>
+                <span class="tag">{group.lessonCount} 节课</span>
+              </div>
+            </div>
+
+            {group.subjects.length > 0 ? (
+              <div class="grid two learning-subject-grid">
+                {group.subjects.map((subject) => (
+                  <LearningSubjectCard subject={subject} />
+                ))}
+              </div>
+            ) : (
+              <div class="learning-stage-empty">
+                <EmptyState title="这个阶段还没有专题" description="后续可以从后台一句话生成新的学习专题，并自动挂到对应阶段。" />
+              </div>
+            )}
+          </section>
         ))}
       </div>
     </div>
   </section>
 </BaseLayout>
+
+<style>
+  .learning-stage-stack {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .learning-stage-card {
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  .learning-stage-header {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .learning-stage-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    justify-content: flex-end;
+  }
+
+  .learning-stage-empty {
+    margin-top: 0.25rem;
+  }
+
+  @media (max-width: 900px) {
+    .learning-stage-header {
+      flex-direction: column;
+    }
+
+    .learning-stage-stats {
+      justify-content: flex-start;
+    }
+  }
+</style>

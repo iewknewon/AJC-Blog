@@ -1,12 +1,12 @@
 import {
   ensureLearningChatSchema,
+  getLearningChatLessonEntry,
   generateLearningChatReply,
   getLearningChatIpHash,
   getLearningChatRateLimit,
   recordLearningChatRequest,
   trimLearningChatMessages,
 } from '../../../lib/learning/chat';
-import { getLearningLesson } from '../../../lib/learning/content';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -41,7 +41,11 @@ export async function POST(context) {
 
   const subject = String(payload.subject ?? '').trim();
   const lessonSlug = String(payload.lessonSlug ?? '').trim();
-  const resolved = getLearningLesson(subject, lessonSlug);
+  const resolved = await getLearningChatLessonEntry({
+    db,
+    subject,
+    lessonSlug,
+  });
 
   if (!resolved) {
     return json({ message: '未找到对应的学习课时。' }, 404);
@@ -67,6 +71,7 @@ export async function POST(context) {
     }
 
     const reply = await generateLearningChatReply({
+      db,
       baseUrl,
       apiKey,
       model,

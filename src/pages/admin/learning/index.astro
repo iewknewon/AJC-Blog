@@ -1,0 +1,28 @@
+---
+import AdminLearningList from '../../../components/admin/AdminLearningList.astro';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { isAdminAuthenticated } from '../../../lib/auth/guards';
+import { getLearningTracks } from '../../../lib/learning/repository';
+
+const authenticated = await isAdminAuthenticated(Astro.cookies, Astro.locals.runtime?.env);
+
+if (!authenticated) {
+  return Astro.redirect('/admin/login');
+}
+
+const db = Astro.locals.runtime?.env?.DB;
+const tracks = db ? await getLearningTracks(db) : [];
+---
+
+<AdminLayout title="学习专题" description="管理公开学习中心的专题、阶段和课时内容。">
+  <section class="section" style="padding-top: 0;">
+    <div class="archive-toolbar" style="margin-bottom: 1rem;">
+      <div>
+        <h2 class="section-title">全部学习专题</h2>
+        <p class="section-description">支持手动创建专题，也支持用 AI quickstart 直接生成整条学习线。</p>
+      </div>
+      <a class="button button-primary" href="/admin/learning/new">新建学习专题</a>
+    </div>
+    <AdminLearningList tracks={tracks} />
+  </section>
+</AdminLayout>
